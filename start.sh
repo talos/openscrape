@@ -1,0 +1,1 @@
+java -Djava.library.path=/usr/local/lib -classpath /Users/talos/Programming/jzmq/src/ -jar server/caustic_backend.jar
