@@ -3,26 +3,44 @@
   <head>
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js"></script>
+    <script type="text/javascript" src="js/json2.min.js"></script>
     <script type="text/javascript" src="js/caustic-viz.js"></script>
-    <style type="text/css">
-/*      .chart div {
-      font: 10px sans-serif;
-      background-color: red;
-      text-align: right;
-      padding: 3px;
-      margin: 1px;
-      color: white; */
-
-body {
-font-family: Helvetica, sans-serif;
-}
-
-.chart rect {
-stroke: white;
-fill: steelblue;
-}
-    </style>
+    <link rel="stylesheet" type="text/css" href="css/default.css" />
   </head>
   <body>
+    <div>
+      <div id="visuals">
+
+      </div>
+      <div id="request">
+        <form>
+          <div>
+            <label for="instruction">Instruction:</label>
+            <textarea id="instruction" name="instruction"></textarea>
+          </div>
+          <div>
+            <label for="tags">Tags:</label>
+            <textarea id="tags" name="tags"></textarea>
+          </div>
+          <div>
+            <input type="submit" value="Request" />
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+
+/** Set default values. **/
+
+$('textarea#tags').text(JSON.stringify({
+    "Street": "Atlantic Ave",
+    "Number": "373",
+    "Borough": "3",
+    "Apt": ""
+}, null, 4));
+$('textarea#instruction').text("http://www.accursedware.com:6767/property");
+
+    </script>
   </body>
 </html>

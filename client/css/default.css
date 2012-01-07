@@ -1,0 +1,23 @@
+body {
+    font-family: Helvetica, sans-serif;
+}
+
+div {
+    margin: .5em;
+    padding: .5em;
+}
+
+div#visuals {
+    float: left;
+}
+
+div#request {
+    float: right;
+    width: 200px;
+    border: 1px solid #999;
+}
+
+textarea {
+    width: 100%;
+    height: 8em;
+}
