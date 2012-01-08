@@ -28,8 +28,9 @@ class RequestHandler(WebMessageHandler):
             # connect to backend
             sock = CONTEXT.socket(zmq.REQ)
             sock.connect(BACKEND_URI)
-            request_obj = ast.literal_eval(json_request)
-            sock.send_json(request_obj)
+            #request_obj = ast.literal_eval(json_request)
+            #sock.send_json(request_obj)
+            sock.send(json_request)
 
             resp = sock.recv()  # asynchronicity++
 
