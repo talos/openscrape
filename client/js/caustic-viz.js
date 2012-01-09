@@ -17,6 +17,8 @@ $(document).ready(function() {
     /** Path to hit caustic backend. **/
     var request_path = "/request",
 
+    $queue = $({}), // generic queue
+
     _data = {}, // TODO move this to some kind of page or object data store
 
     /**
@@ -60,18 +62,18 @@ $(document).ready(function() {
     },
 
     /**
-       Generate a new ID.
+       Generate a new ID for a response.
 
        @param parentId The parent ID, can be omitted if this is root.
 
        @return The new ID.
      **/
     newId = function(parentId) {
-        id = _.uniqueId();
-        if(parentId === null || typeof parentId === 'undefined') {
-            _put(_replace, 'parent', id, parentId);
+        id = _.uniqueId('response');
+        _put(_replace, 'parent', id, parentId);
+        //if(parentId === null || typeof parentId === 'undefined') {
             //_put('children', _extend_merge, parentId, obj);
-        }
+        //}
 
         return id;
     },
@@ -115,16 +117,16 @@ $(document).ready(function() {
                 // prefer child values
                 memo = _.extend({}, tags, memo);
             }
-            if(!_.isUndefined(resp)) {
-                if(resp.children.length == 1) {
-                    var name = resp.name,
-                    value = resp.children[0].name;
-                    // don't overwrite properties -- this means we prefer child values
-                    if(!memo.hasOwnProperty(name)) {
-                        memo[name] = value;
-                    }
-                }
-            }
+            // if(!_.isUndefined(resp)) {
+            //     if(resp.children.length == 1) {
+            //         var name = resp.name,
+            //         value = resp.children[0].name;
+            //         // don't overwrite properties -- this means we prefer child values
+            //         if(!memo.hasOwnProperty(name)) {
+            //             memo[name] = value;
+            //         }
+            //     }
+            // }
             return memo;
         }, {}, id);
     },
@@ -160,15 +162,16 @@ $(document).ready(function() {
     /**
        Make a forced request for <code>instruction</code>.
 
-       @param $queue A jQuery DOM object to queue under.
        @param id The String ID of the request.  Used to get tags.
        @param instruction A String instruction.
        @param force Whether to force a load.
        @param uri URI to resolve instruction references against.  Optional.
        @param input Input String.  Optional.
     **/
-    request = function($queue, id, instruction, force, uri, input) {
+    request = function(id, instruction, force, uri, input) {
         $queue.queue('caustic', function() {
+            console.log(getTags(id));
+            console.log('requesting');
             $.post(request_path,
                    JSON.stringify({
                        "id": id,
@@ -199,6 +202,16 @@ $(document).ready(function() {
     },
 
     /**
+       Force a request from a stored response.
+
+       @param response The stored response.
+     **/
+    forceRequest = function(response) {
+        console.log(response);
+        request(response.id, response.instruction, true, response.uri);
+    },
+
+    /**
        Save tags independent of other data.
 
        @param id The ID to associate with the tags.
@@ -216,7 +229,7 @@ $(document).ready(function() {
        @param resp The response as a JS object.
     **/
     saveResponse = function(id, resp) {
-        //console.log("before: " + JSON.stringify(resp, null, 2));
+        resp.id = id; // resp is provided with a less useful id originally
         if(resp.hasOwnProperty('children')) {
             // children are returned in a map between input values and
             // full responses.  This is converted into an array with
@@ -227,6 +240,8 @@ $(document).ready(function() {
             // }
             // where the ID is newly generated, and can be used to get
             // the response that was there.
+
+            // TODO right this as an inject?
             var ary = [];
             _.each(resp.children, function(respArray, name) {
                 var childIds = []
@@ -237,6 +252,7 @@ $(document).ready(function() {
                 });
                 ary.push({
                     name: name,
+                    id: _.uniqueId('value'),
                     childIds: childIds
                 });
             });
@@ -258,7 +274,7 @@ $(document).ready(function() {
             saveTags(id, JSON.parse($(this).find('#tags').val()));
 
             // TODO should select the lock object dynamically
-            request($('#visuals'), id, instruction, true);
+            request(id, instruction, true);
         } catch(err) {
             if(err instanceof SyntaxError) {
                 warn("Bad JSON for tags: " + err.message);
@@ -279,51 +295,19 @@ $(document).ready(function() {
     var w = 800,
     h = 600;
 
-    // var inflate = function(id) {
-    //     var obj = _.clone(getResponse(id)),
-    //     inflatedChildren = [];
-    //     console.log('before: ' + JSON.stringify(obj));
-    //     _.each(obj.children, function(child) {
-    //         var inflatedChild = {
-    //             name: child.name,
-    //             children: []
-    //         };
-    //         _.each(child.childIds, function(childId) {
-    //             console.log(childId);
-    //             inflatedChild.children.push(inflate(childId));
-    //         });
-    //     });
-    //     obj.children = inflatedChildren;
-    //     console.log('after: ' + JSON.stringify(obj));
-    //     return obj;
-    // };
-
     var cluster = d3.layout.cluster()
         .size([h, w - 160])
         .children(function(d) {
-            // try {
-            //     console.log('calling children with: ' + JSON.stringify(d, null, 2));
-            // } catch(err) {
-            //     console.log(err);
-            //     console.log(d);
-            //     console.log(d.hasOwnProperty('id'));
-            //     console.log(d.children);
-            // }
-            if(d.hasOwnProperty('id')) {
-                // If data has an id, it is a response. Its children
+            if(d.hasOwnProperty('children')) {
+                // If data has children, it is a response. Its children
                 // are child nodes that can be returned directly.
                 return d.children;
             } else {
                 // Otherwise it is a child node, its children need to be
                 // expanded from IDs into responses.
-                var children = [];
-                //console.log(JSON.stringify(d.children));
-                //console.log('working with: ' + JSON.stringify(d, null, 2));
-                _.each(d.childIds, function(childId) {
-                    //console.log('adding: ' + JSON.stringify(getResponse(childId), null, 2));
-                    children.push(getResponse(childId));
+                return _.map(d.childIds, function(childId) {
+                    return getResponse(childId);
                 });
-                return children;
             }
         });
 
@@ -336,22 +320,40 @@ $(document).ready(function() {
         .append("g")
         .attr("transform", "translate(40, 0)");
 
+    // animate 'waits'
+    d3.timer(function(elapsed) {
+        if(_.isUndefined(this.i)) { this.i = 0 }
+
+        // give three seconds before running animation
+        if(elapsed / 3000 > this.i) {
+            this.i++;
+            vis.selectAll('.wait circle')
+                .transition()
+                .duration(1500)
+                .attr('r', function() { return 12; })
+                //.attr('r', function() { return this.r * 2 })
+                .transition()
+                .delay(1500)
+                .duration(1500)
+                //.attr('r', function() { return this.attr('r') / 2; });
+                .attr('r', function() { return 8; });
+        }
+        });
+
     /**
        Redraw the node with id.
 
        @param id the ID of the node to redraw.
      **/
     var redraw = function(id) {
-        //var nodes = cluster.nodes(inflate(id));
         var nodes = cluster.nodes(getResponse(id));
 
-        console.log("response: ");
-        console.log(getResponse(id));
-        console.log("nodes:");
         console.log(nodes);
 
         var link = vis.selectAll("path.link")
-            .data(cluster.links(nodes));
+            .data(cluster.links(nodes), function(d) {
+                return d.source.id + '_' + d.target.id;
+            });
 
         link.enter().append("path")
             .attr("class", "link")
@@ -362,26 +364,40 @@ $(document).ready(function() {
             .attr("d", diagonal);
 
         var node = vis.selectAll("g.node")
-            .data(nodes);
+            .data(nodes, function(d) {
+                return d.id;
+            });
 
         var nodeG = node.enter().append("g")
-            .attr("class", "node")
+            .attr("class", function(d) {
+                if(d.hasOwnProperty('wait')) {
+                    return "wait node";
+                } else {
+                    return "done node";
+                }
+            })
             .attr("transform", function(d) {
                 return "translate(" + d.y  + "," + d.x + ")"; })
 
-        nodeG.append("circle")
+        // Append circles to done nodes
+        nodeG.filter('.done').append("circle")
             .attr("r", 4.5);
+
+        // Append circles with click listener to wait nodes
+        nodeG.filter('.wait').append("circle")
+            .attr("r", 8)
+            .on("click", function(d, i) {
+                forceRequest(d);
+            });
+
+
 
         nodeG.append("text")
             .attr("dx", function(d) { return d.children ? -8 : 8; })
             .attr("dy", 3)
             .attr("text-anchor", function(d) { return d.children ? "end" : "start"; })
             .text(function(d) {
-                var text = d.name;
-                if(d.value !== null && typeof d.value !== 'undefined') {
-                    text += ': ' + d.value;
-                }
-                return text;
+                return d.name;
             });
 
         node.transition()

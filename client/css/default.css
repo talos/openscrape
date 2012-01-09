@@ -24,18 +24,25 @@ textarea {
 
 /** SVG **/
 
-.node circle {
-  fill: #fff;
-  stroke: steelblue;
-  stroke-width: 1.5px;
+.node.done circle {
+    fill: #fff;
+    stroke: steelblue;
+    stroke-width: 1.5px;
+}
+
+.node.wait circle {
+    fill: #fff;
+    stroke-width: 3px;
+    stroke: red;
+    cursor: pointer;
 }
 
 .node {
-  font: 10px sans-serif;
+    font: 10px sans-serif;
 }
 
 .link {
-  fill: none;
-  stroke: #ccc;
-  stroke-width: 1.5px;
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px;
 }
