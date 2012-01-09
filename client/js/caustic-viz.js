@@ -57,7 +57,7 @@ $(document).ready(function() {
      **/
     _replace = function(oldVal, newVal) {
         return newVal;
-    }
+    },
 
     /**
        Generate a new ID.
@@ -87,7 +87,7 @@ $(document).ready(function() {
 
     getResponse = function(id) {
         return _get('response', id);
-    }
+    },
 
     /**
        Iterate up the ID tree.
@@ -126,7 +126,7 @@ $(document).ready(function() {
                 }
             }
             return memo;
-        }, {}, 'response', id);
+        }, {}, id);
     },
 
     getCookies = function(id) {
@@ -134,7 +134,7 @@ $(document).ready(function() {
             var resp = _get('response', id);
             if(!_.isUndefined(resp)) {
                 if(resp.hasOwnProperty('cookie')) {
-                    _.each(resp.cookies, function(host, cookiesAry) {
+                    _.each(resp.cookies, function(cookiesAry, host) {
                         // merge array for host if it already exists.
                         if(memo.hasOwnProperty(host)) {
                             memo.host = memo.host.concat(cookiesAry);
@@ -145,7 +145,7 @@ $(document).ready(function() {
                 }
             }
             return memo;
-        }, {}, 'response', id);
+        }, {}, id);
     },
 
     /**
@@ -168,9 +168,7 @@ $(document).ready(function() {
        @param input Input String.  Optional.
     **/
     request = function($queue, id, instruction, force, uri, input) {
-        console.log('added to queue');
         $queue.queue('caustic', function() {
-            console.log('executing queue');
             $.post(request_path,
                    JSON.stringify({
                        "id": id,
@@ -181,7 +179,10 @@ $(document).ready(function() {
                        "input": input, // Stringify drops this key if undefined.
                        "force": String(force)}))
                 .done(function(resp) {
-                    saveResponse(JSON.parse(resp), id);
+                    saveResponse(id, JSON.parse(resp));
+                    //console.log(JSON.stringify(getResponse(id), null, 2));
+                    //console.log(_data);
+                    redraw(id);
                 })
                 .fail(function(resp) {
                     warn("Request for " + instruction + " failed: " + resp.statusText);
@@ -190,11 +191,11 @@ $(document).ready(function() {
                     $queue.dequeue('caustic');
                 })
         });
-        console.log($queue.queue('caustic').length);
+
+        // Non-fx queues are not auto-run.
         if($queue.queue('caustic').length == 1) {
             $queue.dequeue('caustic');
         }
-        console.log($queue.queue('caustic').length);
     },
 
     /**
@@ -215,6 +216,7 @@ $(document).ready(function() {
        @param resp The response as a JS object.
     **/
     saveResponse = function(id, resp) {
+        //console.log("before: " + JSON.stringify(resp, null, 2));
         if(resp.hasOwnProperty('children')) {
             // children are returned in a map between input values and
             // full responses.  This is converted into an array with
@@ -225,17 +227,17 @@ $(document).ready(function() {
             // }
             // where the ID is newly generated, and can be used to get
             // the response that was there.
-            var ary;
-            _.each(resp.children, function(name, respArray) {
-                childIds = []
-                _.each(respArray, function(idx, childResp) {
+            var ary = [];
+            _.each(resp.children, function(respArray, name) {
+                var childIds = []
+                _.each(respArray, function(childResp) {
                     var childId = newId(id);
                     saveResponse(childId, childResp);
                     childIds.push(childId);
                 });
                 ary.push({
                     name: name,
-                    children: childIds
+                    childIds: childIds
                 });
             });
             resp.children = ary;
@@ -244,7 +246,6 @@ $(document).ready(function() {
         }
 
         _put(_replace, 'response', id, resp);
-        redraw(id);
     };
 
     /**
@@ -278,9 +279,36 @@ $(document).ready(function() {
     var w = 800,
     h = 600;
 
+    // var inflate = function(id) {
+    //     var obj = _.clone(getResponse(id)),
+    //     inflatedChildren = [];
+    //     console.log('before: ' + JSON.stringify(obj));
+    //     _.each(obj.children, function(child) {
+    //         var inflatedChild = {
+    //             name: child.name,
+    //             children: []
+    //         };
+    //         _.each(child.childIds, function(childId) {
+    //             console.log(childId);
+    //             inflatedChild.children.push(inflate(childId));
+    //         });
+    //     });
+    //     obj.children = inflatedChildren;
+    //     console.log('after: ' + JSON.stringify(obj));
+    //     return obj;
+    // };
+
     var cluster = d3.layout.cluster()
         .size([h, w - 160])
         .children(function(d) {
+            // try {
+            //     console.log('calling children with: ' + JSON.stringify(d, null, 2));
+            // } catch(err) {
+            //     console.log(err);
+            //     console.log(d);
+            //     console.log(d.hasOwnProperty('id'));
+            //     console.log(d.children);
+            // }
             if(d.hasOwnProperty('id')) {
                 // If data has an id, it is a response. Its children
                 // are child nodes that can be returned directly.
@@ -289,7 +317,10 @@ $(document).ready(function() {
                 // Otherwise it is a child node, its children need to be
                 // expanded from IDs into responses.
                 var children = [];
-                _.each(d.children, function(idx, childId) {
+                //console.log(JSON.stringify(d.children));
+                //console.log('working with: ' + JSON.stringify(d, null, 2));
+                _.each(d.childIds, function(childId) {
+                    //console.log('adding: ' + JSON.stringify(getResponse(childId), null, 2));
                     children.push(getResponse(childId));
                 });
                 return children;
@@ -311,7 +342,13 @@ $(document).ready(function() {
        @param id the ID of the node to redraw.
      **/
     var redraw = function(id) {
+        //var nodes = cluster.nodes(inflate(id));
         var nodes = cluster.nodes(getResponse(id));
+
+        console.log("response: ");
+        console.log(getResponse(id));
+        console.log("nodes:");
+        console.log(nodes);
 
         var link = vis.selectAll("path.link")
             .data(cluster.links(nodes));
