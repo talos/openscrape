@@ -380,24 +380,24 @@ $(document).ready(function() {
         .attr("transform", "translate(40, 0)");
 
     // animate 'waits'
-    // d3.timer(function(elapsed) {
-    //     if(_.isUndefined(this.i)) { this.i = 0 }
+    d3.timer(function(elapsed) {
+        if(_.isUndefined(this.i)) { this.i = 0 }
 
-    //     // give three seconds before running animation
-    //     if(elapsed / 3000 > this.i) {
-    //         this.i++;
-    //         vis.selectAll('.wait circle')
-    //             .transition()
-    //             .duration(1500)
-    //             .attr('r', function() { return 12; })
-    //             //.attr('r', function() { return this.r * 2 })
-    //             .transition()
-    //             .delay(1500)
-    //             .duration(1500)
-    //             //.attr('r', function() { return this.attr('r') / 2; });
-    //             .attr('r', function() { return 8; });
-    //     }
-    // });
+        // give three seconds before running animation
+        if(elapsed / 3000 > this.i) {
+            this.i++;
+            vis.selectAll('.wait circle')
+                .transition()
+                .duration(1500)
+                .attr('r', function() { return 12; })
+                //.attr('r', function() { return this.r * 2 })
+                .transition()
+                .delay(1500)
+                .duration(1500)
+                //.attr('r', function() { return this.attr('r') / 2; });
+                .attr('r', function() { return 8; });
+        }
+    });
 
     /**
        Redraw the node with id.  Actually redraws its entire tree.
