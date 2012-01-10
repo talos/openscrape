@@ -62,6 +62,19 @@ $(document).ready(function() {
     },
 
     /**
+       Extend an old hash (or null/undefined) with a new hash.
+
+       @param oldVal the old value.
+       @param newVal the new hash.
+    **/
+    _extend = function(oldVal, extendWith) {
+        return _.extend(
+            oldVal === null || typeof oldVal === 'undefined' ?
+                {} : oldVal,
+            extendWith);
+    },
+
+    /**
        Generate a new ID for a response.
 
        @param parentId The parent ID, can be omitted if this is root.
@@ -82,6 +95,15 @@ $(document).ready(function() {
     // },
     getParent = function(id) {
         return _get('parent', id);
+    },
+
+    /**
+       Get the root ID of an ID.
+
+       @param id the ID to find the root of.
+    **/
+    getRoot = function(id) {
+        return ascend(function(memo, parent) { return parent; }, null, id);
     },
     // getChildren = function(id) {
     //     return _get('children', id);
@@ -182,10 +204,17 @@ $(document).ready(function() {
                        "input": input, // Stringify drops this key if undefined.
                        "force": String(force)}))
                 .done(function(resp) {
+                    // if(!_.isUndefined(getParent(id))) {
+                    //     // force regeneration of parent ids.
+                    //     console.log(getResponse(id));
+                    //     //getResponse(id).parent.children = undefined;
+                    // }
                     saveResponse(id, JSON.parse(resp));
                     //console.log(JSON.stringify(getResponse(id), null, 2));
                     //console.log(_data);
+                    console.log('before');
                     redraw(id);
+                    console.log('after');
                 })
                 .fail(function(resp) {
                     warn("Request for " + instruction + " failed: " + resp.statusText);
@@ -207,18 +236,31 @@ $(document).ready(function() {
        @param response The stored response.
      **/
     forceRequest = function(response) {
-        console.log(response);
         request(response.id, response.instruction, true, response.uri);
+        //console.log(response);
     },
 
     /**
-       Save tags independent of other data.
+       Save tags independent of other data.  Extends old values with new values.
 
        @param id The ID to associate with the tags.
        @param tags A JS hash of tags to save.  Should be String-String.
      **/
     saveTags = function(id, tags) {
-        _put(_replace, 'tags', id, tags); // TODO: should not replace existing tags
+        _put(_extend, 'tags', id, tags);
+    },
+
+    /**
+       Save a single new tag value independent of other data.  Replaces old value.
+
+       @param id The ID to associate with the tag.
+       @param name The String name of the tag.
+       @param value The String value of the tag.
+    **/
+    saveTag = function(id, name, value) {
+        var obj = {};
+        obj[name] = value;
+        saveTags(id, obj);
     },
 
     /**
@@ -232,27 +274,44 @@ $(document).ready(function() {
         resp.id = id; // resp is provided with a less useful id originally
         if(resp.hasOwnProperty('children')) {
             // children are returned in a map between input values and
-            // full responses.  This is converted into an array with
-            // objects in the format of:
-            // {
-            //    name: <key of map>,
+            // full responses.
+            // { 'foo': [ <resp>, <resp>, <resp> ],
+            //   'bar': [ <resp>, <resp>, <resp> ], ... }
+            //
+            // This is converted into an array as follows:
+            // [{
+            //    name: <foo>,
             //    children: [<id>, <id>, <id>,...]
-            // }
-            // where the ID is newly generated, and can be used to get
-            // the response that was there.
+            // }, ...]
+            // where the ID is newly generated, and can be used to obtain
+            // the original response.
 
-            // TODO right this as an inject?
-            var ary = [];
+            // TODO write this as an inject?
+            var ary = [],
+            isBranch = _.size(resp.children) > 1;
+
             _.each(resp.children, function(respArray, name) {
-                var childIds = []
+                var childIds = [],
+                groupId = newId(id);
+
+                // Save tag from Find.
+                if(resp.status === 'found') {
+                    saveTag(
+                        isBranch ? groupId : getParent(id),
+                        resp.name, name
+                    );
+                }
+
+                // Generate references for response nodes.
                 _.each(respArray, function(childResp) {
-                    var childId = newId(id);
+                    var childId = newId(groupId);
                     saveResponse(childId, childResp);
                     childIds.push(childId);
+
                 });
                 ary.push({
                     name: name,
-                    id: _.uniqueId('value'),
+                    id: groupId,
                     childIds: childIds
                 });
             });
@@ -298,16 +357,16 @@ $(document).ready(function() {
     var cluster = d3.layout.cluster()
         .size([h, w - 160])
         .children(function(d) {
-            if(d.hasOwnProperty('children')) {
-                // If data has children, it is a response. Its children
-                // are child nodes that can be returned directly.
-                return d.children;
-            } else {
+            if(d.hasOwnProperty('childIds')) {
                 // Otherwise it is a child node, its children need to be
                 // expanded from IDs into responses.
                 return _.map(d.childIds, function(childId) {
                     return getResponse(childId);
                 });
+            } else {
+                // This is a response. Its children
+                // are child nodes that can be returned directly.
+                return d.children;
             }
         });
 
@@ -321,39 +380,49 @@ $(document).ready(function() {
         .attr("transform", "translate(40, 0)");
 
     // animate 'waits'
-    d3.timer(function(elapsed) {
-        if(_.isUndefined(this.i)) { this.i = 0 }
+    // d3.timer(function(elapsed) {
+    //     if(_.isUndefined(this.i)) { this.i = 0 }
 
-        // give three seconds before running animation
-        if(elapsed / 3000 > this.i) {
-            this.i++;
-            vis.selectAll('.wait circle')
-                .transition()
-                .duration(1500)
-                .attr('r', function() { return 12; })
-                //.attr('r', function() { return this.r * 2 })
-                .transition()
-                .delay(1500)
-                .duration(1500)
-                //.attr('r', function() { return this.attr('r') / 2; });
-                .attr('r', function() { return 8; });
-        }
-        });
+    //     // give three seconds before running animation
+    //     if(elapsed / 3000 > this.i) {
+    //         this.i++;
+    //         vis.selectAll('.wait circle')
+    //             .transition()
+    //             .duration(1500)
+    //             .attr('r', function() { return 12; })
+    //             //.attr('r', function() { return this.r * 2 })
+    //             .transition()
+    //             .delay(1500)
+    //             .duration(1500)
+    //             //.attr('r', function() { return this.attr('r') / 2; });
+    //             .attr('r', function() { return 8; });
+    //     }
+    // });
 
     /**
-       Redraw the node with id.
+       Redraw the node with id.  Actually redraws its entire tree.
 
        @param id the ID of the node to redraw.
      **/
     var redraw = function(id) {
-        var nodes = cluster.nodes(getResponse(id));
+        var nodes = cluster.nodes(getResponse(getRoot(id)));
+        //var nodes = cluster.nodes(getResponse(id));
 
-        console.log(nodes);
+        // console.log('redraw');
+        // console.log(getResponse(id));
+        // console.log(_data);
+        // console.log(getRoot(id));
+        // console.log(getResponse(getRoot(id)));
+        // console.log('redrawing' + getRoot(id));
+        // console.log(getResponse(getRoot(id)));
+        // console.log(nodes);
 
         var link = vis.selectAll("path.link")
             .data(cluster.links(nodes), function(d) {
                 return d.source.id + '_' + d.target.id;
             });
+
+        console.log('redraw2');
 
         link.enter().append("path")
             .attr("class", "link")
@@ -370,27 +439,21 @@ $(document).ready(function() {
 
         var nodeG = node.enter().append("g")
             .attr("class", function(d) {
-                if(d.hasOwnProperty('wait')) {
-                    return "wait node";
-                } else {
-                    return "done node";
-                }
+                return "node " + (_.isUndefined(d.status) ? '' : d.status);
             })
             .attr("transform", function(d) {
                 return "translate(" + d.y  + "," + d.x + ")"; })
 
-        // Append circles to done nodes
-        nodeG.filter('.done').append("circle")
+        // Append circles to all nodes
+        nodeG.append("circle")
             .attr("r", 4.5);
 
-        // Append circles with click listener to wait nodes
-        nodeG.filter('.wait').append("circle")
+        // Larger circles with click listener for wait nodes
+        nodeG.filter('.wait')
             .attr("r", 8)
             .on("click", function(d, i) {
                 forceRequest(d);
             });
-
-
 
         nodeG.append("text")
             .attr("dx", function(d) { return d.children ? -8 : 8; })
@@ -407,5 +470,7 @@ $(document).ready(function() {
 
         node.exit().remove();
         link.exit().remove();
+
+        console.log('redraw3');
     };
 });

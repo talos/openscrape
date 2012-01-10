@@ -24,21 +24,36 @@ textarea {
 
 /** SVG **/
 
-.node.done circle {
+.node {
+    font: 10px sans-serif;
+}
+
+.node circle {
     fill: #fff;
-    stroke: steelblue;
     stroke-width: 1.5px;
+    stroke: black;
+}
+
+.node.found circle {
+    stroke: steelblue;
+}
+
+.node.loaded circle {
+    stroke: green;
 }
 
 .node.wait circle {
-    fill: #fff;
-    stroke-width: 3px;
     stroke: red;
+    stroke-width: 3px;
     cursor: pointer;
 }
 
-.node {
-    font: 10px sans-serif;
+.node.missing circle {
+    stroke: orange;
+}
+
+.node.failed circle {
+    stroke: orange;
 }
 
 .link {
