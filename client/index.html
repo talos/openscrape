@@ -57,6 +57,11 @@ $('textarea#tags').text(JSON.stringify({
 }, null, 4));
 $('textarea#instruction').text("instructions/nyc/property.json");
 
+/** Autosubmit on page load. **/
+$(document).ready(function() {
+    $('#request form').submit();
+});
+
     </script>
   </body>
 </html>
