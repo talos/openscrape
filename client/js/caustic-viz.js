@@ -417,7 +417,6 @@ $(document).ready(function() {
        @param i Index of node.
     **/
     var onClick = function(d, i) {
-        console.log(d);
         if(d.status === 'wait') { // force request on waits
             forceRequest(d);
         }
@@ -433,7 +432,6 @@ $(document).ready(function() {
         $mouse.html(d.name);
         //$mouse.scale(140, 140, false);
         $mouse.show();
-        console.log(d);
     },
 
     /**
