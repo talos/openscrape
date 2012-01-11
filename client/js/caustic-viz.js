@@ -428,8 +428,31 @@ $(document).ready(function() {
        @param i Index of node.
     **/
     var onClick = function(d, i) {
+        var elem = d3.select(d3.event.target); // should be 'this', but this also works
         if(d.status === 'wait') { // force request on waits
+            var oldFill = elem.style('fill'),
+            grow = elem.select('animate'),
+            // make it glow while loading
+            glow = elem.append('animate')
+                .attr('attributeType', 'CSS')
+                .attr('attributeName', 'fill')
+                .attr('values', '#fff;#f00;#fff')
+                .attr('repeatCount', 'indefinite')
+                .attr('dur', '2s')
+                .attr('begin', '0s'),
+            oldGrowValues = grow.attr('values');
+
+            grow.attr('values', '8;16;8'); // modify existing animation
+
+            //elem.style('', 100);
             request(d.id, d.instruction, true, d.uri).done(function(resp) {
+                grow.attr('values', oldGrowValues); // restore old animation values
+                elem.style('fill', oldFill);
+
+                // elem.classed('wait', false);
+                // elem.classed('loaded', true);
+
+                glow.remove();
                 _.extend(d, resp);
                 saveResponse(d.id, resp);
                 redraw(d.id);
@@ -437,9 +460,12 @@ $(document).ready(function() {
         } else if(d.status === 'loaded') {
             d.children = [];
             d.status = 'wait';
+
+            // elem.classed('loaded', false);
+            // elem.classed('wait', true);
+
             saveResponse(d.id, d);
             redraw(d.id);
-            console.log(d);
         }
     },
 
@@ -575,12 +601,6 @@ $(document).ready(function() {
                 }
             });
 
-        // nodeG.transition()
-        //     .duration(1000)
-        //     .attr("transform", function(d) {
-        //         return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
-        //     });
-
         // Append circles to all nodes
         // Append event handlers to circles
         nodeG.append("circle")
@@ -594,7 +614,7 @@ $(document).ready(function() {
             .append('animate')         // animation for wait nodes
             .attr('attributeType', 'XML')
             .attr('attributeName', 'r')
-            .attr('values', '5;10;5')
+            .attr('values', '5;8;5')
             .attr('repeatCount', 'indefinite')
             .attr('dur', '2s')
             .attr('begin', '0s');
