@@ -246,8 +246,13 @@ $(document).ready(function() {
        @param force Whether to force a load.
        @param uri URI to resolve instruction references against.  Optional.
        @param input Input String.  Optional.
+
+       @param A Promise that wil be resolved with the response when
+       the request is done.
     **/
     request = function(id, instruction, force, uri, input) {
+        var dfd = $.Deferred();
+
         $queue.queue('caustic', function() {
             $.post(request_path,
                    JSON.stringify({
@@ -258,12 +263,14 @@ $(document).ready(function() {
                        "tags" : getTags(id),
                        "input": input, // Stringify drops this key if undefined.
                        "force": String(force)}))
-                .done(function(resp) {
-                    saveResponse(id, JSON.parse(resp));
-                    redraw(id);
+                .done(function(resp, status, doc) {
+                    dfd.resolve(JSON.parse(doc.responseText));
+                    //saveResponse(id, JSON.parse(resp));
+                    //redraw(id);
                 })
                 .fail(function(resp) {
                     warn("Request for " + instruction + " failed: " + resp.statusText);
+                    dfd.reject(resp);
                 })
                 .always(function() {
                     $queue.dequeue('caustic');
@@ -274,6 +281,8 @@ $(document).ready(function() {
         if($queue.queue('caustic').length == 1) {
             $queue.dequeue('caustic');
         }
+
+        return dfd.promise();
     },
 
     /**
@@ -281,10 +290,10 @@ $(document).ready(function() {
 
        @param response The stored response.
      **/
-    forceRequest = function(response) {
-        request(response.id, response.instruction, true, response.uri);
-        //console.log(response);
-    },
+    // forceRequest = function(response) {
+    //     request(response.id, response.instruction, true, response.uri);
+    //     //console.log(response);
+    // },
 
     /**
        Save tags independent of other data.  Extends old values with new values.
@@ -378,8 +387,10 @@ $(document).ready(function() {
             id = newId();
             saveTags(id, JSON.parse($(this).find('#tags').val()));
 
-            // TODO should select the lock object dynamically
-            request(id, instruction, true);
+            request(id, instruction, true, document.location.href).done(function(resp) {
+                saveResponse(id, resp);
+                redraw(id);
+            });
         } catch(err) {
             if(err instanceof SyntaxError) {
                 warn("Bad JSON for tags: " + err.message);
@@ -418,7 +429,17 @@ $(document).ready(function() {
     **/
     var onClick = function(d, i) {
         if(d.status === 'wait') { // force request on waits
-            forceRequest(d);
+            request(d.id, d.instruction, true, d.uri).done(function(resp) {
+                _.extend(d, resp);
+                saveResponse(d.id, resp);
+                redraw(d.id);
+            });
+        } else if(d.status === 'loaded') {
+            d.children = [];
+            d.status = 'wait';
+            saveResponse(d.id, d);
+            redraw(d.id);
+            console.log(d);
         }
     },
 
@@ -429,7 +450,15 @@ $(document).ready(function() {
        @param i Index of node.
     **/
     onMouseover = function(d, i) {
-        $mouse.html(d.name);
+        if(d.hasOwnProperty('name')) {
+            $mouse.html(d.name);
+        } else if(d.status === 'missing') {
+            $mouse.text(JSON.stringify(d.missing));
+        } else if(d.status === 'failed') {
+            $mouse.text(JSON.stringify(d.failed));
+        } else {
+            return;  // don't show mouseover
+        }
         //$mouse.scale(140, 140, false);
         $mouse.show();
     },
@@ -452,11 +481,14 @@ $(document).ready(function() {
 
     *********************/
 
-    var w = 800,
-    h = 600;
+    var r = 960 / 2;
 
-    var cluster = d3.layout.cluster()
-        .size([h, w - 160])
+    // var w = 800,
+    // h = 600;
+
+    var tree = d3.layout.tree()
+        .size([360, r - 120])
+        .separation(function(a, b) { return (a.parent == b.parent ? 1 : 2) / a.depth; })
         .children(function(d) {
             if(d.hasOwnProperty('childIds')) {
                 // Otherwise it is a child node, its children need to be
@@ -471,34 +503,34 @@ $(document).ready(function() {
             }
         });
 
-    var diagonal = d3.svg.diagonal()
-        .projection(function(d) { return [d.y, d.x]; });
+    var diagonal = d3.svg.diagonal.radial()
+        .projection(function(d) { return [d.y, d.x / 180 * Math.PI]; });
 
     var vis = d3.select("#visuals").append("svg")
-        .attr("width", w)
-        .attr("height", h)
+        .attr("width", r * 2)
+        .attr("height", r * 2 - 150)
         .append("g")
-        .attr("transform", "translate(40, 0)");
+        .attr("transform", "translate(" + r + "," + r + ")");
 
     // animate 'waits'
-    d3.timer(function(elapsed) {
-        if(_.isUndefined(this.i)) { this.i = 0 }
+    // d3.timer(function(elapsed) {
+    //     if(_.isUndefined(this.i)) { this.i = 0 }
 
-        // give three seconds before running animation
-        if(elapsed / 3000 > this.i) {
-            this.i++;
-            vis.selectAll('.wait circle')
-                .transition()
-                .duration(1500)
-                .attr('r', function() { return 12; })
-                //.attr('r', function() { return this.r * 2 })
-                .transition()
-                .delay(1500)
-                .duration(1500)
-                //.attr('r', function() { return this.attr('r') / 2; });
-                .attr('r', function() { return 8; });
-        }
-    });
+    //     // give three seconds before running animation
+    //     if(elapsed / 3000 > this.i) {
+    //         this.i++;
+    //         vis.selectAll('.wait circle')
+    //             .transition()
+    //             .duration(1500)
+    //             .attr('r', function() { return 12; })
+    //             //.attr('r', function() { return this.r * 2 })
+    //             .transition()
+    //             .delay(1500)
+    //             .duration(1500)
+    //             //.attr('r', function() { return this.attr('r') / 2; });
+    //             .attr('r', function() { return 8; });
+    //     }
+    // });
 
     /**
        Redraw the node with id.  Actually redraws its entire tree.
@@ -506,16 +538,19 @@ $(document).ready(function() {
        @param id the ID of the node to redraw.
      **/
     var redraw = function(id) {
-        var nodes = cluster.nodes(getResponse(getRoot(id)));
+        var nodes = tree.nodes(getResponse(getRoot(id)));
 
         var link = vis.selectAll("path.link")
-            .data(cluster.links(nodes), function(d) {
+            .data(tree.links(nodes), function(d) {
                 return d.source.id + '_' + d.target.id;
             });
 
-        link.enter().append("path")
-            .attr("class", "link")
-            .attr("d", diagonal);
+        link.enter()
+            .append("path")
+            .attr('d', d3.svg.diagonal.radial()
+                  .projection(function(d) { return [0,0]; }))
+            .attr("class", "link");
+            //.attr("d", diagonal);
 
         link.transition()
             .duration(1000)
@@ -526,16 +561,21 @@ $(document).ready(function() {
                 return d.id;
             });
 
-        var nodeG = node.enter().append("g")
+        var nodeG = node.enter()
+            .append("g")
             .attr("class", function(d) {
                 if(d.hasOwnProperty('status')) {
                     return "node " + d.status;
                 } else {
                     return "branch node";
                 }
-            })
+            });
+
+        nodeG.transition()
+            .duration(1000)
             .attr("transform", function(d) {
-                return "translate(" + d.y  + "," + d.x + ")"; })
+                return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
+            });
 
         // Append circles to all nodes
         // Append event handlers to circles
@@ -546,13 +586,20 @@ $(document).ready(function() {
             .on("mouseout",  function(d, i) { onMouseout(d, i); });
 
         // Larger circles with click listener for wait nodes
-        nodeG.filter('.wait')
-            .attr("r", 8);
+        nodeG.selectAll('.wait circle')
+            .append('animate')         // animation for wait nodes
+            .attr('attributeType', 'XML')
+            .attr('attributeName', 'r')
+            .attr('values', '5;10;5')
+            .attr('repeatCount', 'indefinite')
+            .attr('dur', '2s')
+            .attr('begin', '0s');
 
         nodeG.append("text")
-            .attr("dx", function(d) { return d.children ? -8 : 8; })
-            .attr("dy", 3)
-            .attr("text-anchor", function(d) { return d.children ? "end" : "start"; })
+            .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
+            .attr("dy", ".31em")
+            .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+            .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
             .text(function(d) {
                 if(d.hasOwnProperty('name')) {
                     if(d.name.length < 20) {
@@ -568,10 +615,24 @@ $(document).ready(function() {
         node.transition()
             .duration(1000)
             .attr("transform", function(d) {
-                return "translate(" + d.y  + "," + d.x + ")"; })
+                return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
+            });
 
-        node.exit().remove();
-        link.exit().remove();
+        node.exit()
+            .transition()
+            .duration(1000)
+            .attr("transform", function(d) {
+                return "translate(1000)";
+            })
+            .remove();
+
+        link.exit()
+            .transition()
+            .duration(1000)
+            .attr("transform", function(d) {
+                return "translate(1000)";
+            })
+            .remove();
 
     };
 });

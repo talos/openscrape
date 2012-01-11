@@ -19,7 +19,10 @@ div#visuals {
 }
 
 div#request {
-    float: right;
+    /*float: right;*/
+    position: absolute;
+    top: 1em;
+    right: 1em;
     width: 200px;
     border: 1px solid #999;
 }
@@ -32,7 +35,7 @@ textarea {
 /** SVG **/
 
 .node {
-    font: 10px sans-serif;
+    font: 8px sans-serif;
 }
 
 .node circle {
