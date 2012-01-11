@@ -481,7 +481,7 @@ $(document).ready(function() {
 
     *********************/
 
-    var r = 960 / 2;
+    var r = 800 / 2;
 
     // var w = 800,
     // h = 600;
@@ -506,9 +506,12 @@ $(document).ready(function() {
     var diagonal = d3.svg.diagonal.radial()
         .projection(function(d) { return [d.y, d.x / 180 * Math.PI]; });
 
+    var origin = d3.svg.diagonal.radial()
+        .projection(function(d) { return [0, 0]; });
+
     var vis = d3.select("#visuals").append("svg")
         .attr("width", r * 2)
-        .attr("height", r * 2 - 150)
+        .attr("height", r * 2)
         .append("g")
         .attr("transform", "translate(" + r + "," + r + ")");
 
@@ -547,8 +550,9 @@ $(document).ready(function() {
 
         link.enter()
             .append("path")
-            .attr('d', d3.svg.diagonal.radial()
-                  .projection(function(d) { return [0,0]; }))
+            // .attr('d', d3.svg.diagonal.radial()
+            //       .projection(function(d) { return [0,0]; }))
+            .attr('d', origin)
             .attr("class", "link");
             //.attr("d", diagonal);
 
@@ -571,11 +575,11 @@ $(document).ready(function() {
                 }
             });
 
-        nodeG.transition()
-            .duration(1000)
-            .attr("transform", function(d) {
-                return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
-            });
+        // nodeG.transition()
+        //     .duration(1000)
+        //     .attr("transform", function(d) {
+        //         return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
+        //     });
 
         // Append circles to all nodes
         // Append event handlers to circles
@@ -622,16 +626,21 @@ $(document).ready(function() {
             .transition()
             .duration(1000)
             .attr("transform", function(d) {
-                return "translate(1000)";
+                return "rotate(0)translate(0)";
             })
+            //.attr('d', origin)
+            // .attr("transform", function(d) {
+            //     return "transform(1000)";
+            // })
             .remove();
 
         link.exit()
             .transition()
             .duration(1000)
-            .attr("transform", function(d) {
-                return "translate(1000)";
-            })
+            .attr('d', origin)
+            // .attr("transform", function(d) {
+            //     return "scale(1000)";
+            // })
             .remove();
 
     };
