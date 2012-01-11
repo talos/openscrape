@@ -1,0 +1,9 @@
+{
+    "load"  : "http://www.google.com/search?q={{query}}",
+    "then" :
+    	{
+    		 "find"     : "{{query}}\\s+(\\w+)",
+    		 "replace" : "I say '$1'!",
+    		 "name"   : "what do you say after '{{query}}'?"
+    	 }
+}

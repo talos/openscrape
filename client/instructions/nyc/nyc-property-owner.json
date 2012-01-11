@@ -1,0 +1,16 @@
+{
+	"load" : "http://webapps.nyc.gov:8084/CICS/fin1/find001I",
+	"name" : "DoF lookup",
+	"method" : "post",
+	"posts" : {
+		"FHOUSENUM" : "{{Number}}",
+		"FSTNAME"   : "{{Street}}",
+		"FBORO"     : "{{Borough}}",
+		"FAPTNUM"   : "{{Apt}}"
+	},
+	"then" : {
+			"name" : "Owner of {{Number}} {{{Street}}}",
+			"find" : "<input\\s+type=\"hidden\"\\s+name=\"ownerName\\d?\"\\s+value=\"\\s*(\\w[^\"]*?)\\s*\"",
+			"replace" : "$1"
+		}
+}

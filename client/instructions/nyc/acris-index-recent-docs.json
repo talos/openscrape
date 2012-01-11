@@ -1,0 +1,15 @@
+{
+	"extends"     : "acris-index.json",
+	"description" : "Subsitutes in defaults that make this grab the most recent ten documents.",
+	"posts" : {
+		"hid_selectdate": "To Current Date",
+		"hid_datefromm" : "",
+		"hid_datefromd" : "",
+		"hid_datefromy" : "",
+		"hid_datetom" : "",
+		"hid_datetod" : "",
+		"hid_datetoy" : "",
+		"hid_doctype" : "",
+        "hid_max_rows" : "4"
+	}
+}

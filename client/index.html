@@ -1,18 +1,28 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <!-- jQuery -->
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+
+    <!-- d3 -->
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js"></script>
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.layout.js"></script>
+
+    <!-- Underscore -->
     <script type="text/javascript" src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
+
+    <!-- JSON -->
     <script type="text/javascript" src="js/json2.min.js"></script>
+
+    <!-- Caustic -->
     <script type="text/javascript" src="js/caustic-viz.js"></script>
+
+    <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="css/default.css" />
   </head>
   <body>
     <div>
       <div id="visuals">
-
       </div>
 
       <div id="request">
@@ -32,6 +42,9 @@
       </div>
     </div>
 
+    <div id="mouse">
+    </div>
+
     <script type="text/javascript">
 
 /** Set default values. **/
@@ -42,7 +55,7 @@ $('textarea#tags').text(JSON.stringify({
     "Borough": "3",
     "Apt": ""
 }, null, 4));
-$('textarea#instruction').text("http://www.accursedware.com:6767/property");
+$('textarea#instruction').text(document.location.href + "instructions/nyc/property.json");
 
     </script>
   </body>

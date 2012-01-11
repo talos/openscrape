@@ -1,0 +1,30 @@
+{
+    "find" : "<table\\s+id\\s*=\\s*\"insideTable\".*?</table>",
+    "then" : {
+	"extends" : "../shared/html-row.json",
+	"name" : "row",
+	"min" : 5,
+	"max" : -2,
+	"then" : [{
+	    "extends" : "../shared/html-column.json",
+	    "match" : 0,
+	    "name" : "Case Number"
+	},{
+	    "extends" : "../shared/html-column.json",
+	    "match" : 1,
+	    "name" : "Report Title"
+	},{
+	    "extends" : "../shared/html-column.json",
+	    "match" : 2,
+	    "name" : "Victim"
+	},{
+	    "extends" : "../shared/html-column.json",
+	    "match" : 3,
+	    "name" : "Case Opened"
+	},{
+	    "extends" : "../shared/html-column.json",
+	    "match" : 4,
+	    "name" : "Reported Location"
+	}]
+    }
+}

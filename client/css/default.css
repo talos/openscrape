@@ -7,6 +7,13 @@ div {
     padding: .5em;
 }
 
+div#mouse {
+    display: none;
+    position: absolute;
+    background: white;
+    border: 1px solid black;
+}
+
 div#visuals {
     float: left;
 }
@@ -32,6 +39,10 @@ textarea {
     fill: #fff;
     stroke-width: 1.5px;
     stroke: black;
+}
+
+.node.branch circle {
+    stroke: gray;
 }
 
 .node.found circle {

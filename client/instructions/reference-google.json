@@ -1,0 +1,9 @@
+{
+	"load" : "http://www.google.com/search?q={{query}}",
+	"then"  : {
+		"name"   : "query",
+		"find"     : "{{query}}\\s+(\\w+)",
+		"replace" : "$1",
+		"then" : "./simple-google.json"
+	}
+}

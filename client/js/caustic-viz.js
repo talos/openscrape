@@ -5,6 +5,61 @@
    Licensed under the GNU GPL v3.
 **/
 
+/**
+   jQuery plugin to arbitrarly CSS transform-scale elements to a specific size.
+   Depends upon Underscore.js.
+**/
+(function($) {
+    var properties = [
+        'transform',
+        '-ms-transform', /* IE 9 */
+        '-webkit-transform', /* Safari and Chrome */
+        '-o-transform', /* Opera */
+        '-moz-transform' /* Firefox */
+    ];
+    /**
+       Scale an element to a specific width and height.
+
+       @param w The width to scale to.  Required.
+       @param h The height to scale to.  Required.
+       @param distort Whether to allow differing x and y scale
+       factors.  Is true by default, meaning the element could be
+       distorted.  If false, the smallest of the two scales will be
+       used for both axes, so that neither w or h is ever exceeded.
+    **/
+    $.fn.scale = function(w, h, distort) {
+        if(_.isUndefined(w) || _.isUndefined(h)) { return this; }
+        return $.each(this, function(i, el) {
+            var $el = $(el),
+            oldWidth = $el.width(),
+            oldHeight = $el.height(),
+            xScale = w / oldWidth,
+            yScale = h / oldHeight;
+
+            if(distort === false) {
+                if(xScale > yScale) {
+                    xScale = yScale;
+                } else {
+                    yScale = xScale;
+                }
+            }
+
+            var xTranslate = ((oldWidth * xScale) - oldWidth),
+            yTranslate = ((oldHeight * yScale) - oldHeight);
+
+            // console.log(xTranslate);
+            // console.log(yTranslate);
+
+            $el.css(_.reduce(properties, function(memo, property) {
+                memo[property] =
+                    'scale(' + xScale + ',' + yScale + ') ';
+                    //+ 'translate(' + xTranslate + 'px,' + yTranslate + 'px)';
+                return memo;
+            }, {}));
+        });
+    };
+})(jQuery);
+
 $(document).ready(function() {
     /*******************
 
@@ -16,6 +71,8 @@ $(document).ready(function() {
 
     /** Path to hit caustic backend. **/
     var request_path = "/request",
+
+    $mouse = $('#mouse'), // a div that follows the mouse
 
     $queue = $({}), // generic queue
 
@@ -192,8 +249,6 @@ $(document).ready(function() {
     **/
     request = function(id, instruction, force, uri, input) {
         $queue.queue('caustic', function() {
-            console.log(getTags(id));
-            console.log('requesting');
             $.post(request_path,
                    JSON.stringify({
                        "id": id,
@@ -204,17 +259,8 @@ $(document).ready(function() {
                        "input": input, // Stringify drops this key if undefined.
                        "force": String(force)}))
                 .done(function(resp) {
-                    // if(!_.isUndefined(getParent(id))) {
-                    //     // force regeneration of parent ids.
-                    //     console.log(getResponse(id));
-                    //     //getResponse(id).parent.children = undefined;
-                    // }
                     saveResponse(id, JSON.parse(resp));
-                    //console.log(JSON.stringify(getResponse(id), null, 2));
-                    //console.log(_data);
-                    console.log('before');
                     redraw(id);
-                    console.log('after');
                 })
                 .fail(function(resp) {
                     warn("Request for " + instruction + " failed: " + resp.statusText);
@@ -326,7 +372,7 @@ $(document).ready(function() {
     /**
        Handle form request.
     **/
-    $('div#request form').submit(function() {
+    $('#request form').submit(function() {
         try {
             var instruction = $(this).find('#instruction').val(),
             id = newId();
@@ -344,6 +390,63 @@ $(document).ready(function() {
         }
         return false;
     });
+
+    /*****************
+
+    EVENT HANDLERS
+
+
+    ************/
+
+    /**
+       Bind global mouse move to manipulating the $mouse element.
+    **/
+    $("body").bind('mousemove', function(evt) {
+        if($mouse.is(':visible')) {
+            $mouse.css({
+                "left": evt.pageX + "px",
+                "top": evt.pageY + "px"
+            });
+        }
+    });
+
+    /**
+       Called on a node when its circle is clicked.
+
+       @param d Data associated with node.
+       @param i Index of node.
+    **/
+    var onClick = function(d, i) {
+        console.log(d);
+        if(d.status === 'wait') { // force request on waits
+            forceRequest(d);
+        }
+    },
+
+    /**
+       Called on a node when its circle is hovered over.
+
+       @param d Data associated with node.
+       @param i Index of node.
+    **/
+    onMouseover = function(d, i) {
+        $mouse.html(d.name);
+        //$mouse.scale(140, 140, false);
+        $mouse.show();
+        console.log(d);
+    },
+
+    /**
+       Called on a node when its circle is no longer hovered over.
+
+       @param d Data associated with node.
+       @param i Index of node.
+    **/
+    onMouseout = function(d, i) {
+        $mouse.hide();
+        //console.log(d);
+    };
+
 
     /***************************
 
@@ -406,23 +509,11 @@ $(document).ready(function() {
      **/
     var redraw = function(id) {
         var nodes = cluster.nodes(getResponse(getRoot(id)));
-        //var nodes = cluster.nodes(getResponse(id));
-
-        // console.log('redraw');
-        // console.log(getResponse(id));
-        // console.log(_data);
-        // console.log(getRoot(id));
-        // console.log(getResponse(getRoot(id)));
-        // console.log('redrawing' + getRoot(id));
-        // console.log(getResponse(getRoot(id)));
-        // console.log(nodes);
 
         var link = vis.selectAll("path.link")
             .data(cluster.links(nodes), function(d) {
                 return d.source.id + '_' + d.target.id;
             });
-
-        console.log('redraw2');
 
         link.enter().append("path")
             .attr("class", "link")
@@ -439,28 +530,41 @@ $(document).ready(function() {
 
         var nodeG = node.enter().append("g")
             .attr("class", function(d) {
-                return "node " + (_.isUndefined(d.status) ? '' : d.status);
+                if(d.hasOwnProperty('status')) {
+                    return "node " + d.status;
+                } else {
+                    return "branch node";
+                }
             })
             .attr("transform", function(d) {
                 return "translate(" + d.y  + "," + d.x + ")"; })
 
         // Append circles to all nodes
+        // Append event handlers to circles
         nodeG.append("circle")
-            .attr("r", 4.5);
+            .attr("r", 4.5)
+            .on("click", function(d, i) { onClick(d, i); })
+            .on("mouseover",  function(d, i) { onMouseover(d, i); })
+            .on("mouseout",  function(d, i) { onMouseout(d, i); });
 
         // Larger circles with click listener for wait nodes
         nodeG.filter('.wait')
-            .attr("r", 8)
-            .on("click", function(d, i) {
-                forceRequest(d);
-            });
+            .attr("r", 8);
 
         nodeG.append("text")
             .attr("dx", function(d) { return d.children ? -8 : 8; })
             .attr("dy", 3)
             .attr("text-anchor", function(d) { return d.children ? "end" : "start"; })
             .text(function(d) {
-                return d.name;
+                if(d.hasOwnProperty('name')) {
+                    if(d.name.length < 20) {
+                        return d.name;
+                    } else {
+                        return d.name.substr(0, 17) + '...';
+                    }
+                } else {
+                    return '???';
+                }
             });
 
         node.transition()
@@ -471,6 +575,5 @@ $(document).ready(function() {
         node.exit().remove();
         link.exit().remove();
 
-        console.log('redraw3');
     };
 });
