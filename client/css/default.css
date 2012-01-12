@@ -79,7 +79,8 @@ textarea {
     stroke: orange;
 }
 
-.link {
+/* Illustrator doesn't support class names to style paths?  This works instead. */
+path {
     fill: none;
     stroke: #ccc;
     stroke-width: 1.5px;

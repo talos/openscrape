@@ -5,18 +5,45 @@
    Licensed under the GNU GPL v3.
 **/
 
+
 /**
    jQuery plugin to arbitrarly CSS transform-scale elements to a specific size.
    Depends upon Underscore.js.
 **/
 (function($) {
-    var properties = [
+    var transforms = [
         'transform',
         '-ms-transform', /* IE 9 */
         '-webkit-transform', /* Safari and Chrome */
         '-o-transform', /* Opera */
         '-moz-transform' /* Firefox */
-    ];
+    ],
+    transformOrigins = [
+        'transform-origin',
+        '-ms-transform-origin', /* IE 9 */
+        '-webkit-transform-origin', /* Safari and Chrome */
+        '-o-transform-origin', /* Opera */
+        '-moz-transform-origin' /* Firefox */
+    ],
+    properties = _.zip(transforms, transformOrigins),
+
+    /**
+       Construct a JS object hash that can be applied as CSS to do
+       transform and transform-origin value across browsers.
+
+       @param transform the value for the transform CSS property.
+       @param transformOrigin the value for the transform-origin CSS
+       property.
+
+       @return A JS object that can be applied as CSS.
+    **/
+    buildCSS = function(transform, transformOrigin) {
+        return _.reduce(properties, function(memo, prop) {
+            memo[prop[0]] = transform;
+            memo[prop[1]] = transformOrigin;
+            return memo;
+        }, {});
+    };
     /**
        Scale an element to a specific width and height.
 
@@ -26,15 +53,24 @@
        factors.  Is true by default, meaning the element could be
        distorted.  If false, the smallest of the two scales will be
        used for both axes, so that neither w or h is ever exceeded.
+       @param scaleDirection If negative, only scaling down will be
+       allowed.  If greater than 0, only scaling up will be allowed.
+       Otherwise, either direction is allowed.  Defaults to 0.
     **/
-    $.fn.scale = function(w, h, distort) {
+    $.fn.scale = function(w, h, distort, scaleDirection) {
         if(_.isUndefined(w) || _.isUndefined(h)) { return this; }
         return $.each(this, function(i, el) {
             var $el = $(el),
-            oldWidth = $el.width(),
-            oldHeight = $el.height(),
-            xScale = w / oldWidth,
-            yScale = h / oldHeight;
+            xScale = w / $el.width(),
+            yScale = h / $el.height();
+
+            if(scaleDirection > 0) { // allow scaling only up
+                xScale = xScale < 1 ? 1 : xScale;
+                yScale = yScale < 1 ? 1 : yScale;
+            } else if(scaleDirection < 0) { // allow scaling only down
+                xScale = xScale > 1 ? 1 : xScale;
+                yScale = yScale > 1 ? 1 : yScale;
+            }
 
             if(distort === false) {
                 if(xScale > yScale) {
@@ -44,23 +80,52 @@
                 }
             }
 
-            var xTranslate = ((oldWidth * xScale) - oldWidth),
-            yTranslate = ((oldHeight * yScale) - oldHeight);
-
-            // console.log(xTranslate);
-            // console.log(yTranslate);
-
-            $el.css(_.reduce(properties, function(memo, property) {
-                memo[property] =
-                    'scale(' + xScale + ',' + yScale + ') ';
-                    //+ 'translate(' + xTranslate + 'px,' + yTranslate + 'px)';
-                return memo;
-            }, {}));
+            $el.css(buildCSS('scale(' + xScale + ',' + yScale + ')', '0 0'));
         });
     };
 })(jQuery);
 
-$(document).ready(function() {
+/**
+   protective brackets
+**/
+
+(function(){
+
+    /**
+       UTIL FUNCTIONS
+    **/
+
+    /**
+       Convert stylesheet to text.
+
+       @param stylesheet the CSSStyleSheet to convert to text.
+
+       @return The stylesheet as text.
+    **/
+    var css2txt = function(stylesheet) {
+        var i = -1,
+        rules = stylesheet.cssRules,
+        text = '';
+        while( ++i < rules.length ) {
+            text += rules[i].cssText + "\r\n";
+        }
+        return text;
+    },
+
+    redraw, // defined later on, stub to access inside/outside .ready
+
+    /**
+       Download some text to the client computer.  Only works in
+       browsers that support the 'data:' scheme.
+
+       @param text The text to download.
+    **/
+    download = function(text) {
+        window.location.href =
+            'data:application/x-download;charset=utf-8,' +
+            encodeURIComponent(text);
+    };
+
     /*******************
 
     CAUSTIC REQUESTS
@@ -72,11 +137,13 @@ $(document).ready(function() {
     /** Path to hit caustic backend. **/
     var request_path = "/request",
 
-    $mouse = $('#mouse'), // a div that follows the mouse
+    $mouse, // a div that follows the mouse
 
     $queue = $({}), // generic queue
 
     _data = {}, // TODO move this to some kind of page or object data store
+
+    visualsId = "#visuals", // ID for visuals element
 
     /**
        Store generic data. Uses combiner to modify existing data.
@@ -378,30 +445,6 @@ $(document).ready(function() {
         _put(_replace, 'response', id, resp);
     };
 
-    /**
-       Handle form request.
-    **/
-    $('#request form').submit(function() {
-        try {
-            var instruction = $(this).find('#instruction').val(),
-            id = newId();
-            saveTags(id, JSON.parse($(this).find('#tags').val()));
-
-            request(id, instruction, true, document.location.href).done(function(resp) {
-                saveResponse(id, resp);
-                redraw(id);
-            });
-        } catch(err) {
-            if(err instanceof SyntaxError) {
-                warn("Bad JSON for tags: " + err.message);
-            } else {
-                warn("Unknown error constructing request: " + err.message);
-                console.log(err.stack);
-            }
-        }
-        return false;
-    });
-
     /*****************
 
     EVENT HANDLERS
@@ -409,16 +452,66 @@ $(document).ready(function() {
 
     ************/
 
-    /**
-       Bind global mouse move to manipulating the $mouse element.
-    **/
-    $("body").bind('mousemove', function(evt) {
-        if($mouse.is(':visible')) {
-            $mouse.css({
-                "left": evt.pageX + "px",
-                "top": evt.pageY + "px"
-            });
-        }
+    $(document).ready(function() {
+
+        $mouse = $('#mouse');
+
+        /**
+           Handle form request.
+        **/
+        $('#request form').submit(function() {
+            try {
+                var instruction = $(this).find('#instruction').val(),
+                id = newId();
+                saveTags(id, JSON.parse($(this).find('#tags').val()));
+
+                request(id, instruction, true, document.location.href).done(function(resp) {
+                    saveResponse(id, resp);
+                    redraw(id);
+                });
+            } catch(err) {
+                if(err instanceof SyntaxError) {
+                    warn("Bad JSON for tags: " + err.message);
+                } else {
+                    warn("Unknown error constructing request: " + err.message);
+                    console.log(err.stack);
+                }
+            }
+            return false;
+        });
+
+        /**
+           Handle download request.
+
+           Compresses all stylesheets into text, adds them to the SVG before hitting download.
+
+           Won't work if browser doesn't support 'data:' scheme.
+        **/
+        $('#download').click(function() {
+            var styleText = _.reduce(document.styleSheets, function(memo, sheet) {
+                return sheet.disabled === false ? memo + css2txt(sheet) : memo;
+            }, '');
+            $visuals = $(visualsId).clone();
+            $visuals.find('svg')
+                .attr('xmlns', "http://www.w3.org/2000/svg")
+                .attr('xmlns:xlink', "http://www.w3.org/1999/xlink")
+                .prepend($('<style />')
+                         .attr('type', 'text/css')
+                         .text('<![CDATA[  ' + styleText + '  ]]>'));
+            download($visuals.html());
+        });
+
+        /**
+           Bind global mouse move to manipulating the $mouse element.
+        **/
+        $("body").bind('mousemove', function(evt) {
+            if($mouse.is(':visible')) {
+                $mouse.css({
+                    "left": evt.pageX + "px",
+                    "top": evt.pageY + "px"
+                });
+            }
+        });
     });
 
     /**
@@ -429,7 +522,9 @@ $(document).ready(function() {
     **/
     var onClick = function(d, i) {
         var elem = d3.select(d3.event.target); // should be 'this', but this also works
-        if(d.status === 'wait') { // force request on waits
+
+        // force request on waits or missings
+        if(d.status === 'wait' || d.status === 'missing') {
             var oldFill = elem.style('fill'),
             grow = elem.select('animate'),
             // make it glow while loading
@@ -444,7 +539,6 @@ $(document).ready(function() {
 
             grow.attr('values', '8;16;8'); // modify existing animation
 
-            //elem.style('', 100);
             request(d.id, d.instruction, true, d.uri).done(function(resp) {
                 grow.attr('values', oldGrowValues); // restore old animation values
                 elem.style('fill', oldFill);
@@ -477,7 +571,9 @@ $(document).ready(function() {
     **/
     onMouseover = function(d, i) {
         if(d.hasOwnProperty('name')) {
-            $mouse.html(d.name);
+            var $container = $('<div />').html(d.name);
+            $container.find('title').remove();
+            $mouse.empty().append($container);
         } else if(d.status === 'missing') {
             $mouse.text(JSON.stringify(d.missing));
         } else if(d.status === 'failed') {
@@ -485,7 +581,7 @@ $(document).ready(function() {
         } else {
             return;  // don't show mouseover
         }
-        //$mouse.scale(140, 140, false);
+        $mouse.scale(240, 960, false, -1);
         $mouse.show();
     },
 
@@ -508,9 +604,6 @@ $(document).ready(function() {
     *********************/
 
     var r = 800 / 2;
-
-    // var w = 800,
-    // h = 600;
 
     var tree = d3.layout.tree()
         .size([360, r - 120])
@@ -535,133 +628,120 @@ $(document).ready(function() {
     var origin = d3.svg.diagonal.radial()
         .projection(function(d) { return [0, 0]; });
 
-    var vis = d3.select("#visuals").append("svg")
-        .attr("width", r * 2)
-        .attr("height", r * 2)
-        .append("g")
-        .attr("transform", "translate(" + r + "," + r + ")");
+    $(document).ready(function() {
 
-    // animate 'waits'
-    // d3.timer(function(elapsed) {
-    //     if(_.isUndefined(this.i)) { this.i = 0 }
+        var vis = d3.select(visualsId).append("svg")
+            .attr("width", r * 2)
+            .attr("height", r * 2)
+            .append("g")
+            .attr('id', 'viewport') // for SVGPan
+            .attr("transform", "translate(" + r + "," + r + ")");
 
-    //     // give three seconds before running animation
-    //     if(elapsed / 3000 > this.i) {
-    //         this.i++;
-    //         vis.selectAll('.wait circle')
-    //             .transition()
-    //             .duration(1500)
-    //             .attr('r', function() { return 12; })
-    //             //.attr('r', function() { return this.r * 2 })
-    //             .transition()
-    //             .delay(1500)
-    //             .duration(1500)
-    //             //.attr('r', function() { return this.attr('r') / 2; });
-    //             .attr('r', function() { return 8; });
-    //     }
-    // });
+        // allow for panning
+        $('svg').svgPan();
 
-    /**
-       Redraw the node with id.  Actually redraws its entire tree.
+        /**
+           Redraw the node with id.  Actually redraws its entire tree.
 
-       @param id the ID of the node to redraw.
-     **/
-    var redraw = function(id) {
-        var nodes = tree.nodes(getResponse(getRoot(id)));
+           @param id the ID of the node to redraw.
+        **/
+        redraw = function(id) {
+            var nodes = tree.nodes(getResponse(getRoot(id)));
 
-        var link = vis.selectAll("path.link")
-            .data(tree.links(nodes), function(d) {
-                return d.source.id + '_' + d.target.id;
-            });
+            var link = vis.selectAll("path.link")
+                .data(tree.links(nodes), function(d) {
+                    return d.source.id + '_' + d.target.id;
+                });
 
-        link.enter()
-            .append("path")
+            link.enter()
+                .append("path")
             // .attr('d', d3.svg.diagonal.radial()
             //       .projection(function(d) { return [0,0]; }))
-            .attr('d', origin)
-            .attr("class", "link");
+                .attr('d', origin)
+                .attr("class", "link");
             //.attr("d", diagonal);
 
-        link.transition()
-            .duration(1000)
-            .attr("d", diagonal);
+            link.transition()
+                .duration(1000)
+                .attr("d", diagonal);
 
-        var node = vis.selectAll("g.node")
-            .data(nodes, function(d) {
-                return d.id;
-            });
+            var node = vis.selectAll("g.node")
+                .data(nodes, function(d) {
+                    return d.id;
+                });
 
-        var nodeG = node.enter()
-            .append("g")
-            .attr("class", function(d) {
-                if(d.hasOwnProperty('status')) {
-                    return "node " + d.status;
-                } else {
-                    return "branch node";
-                }
-            });
-
-        // Append circles to all nodes
-        // Append event handlers to circles
-        nodeG.append("circle")
-            .attr("r", 4.5)
-            .on("click", function(d, i) { onClick(d, i); })
-            .on("mouseover",  function(d, i) { onMouseover(d, i); })
-            .on("mouseout",  function(d, i) { onMouseout(d, i); });
-
-        // Larger circles with click listener for wait nodes
-        nodeG.selectAll('.wait circle')
-            .append('animate')         // animation for wait nodes
-            .attr('attributeType', 'XML')
-            .attr('attributeName', 'r')
-            .attr('values', '5;8;5')
-            .attr('repeatCount', 'indefinite')
-            .attr('dur', '2s')
-            .attr('begin', '0s');
-
-        nodeG.append("text")
-            .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
-            .attr("dy", ".31em")
-            .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
-            .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
-            .text(function(d) {
-                if(d.hasOwnProperty('name')) {
-                    if(d.name.length < 20) {
-                        return d.name;
+            var nodeG = node.enter()
+                .append("g")
+                .attr("class", function(d) {
+                    if(d.hasOwnProperty('status')) {
+                        return "node " + d.status;
                     } else {
-                        return d.name.substr(0, 17) + '...';
+                        return "branch node";
                     }
-                } else {
-                    return '???';
-                }
-            });
+                });
 
-        node.transition()
-            .duration(1000)
-            .attr("transform", function(d) {
-                return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
-            });
+            // Append circles to all nodes
+            // Append event handlers to circles
+            nodeG.append("circle")
+                .attr("r", 4.5)
+                .on("click", function(d, i) { onClick(d, i); })
+                .on("mouseover",  function(d, i) { onMouseover(d, i); })
+                .on("mouseout",  function(d, i) { onMouseout(d, i); });
 
-        node.exit()
-            .transition()
-            .duration(1000)
-            .attr("transform", function(d) {
-                return "rotate(0)translate(0)";
-            })
+            // Larger circles with click listener for wait nodes
+            nodeG.selectAll('.wait circle,.missing circle')
+                .append('animate')         // animation for wait nodes
+                .attr('attributeType', 'XML')
+                .attr('attributeName', 'r')
+                .attr('values', '5;8;5')
+                .attr('repeatCount', 'indefinite')
+                .attr('dur', '2s')
+                .attr('begin', '0s');
+
+            nodeG.append("text")
+                .attr("dx", function(d) { return d.x < 180 ? 8 : -8; })
+                .attr("dy", ".31em")
+                .attr("text-anchor", function(d) { return d.x < 180 ? "start" : "end"; })
+                .attr("transform", function(d) { return d.x < 180 ? null : "rotate(180)"; })
+                .text(function(d) {
+                    if(d.hasOwnProperty('name')) {
+                        if(d.name.length < 20) {
+                            return d.name;
+                        } else {
+                            return d.name.substr(0, 17) + '...';
+                        }
+                    } else {
+                        return '???';
+                    }
+                });
+
+            node.transition()
+                .duration(1000)
+                .attr("transform", function(d) {
+                    return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
+                });
+
+            node.exit()
+                .transition()
+                .duration(1000)
+                .attr("transform", function(d) {
+                    return "rotate(0)translate(0)";
+                })
             //.attr('d', origin)
             // .attr("transform", function(d) {
             //     return "transform(1000)";
             // })
-            .remove();
+                .remove();
 
-        link.exit()
-            .transition()
-            .duration(1000)
-            .attr('d', origin)
+            link.exit()
+                .transition()
+                .duration(1000)
+                .attr('d', origin)
             // .attr("transform", function(d) {
             //     return "scale(1000)";
             // })
-            .remove();
+                .remove();
 
-    };
-});
+        };
+    });
+})();
