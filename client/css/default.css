@@ -62,17 +62,10 @@ textarea {
     cursor: pointer;
 }
 
-/* .node.wait circle animate { */
-/*     attributeType: XML; */
-/*     attributeName: r; */
-/*     values: '5;8;5'; */
-/*     repeatCount: indefinite; */
-/*     dur: 2s; */
-/*     begin: 0s; */
-/* } */
-
 .node.missing circle {
     stroke: orange;
+    stroke-width: 3px;
+    cursor: pointer;
 }
 
 .node.failed circle {

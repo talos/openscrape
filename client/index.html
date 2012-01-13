@@ -4,12 +4,15 @@
     <!-- jQuery -->
     <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
 
+    <!-- jQuery Plugins -->
+    <script type="text/javascript" src="http://talos.github.com/jquery-svgpan/jquery-svgpan.min.js"></script>
+    <script type="text/javascript" src="http://talos.github.com/jquery-rescale/jquery-rescale.min.js"></script>
+    <script type="text/javascript" src="http://talos.github.com/jquery-css2txt/jquery-css2txt.min.js"></script>
+    <script type="text/javascript" src="http://talos.github.com/jquery-download/jquery-download.min.js"></script>
+
     <!-- d3 -->
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.js"></script>
     <script type="text/javascript" src="http://mbostock.github.com/d3/d3.layout.js"></script>
-
-    <!-- SVGPan -->
-    <script type="text/javascript" src="js/SVGPan.js"></script>
 
     <!-- Underscore -->
     <script type="text/javascript" src="http://documentcloud.github.com/underscore/underscore-min.js"></script>
@@ -17,13 +20,18 @@
     <!-- JSON -->
     <script type="text/javascript" src="js/json2.min.js"></script>
 
-    <!-- Caustic -->
-    <script type="text/javascript" src="js/caustic-viz.js"></script>
+    <!-- openscrape -->
+    <script type="text/javascript" src="js/openscrape.warn.js"></script>
+    <script type="text/javascript" src="js/openscrape.data.js"></script>
+    <script type="text/javascript" src="js/openscrape.request.js"></script>
+    <script type="text/javascript" src="js/openscrape.mouse.js"></script>
+    <script type="text/javascript" src="js/openscrape.visual.js"></script>
+    <script type="text/javascript" src="js/openscrape.interface.js"></script>
 
     <!-- CSS -->
     <link rel="stylesheet" type="text/css" href="css/default.css" />
 
-    <title>Scraper Visualization</title>
+    <title>openscrape</title>
   </head>
   <body>
     <div>
@@ -63,12 +71,14 @@ $('textarea#tags').text(JSON.stringify({
     "Borough": "3",
     "Apt": ""
 }, null, 4));
-$('textarea#instruction').text("instructions/nyc/property.json");
+$('#instruction').text("instructions/nyc/property.json");
 
 /** Autosubmit on page load. **/
 $(document).ready(function() {
-    $('#request form').submit();
+    //$('#request form').submit();
 });
+
+openscrape.interface(800 / 2, '#visuals', '#request form', '#instruction', '#tags', '#download', '#mouse');
 
     </script>
   </body>
