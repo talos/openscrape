@@ -1,0 +1,44 @@
+.node {
+    font: 8px sans-serif;
+}
+
+.node circle {
+    fill: #fff;
+    stroke-width: 1.5px;
+    stroke: black;
+}
+
+.node.branch circle {
+    stroke: gray;
+}
+
+.node.found circle {
+    stroke: steelblue;
+}
+
+.node.loaded circle {
+    stroke: green;
+}
+
+.node.wait circle {
+    stroke: red;
+    stroke-width: 3px;
+    cursor: pointer;
+}
+
+.node.missing circle {
+    stroke: orange;
+    stroke-width: 3px;
+    cursor: pointer;
+}
+
+.node.failed circle {
+    stroke: orange;
+}
+
+/* Illustrator doesn't support class names to style paths?  This works instead. */
+path {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px;
+}

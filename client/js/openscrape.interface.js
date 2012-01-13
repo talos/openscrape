@@ -29,7 +29,7 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
                                        tagSelector,
                                        downloadSelector,
                                        mouseSelector,
-                                      viewportId) {
+                                       mapId) {
 
         // Set up our svg
         var svg = d3.select(svgSelector).append("svg")
@@ -44,10 +44,13 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
         // Set up the mouse-following div
         openscrape.mouse.init($(mouseSelector));
 
+        // Set up the map.
+        openscrape.map(mapId, 'googlev3');
+
         /**
-           Handle form request.
+           Handle request click.
         **/
-        $(requestSelector).submit(function() {
+        $(requestSelector).click(function() {
             try {
                 var instruction = $(instructionSelector).val(),
                 id = openscrape.data.newId();
