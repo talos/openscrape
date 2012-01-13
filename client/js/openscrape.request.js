@@ -18,11 +18,16 @@
    *
    ***/
 
+/*global jQuery*/
+
 var openscrape;
 
-openscrape || (openscrape={}); // Define openscrape if not yet defined
+if (!openscrape) {
+    openscrape = {}; // Define openscrape if not yet defined
+}
 
-(function(){
+(function ($) {
+    "use strict";
 
     // PRIVATE
     var $queue = $({}); // generic queue
@@ -41,14 +46,14 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
        object when the request is done, or rejected with a reason for
        why it failed.
     **/
-    openscrape.request = function(id, instruction, force, uri, input) {
+    openscrape.request = function (id, instruction, force, uri, input) {
         var dfd = $.Deferred(),
 
         // Use the applet if it's available, and ajax otherwise.
-        requester =
-            openscrape.applet.enable() ? openscrape.applet.request : openscrape.ajax.request;
+            requester =
+                openscrape.applet.enable() ? openscrape.applet.request : openscrape.ajax.request;
 
-        $queue.queue('caustic', function() {
+        $queue.queue('caustic', function () {
             var jsonRequest = JSON.stringify({
                 "id": id,
                 "uri": uri,
@@ -56,25 +61,26 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
                 "cookies": openscrape.data.getCookies(id),
                 "tags" : openscrape.data.getTags(id),
                 "input": input, // Stringify drops this key if undefined.
-                "force": String(force)});
+                "force": String(force)
+            });
 
             requester(jsonRequest)
-                .done(function(jsonResp) {
+                .done(function (jsonResp) {
                     dfd.resolve(JSON.parse(jsonResp));
-                }).fail(function(msg) {
+                }).fail(function (msg) {
                     openscrape.warn("Request for " + jsonRequest + " failed: " + msg);
                     dfd.reject(msg);
                 })
-                .always(function() {
+                .always(function () {
                     $queue.dequeue('caustic');
-                })
+                });
         });
 
         // Non-fx queues are not auto-run.
-        if($queue.queue('caustic').length == 1) {
+        if ($queue.queue('caustic').length === 1) {
             $queue.dequeue('caustic');
         }
 
         return dfd.promise();
     };
-})();
+}(jQuery));

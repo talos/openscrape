@@ -18,89 +18,96 @@
    *
    ***/
 
+/*jslint nomen: true*/
+/*globals _*/
+
 var openscrape;
 
-openscrape || (openscrape={}); // Define openscrape if not yet defined
+if (!openscrape) {
+    openscrape = {}; // Define openscrape if not yet defined
+}
 
-(function(){
+(function () {
+    "use strict";
+
     // PRIVATE
 
-    var _data = {}, // TODO move this to some kind of page or object data store
+    var data = {}, // TODO move this to some kind of page or object data store
 
-    /**
-       Store generic data. Uses combiner to modify existing data.
+        /**
+         Naively get the value of id in the datastore key.
 
-       @param combiner A nondestructive function returning combined
-       data.  Will be passed the old value as its first argument, and
-       the new value as its second.
-       @param key The key of the store to use for persistence.
-       @param id The String ID to put tags into.
-       @param value The value to put.
-    **/
-    _put = function(combiner, key, id, value) {
-        if(!_data.hasOwnProperty(key)) {
-            _data[key] = {};
-        }
-        _data[key][id] = combiner(_get(key, id), value);
-        //redraw();
-    },
+         @param key the Key of the store used for persistence.
+         @param id The id of the persisted data.
 
-    /**
-       Naively get the value of id in the datastore key.
+         @return The value, or undefined if it is not defined.
+         **/
+        get = function (key, id) {
+            return data.hasOwnProperty(key) ? data[key][id] : undefined;
+        },
 
-       @param key the Key of the store used for persistence.
-       @param id The id of the persisted data.
+        /**
+         Store generic data. Uses combiner to modify existing data.
 
-       @return The value, or undefined if it is not defined.
-    **/
-    _get = function(key, id) {
-        return _data.hasOwnProperty(key) ? _data[key][id] : undefined;
-    },
+         @param combiner A nondestructive function returning combined
+         data.  Will be passed the old value as its first argument, and
+         the new value as its second.
+         @param key The key of the store to use for persistence.
+         @param id The String ID to put tags into.
+         @param value The value to put.
+         **/
+        put = function (combiner, key, id, value) {
+            if (!data.hasOwnProperty(key)) {
+                data[key] = {};
+            }
+            data[key][id] = combiner(get(key, id), value);
+            //redraw();
+        },
 
-    /**
-       Replace an old value with a new value when used as the combiner in _put().
+        /**
+         Replace an old value with a new value when used as the combiner in _put().
 
-       @param oldVal the old value.
-       @param newVal the new value.
-     **/
-    _replace = function(oldVal, newVal) {
-        return newVal;
-    },
+         @param oldVal the old value.
+         @param newVal the new value.
+         **/
+        replace = function (oldVal, newVal) {
+            return newVal;
+        },
 
-    /**
-       Extend an old hash (or null/undefined) with a new hash.
+        /**
+         Extend an old hash (or null/undefined) with a new hash.
 
-       @param oldVal the old value.
-       @param newVal the new hash.
-    **/
-    _extend = function(oldVal, extendWith) {
-        return _.extend(
-            oldVal === null || typeof oldVal === 'undefined' ?
-                {} : oldVal,
-            extendWith);
-    },
+         @param oldVal the old value.
+         @param newVal the new hash.
+         **/
+        extend = function (oldVal, extendWith) {
+            return _.extend(
+                oldVal === null || typeof oldVal === 'undefined' ? {} : oldVal,
+                extendWith
+            );
+        },
 
-    /**
-       Iterate up the ID tree.
+        getParent = function (id) {
+            return get('parent', id);
+        },
 
-       @param iterator A function that will be passed each value up
-       the tree in turn, with the result of the last iteration as the
-       first argument, and the parent ID as the second.
-       @param memo An initial value for iterator's first argument.
-       @param id the String ID to get data for.
+        /**
+         Iterate up the ID tree.
 
-       @return The result of iterator's last execution.
-    **/
-    _ascend = function(iterator, memo, id) {
-        do {
-            memo = iterator(memo, id);
-        } while((id = _getParent(id)) !== undefined);
-        return memo;
-    },
+         @param iterator A function that will be passed each value up
+         the tree in turn, with the result of the last iteration as the
+         first argument, and the parent ID as the second.
+         @param memo An initial value for iterator's first argument.
+         @param id the String ID to get data for.
 
-    _getParent = function(id) {
-        return _get('parent', id);
-    };
+         @return The result of iterator's last execution.
+         **/
+        ascend = function (iterator, memo, id) {
+            do {
+                memo = iterator(memo, id);
+            } while ((id = getParent(id)) !== undefined);
+            return memo;
+        };
 
     // PUBLIC
 
@@ -112,9 +119,9 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
 
            @return The new ID.
         **/
-        newId: function(parentId) {
-            id = _.uniqueId('response');
-            _put(_replace, 'parent', id, parentId);
+        newId: function (parentId) {
+            var id = _.uniqueId('response');
+            put(replace, 'parent', id, parentId);
             //if(parentId === null || typeof parentId === 'undefined') {
             //_put('children', _extend_merge, parentId, obj);
             //}
@@ -122,27 +129,28 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
             return id;
         },
 
-        getParent: _getParent,
+        getParent: getParent,
 
         /**
            Get the root ID of an ID.
 
            @param id the ID to find the root of.
         **/
-        getRoot: function(id) {
-            return _ascend(function(memo, parent) { return parent; }, null, id);
+        getRoot: function (id) {
+            return ascend(function (memo, parent) { return parent; }, null, id);
         },
 
-        getResponse: function(id) {
-            return _get('response', id);
+        getResponse: function (id) {
+            return get('response', id);
         },
 
 
-        getTags: function(id) {
-            return _ascend(function(memo, id) {
-                var resp = _get('response', id),
-                tags = _get('tags', id);
-                if(!_.isUndefined(tags)) { // Special tags may not be defined for every ID
+        getTags: function (id) {
+            return ascend(function (memo, id) {
+                var resp = get('response', id),
+                    tags = get('tags', id);
+
+                if (!_.isUndefined(tags)) { // Special tags may not be defined for every ID
                     // prefer child values
                     memo = _.extend({}, tags, memo);
                 }
@@ -160,14 +168,14 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
             }, {}, id);
         },
 
-        getCookies: function(id) {
-            return _ascend(function(memo, id) {
-                var resp = _get('response', id);
-                if(!_.isUndefined(resp)) {
-                    if(resp.hasOwnProperty('cookie')) {
-                        _.each(resp.cookies, function(cookiesAry, host) {
+        getCookies: function (id) {
+            return ascend(function (memo, id) {
+                var resp = get('response', id);
+                if (!_.isUndefined(resp)) {
+                    if (resp.hasOwnProperty('cookie')) {
+                        _.each(resp.cookies, function (cookiesAry, host) {
                             // merge array for host if it already exists.
-                            if(memo.hasOwnProperty(host)) {
+                            if (memo.hasOwnProperty(host)) {
                                 memo.host = memo.host.concat(cookiesAry);
                             } else {
                                 memo.host = cookiesAry;
@@ -185,8 +193,8 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
            @param id The ID to associate with the tags.
            @param tags A JS hash of tags to save.  Should be String-String.
         **/
-        saveTags: function(id, tags) {
-            _put(_extend, 'tags', id, tags);
+        saveTags: function (id, tags) {
+            put(extend, 'tags', id, tags);
         },
 
         /**
@@ -196,7 +204,7 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
            @param name The String name of the tag.
            @param value The String value of the tag.
         **/
-        saveTag: function(id, name, value) {
+        saveTag: function (id, name, value) {
             var obj = {};
             obj[name] = value;
             this.saveTags(id, obj);
@@ -209,9 +217,9 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
            returned in the response.
            @param resp The response as a JS object.
         **/
-        saveResponse: function(id, resp) {
+        saveResponse: function (id, resp) {
             resp.id = id; // resp is provided with a less useful id originally
-            if(resp.hasOwnProperty('children')) {
+            if (resp.hasOwnProperty('children')) {
                 // children are returned in a map between input values and
                 // full responses.
                 // { 'foo': [ <resp>, <resp>, <resp> ],
@@ -227,23 +235,24 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
 
                 // TODO write this as an inject?
                 var ary = [],
-                self = this,
-                isBranch = _.size(resp.children) > 1;
+                    self = this,
+                    isBranch = _.size(resp.children) > 1;
 
-                _.each(resp.children, function(respArray, name) {
+                _.each(resp.children, function (respArray, name) {
                     var childIds = [],
-                    groupId = self.newId(id);
+                        groupId = self.newId(id);
 
                     // Save tag from Find.
-                    if(resp.status === 'found') {
+                    if (resp.status === 'found') {
                         self.saveTag(
                             isBranch ? groupId : self.getParent(id),
-                            resp.name, name
+                            resp.name,
+                            name
                         );
                     }
 
                     // Generate references for response nodes.
-                    _.each(respArray, function(childResp) {
+                    _.each(respArray, function (childResp) {
                         var childId = self.newId(groupId);
                         self.saveResponse(childId, childResp);
                         childIds.push(childId);
@@ -257,10 +266,10 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
                 });
                 resp.children = ary;
             } else {
-                resp.children = []
+                resp.children = [];
             }
 
-            _put(_replace, 'response', id, resp);
+            put(replace, 'response', id, resp);
         }
     };
-})();
+}());

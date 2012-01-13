@@ -18,12 +18,18 @@
    *
    ***/
 
+/*jslint browser: true, nomen: true*/
+/*global d3, jQuery, _*/
+
 var openscrape;
 
-openscrape || (openscrape={}); // Define openscrape if not yet defined
+if (!openscrape) {
+    openscrape = {}; // Define openscrape if not yet defined
+}
 
-(function(){
-    openscrape['interface'] = function(r, svgSelector,
+(function ($) {
+    "use strict";
+    openscrape['interface'] = function (r, svgSelector,
                                        requestSelector,
                                        instructionSelector,
                                        tagSelector,
@@ -35,8 +41,8 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
         var svg = d3.select(svgSelector).append("svg")
             .attr("width", r * 2)
             .attr("height", r * 2),
-        viewportId = 'viewport',
-        viewport = svg.append('g')
+            viewportId = 'viewport',
+            viewport = svg.append('g')
             .attr('id', viewportId);
 
         $(svg).svgPan(viewportId);
@@ -50,19 +56,20 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
         /**
            Handle request click.
         **/
-        $(requestSelector).click(function() {
+        $(requestSelector).click(function () {
             try {
                 var instruction = $(instructionSelector).val(),
-                id = openscrape.data.newId();
+                    id = openscrape.data.newId();
+
                 openscrape.data.saveTags(id, JSON.parse($(tagSelector).val()));
 
                 openscrape.request(id, instruction, true, window.location.href)
-                    .done(function(resp) {
+                    .done(function (resp) {
                         openscrape.data.saveResponse(id, resp);
                         openscrape.visualize(viewport, id, r, r, r);
                     });
-            } catch(err) {
-                if(err instanceof SyntaxError) {
+            } catch (err) {
+                if (err instanceof SyntaxError) {
                     openscrape.warn("Bad JSON for tags: " + err.message);
                 } else {
                     openscrape.warn("Unknown error constructing request: " + err.message);
@@ -79,9 +86,9 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
 
            Won't work if browser doesn't support 'data:' scheme.
         **/
-        $(downloadSelector).click(function() {
-            var styleText = _.reduce(document.styleSheets, function(memo, sheet) {
-                return sheet.disabled === false ? memo + css2txt(sheet) : memo;
+        $(downloadSelector).click(function () {
+            var styleText = _.reduce(document.styleSheets, function (memo, sheet) {
+                return sheet.disabled === false ? memo + $(sheet).css2txt()[0] : memo;
             }, '');
             $(svg).attr('xmlns', "http://www.w3.org/2000/svg")
                 .attr('xmlns:xlink', "http://www.w3.org/1999/xlink")
@@ -91,4 +98,4 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
                 .download(openscrape.warn);
         });
     };
-})();
+}(jQuery));

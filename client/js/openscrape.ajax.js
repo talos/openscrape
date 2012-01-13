@@ -18,14 +18,20 @@
    *
    ***/
 
+/*globals jQuery*/
+
 var openscrape;
 
-openscrape || (openscrape={}); // Define openscrape if not yet defined
+if (!openscrape) {
+    openscrape = {}; // Define openscrape if not yet defined
+}
 
-(function(){
+(function ($) {
+    "use strict";
 
     // PRIVATE
     var request_path = "/request"; //Path to hit caustic backend.
+
     $.ajaxSetup({ timeout: 40000 });
 
     // PUBLIC
@@ -38,17 +44,17 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
            @return A Promise that will be resolved with the raw JSON response when
            the request is done, or rejected with a reason for why it failed.
         **/
-        request: function(jsonRequest) {
+        request: function (jsonRequest) {
             var dfd = $.Deferred();
 
-            $.post(request_path, jsonRequest
-                  ).done(function(resp, status, doc) {
-                      dfd.resolve(doc.responseText);
-                  }).fail(function(resp) {
-                      dfd.reject(resp.statusText);
-                  });
+            $.post(request_path, jsonRequest)
+                .done(function (resp, status, doc) {
+                    dfd.resolve(doc.responseText);
+                }).fail(function (resp) {
+                    dfd.reject(resp.statusText);
+                });
 
             return dfd.promise();
         }
     };
-})();
+}(jQuery));

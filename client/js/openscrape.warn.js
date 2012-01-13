@@ -20,15 +20,19 @@
 
 var openscrape;
 
-openscrape || (openscrape={}); // Define openscrape if not yet defined
+if (!openscrape) {
+    openscrape = {}; // Define openscrape if not yet defined
+}
 
-(function() {
+(function () {
+    "use strict";
+
     /**
        Tell the user that something went wrong.
 
        @param warning The String warning to display.
     **/
-    openscrape.warn = function(warning) {
+    openscrape.warn = function (warning) {
         console.log(warning); // TODO
     };
-})();
+}());

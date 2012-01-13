@@ -18,25 +18,31 @@
    *
    ***/
 
+/*global mxn*/
+
 var openscrape;
 
-openscrape || (openscrape={}); // Define openscrape if not yet defined
+if (!openscrape) {
+    openscrape = {}; // Define openscrape if not yet defined
+}
 
-(function() {
-    openscrape.map = function(canvas, provider) {
+(function () {
+    "use strict";
+
+    openscrape.map = function (canvas, provider) {
         // initialise the map with your choice of API
-        var mapstraction = new mxn.Mapstraction(canvas, provider);
+        var mapstraction = new mxn.Mapstraction(canvas, provider),
 
         // create a lat/lon object
-        var myPoint = new mxn.LatLonPoint(37.404196,-122.008194);
+            myPoint = new mxn.LatLonPoint(37.404196, -122.008194);
 
         // display the map centered on a latitude and longitude (Google zoom levels)
         mapstraction.setCenterAndZoom(myPoint, 9);
 
         mapstraction.addControls({
-            pan: true, 
+            pan: true,
             zoom: 'small',
-            map_type: true 
+            map_type: true
         });
         // create a marker positioned at a lat/lon 
         // my_marker = new mxn.Marker(myPoint);
@@ -56,4 +62,4 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
         // mapstraction.addMarker(my_marker);
         // var foo = function() { mapstraction.removeMarker(my_marker); };
     };
-})();
+}());

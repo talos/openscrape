@@ -18,14 +18,20 @@
    *
    ***/
 
+/*global jQuery*/
+
 var openscrape;
 
-openscrape || (openscrape={}); // Define openscrape if not yet defined
+if (!openscrape) {
+    openscrape = {}; // Define openscrape if not yet defined
+}
 
-(function() {
+(function ($) {
+    "use strict";
+
     var $mouse = $(),
-    maxWidth = 0,
-    maxHeight = 0;
+        maxWidth = 0,
+        maxHeight = 0;
 
     openscrape.mouse = {
 
@@ -36,18 +42,18 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
            @param w The maximum width of the mouse div.
            @param h The maximum height of the mouse div.
         **/
-        init: function(el, w, h) {
-            if($mouse.length > 0) { return ; }
+        init: function (el, w, h) {
+            if ($mouse.length > 0) { return; }
 
-            $mouse = $(el),
-            maxWidth = w,
+            $mouse = $(el);
+            maxWidth = w;
             maxHeight = h;
 
             /**
                Bind global mouse move to manipulating the $mouse element.
             **/
-            $("body").bind('mousemove', function(evt) {
-                if($mouse.is(':visible')) {
+            $("body").bind('mousemove', function (evt) {
+                if ($mouse.is(':visible')) {
                     $mouse.css({
                         "left": evt.pageX + "px",
                         "top": evt.pageY + "px"
@@ -56,7 +62,7 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
             });
         },
 
-        _resize: function() {
+        resize: function () {
             // depends on jquery-rescale
             $mouse.rescale(maxWidth, maxHeight, false, -1);
         },
@@ -66,9 +72,9 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
 
            @param text The text to put in the mouse div.
         **/
-        setText: function(text) {
+        setText: function (text) {
             $mouse.empty().text(text);
-            this._resize();
+            this.resize();
         },
 
         /**
@@ -78,25 +84,25 @@ openscrape || (openscrape={}); // Define openscrape if not yet defined
 
            @param text The text to put in the mouse div.
         **/
-        setHTML: function(html) {
+        setHTML: function (html) {
             var $container = $('<div />').html(html);
             $container.find('title').remove();
             $mouse.empty().append($container);
-            this._resize();
+            this.resize();
         },
 
         /**
            Show the div.
         **/
-        show: function() {
+        show: function () {
             $mouse.show();
         },
 
         /**
            Hide the div.
         **/
-        hide: function() {
+        hide: function () {
             $mouse.hide();
         }
     };
-})();
+}(jQuery));
