@@ -70,9 +70,9 @@ if (!openscrape) {
                     });
             } catch (err) {
                 if (err instanceof SyntaxError) {
-                    openscrape.warn("Bad JSON for tags: " + err.message);
+                    openscrape.alert.warn("Bad JSON for tags: " + err.message);
                 } else {
-                    openscrape.warn("Unknown error constructing request: " + err.message);
+                    openscrape.alert.warn("Unknown error constructing request: " + err.message);
                     console.log(err.stack);
                 }
             }
@@ -95,7 +95,7 @@ if (!openscrape) {
                 .prepend($('<style />')
                          .attr('type', 'text/css')
                          .text('<![CDATA[  ' + styleText + '  ]]>'))
-                .download(openscrape.warn);
+                .download(openscrape.alert.warn);
         });
     };
 }(jQuery));

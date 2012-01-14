@@ -30,56 +30,74 @@ if (!openscrape) {
     "use strict";
 
     // PRIVATE
-    var $queue = $({}); // generic queue
+    var $queue = $({}), // generic queue
+
+        /**
+         * Queue a request.
+         *
+         * @param requester A function to make the request with.
+         * @param dfd a Deferred to resolve with the response or reject
+         * @param id The String ID of the request.  Used to get tags.
+         * @param instruction A String instruction.
+         * @param force Whether to force a load.
+         * @param uri URI to resolve instruction references against.  Optional.
+         * @param input Input String.  Optional.
+         */
+        queueRequest = function (requester, dfd, id, instruction, force, uri, input) {
+            $queue.queue('caustic', function () {
+                var jsonRequest = JSON.stringify({
+                    "id": id,
+                    "uri": uri,
+                    "instruction": instruction,
+                    "cookies": openscrape.data.getCookies(id),
+                    "tags" : openscrape.data.getTags(id),
+                    "input": input, // Stringify drops this key if undefined.
+                    "force": String(force)
+                });
+
+                requester(jsonRequest)
+                    .done(function (jsonResp) {
+                        dfd.resolve(JSON.parse(jsonResp));
+                    }).fail(function (msg) {
+                        openscrape.alert.warn("Request for " + jsonRequest + " failed: " + msg);
+                        dfd.reject(msg);
+                    })
+                    .always(function () {
+                        $queue.dequeue('caustic');
+                    });
+
+            });
+
+            // Non-fx queues are not auto-run.
+            if ($queue.queue('caustic').length === 1) {
+                $queue.dequeue('caustic');
+            }
+        };
 
     // PUBLIC
     /**
-       Request <code>instruction</code>.
-
-       @param id The String ID of the request.  Used to get tags.
-       @param instruction A String instruction.
-       @param force Whether to force a load.
-       @param uri URI to resolve instruction references against.  Optional.
-       @param input Input String.  Optional.
-
-       @return A Promise that wil be resolved with the response as a JS
-       object when the request is done, or rejected with a reason for
-       why it failed.
-    **/
+     * Request <code>instruction</code>.
+     *
+     * @param id The String ID of the request.  Used to get tags.
+     * @param instruction A String instruction.
+     * @param force Whether to force a load.
+     * @param uri URI to resolve instruction references against.  Optional.
+     * @param input Input String.  Optional.
+     *
+     * @return A Promise that wil be resolved with the response as a JS
+     * object when the request is done, or rejected with a reason for
+     * why it failed.
+     **/
     openscrape.request = function (id, instruction, force, uri, input) {
-        var dfd = $.Deferred(),
+        var dfd = $.Deferred();
 
         // Use the applet if it's available, and ajax otherwise.
-            requester =
-                openscrape.applet.enable() ? openscrape.applet.request : openscrape.ajax.request;
-
-        $queue.queue('caustic', function () {
-            var jsonRequest = JSON.stringify({
-                "id": id,
-                "uri": uri,
-                "instruction": instruction,
-                "cookies": openscrape.data.getCookies(id),
-                "tags" : openscrape.data.getTags(id),
-                "input": input, // Stringify drops this key if undefined.
-                "force": String(force)
+        openscrape.applet.enable()
+            .done(function () {
+                queueRequest(openscrape.applet.request, dfd, id, instruction, force, uri, input);
+            }).fail(function () {
+                queueRequest(openscrape.ajax.request, dfd, id, instruction, force, uri, input);
             });
-
-            requester(jsonRequest)
-                .done(function (jsonResp) {
-                    dfd.resolve(JSON.parse(jsonResp));
-                }).fail(function (msg) {
-                    openscrape.warn("Request for " + jsonRequest + " failed: " + msg);
-                    dfd.reject(msg);
-                })
-                .always(function () {
-                    $queue.dequeue('caustic');
-                });
-        });
-
-        // Non-fx queues are not auto-run.
-        if ($queue.queue('caustic').length === 1) {
-            $queue.dequeue('caustic');
-        }
 
         return dfd.promise();
     };

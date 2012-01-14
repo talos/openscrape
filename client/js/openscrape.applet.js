@@ -31,10 +31,15 @@ if (!openscrape) {
 
     // PRIVATE
     var applet,
+        promptText = 'Scraping hits external servers. You can'
+            + ' either proxy through my server (which is slower'
+            + ' and costs me!) or you can use the applet.  If'
+            + ' you use the applet, you must confirm '
+            + ' its permissions with the next dialog box.',
         pollFrequency = 200, // how often to poll the applet when requesting
         javaClass = 'com.openscrape.applet.OpenScrapeApplet.class',
         dir = 'jar/',
-        jar = 'OpenScrapeApplet.jar',
+        jar = 'openscrape.jar?' + Date.now(),
 
         /**
          Poll all errors from the applet.
@@ -58,21 +63,49 @@ if (!openscrape) {
 
     openscrape.applet = {
 
-        /**dd
-           Try to enable the applet.
+        /**
+         Try to enable the applet.
 
-           @return False if the applet is not enabled, True otherwise.
+         @return A promise that will be resolved when the applet is enabled,
+         or rejected if it is not enabled.
         **/
         enable: function () {
-            applet = $('<applet>').attr({
-                archive : jar,
-                codebase : dir,
-                code : javaClass,
-                width : '0px',
-                height : '0px',
-                mayscript : 'mayscript'
-            }).appendTo('body');
-            return true;
+            var dfd = $.Deferred();
+
+            if (applet) {
+                dfd.resolve(); // applet already available
+            } else {
+                openscrape.alert.prompt(promptText)
+                    .done(function () {
+                        // user accepted the prompt
+                        var interval,
+                            $applet = $('<applet>').attr({
+                                archive : jar,
+                                codebase : dir,
+                                code : javaClass,
+                                width : '1px',
+                                height : '1px',
+                                mayscript : 'mayscript'
+                            }).appendTo('body');
+                        applet = $applet.get(0); // assign the applet
+
+                        // we should only resolve once the applet is ready.
+                        interval = setInterval(function () {
+                            try {
+                                applet.isAvailable();
+                                clearInterval(interval);
+                                dfd.resolve();
+                            } catch (err) {
+                                // Method will throw exception until applet ready.
+                                openscrape.alert.warn('Waiting for applet...');
+                            }
+                        }, pollFrequency);
+                    }).fail(function () {
+                        // user rejected the prompt
+                        dfd.reject();
+                    });
+            }
+            return dfd;
         },
 
         /**
