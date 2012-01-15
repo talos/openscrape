@@ -35,7 +35,7 @@ if (!openscrape) {
                                        tagSelector,
                                        downloadSelector,
                                        mouseSelector,
-                                       mapId) {
+                                       mapSelector) {
 
         // Set up our svg
         var svg = d3.select(svgSelector).append("svg")
@@ -51,7 +51,7 @@ if (!openscrape) {
         openscrape.mouse.init($(mouseSelector));
 
         // Set up the map.
-        openscrape.map(mapId, 'googlev3');
+        openscrape.map.init($(mapSelector)[0], 40.77, -73.98, 11);
 
         /**
            Handle request click.

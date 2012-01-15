@@ -18,7 +18,8 @@
    *
    ***/
 
-/*global mxn*/
+/*jslint nomen: true*/
+/*global jQuery, google, _*/
 
 var openscrape;
 
@@ -26,40 +27,122 @@ if (!openscrape) {
     openscrape = {}; // Define openscrape if not yet defined
 }
 
-(function () {
+(function ($) {
     "use strict";
 
-    openscrape.map = function (canvas, provider) {
-        // initialise the map with your choice of API
-        var mapstraction = new mxn.Mapstraction(canvas, provider),
+    var map,
+        geocoder,
+        infowindow;
 
-        // create a lat/lon object
-            myPoint = new mxn.LatLonPoint(37.404196, -122.008194);
+    openscrape.map = {
 
-        // display the map centered on a latitude and longitude (Google zoom levels)
-        mapstraction.setCenterAndZoom(myPoint, 9);
+        /**
+         * Initialize a map.
+         *
+         * @param elem The DOM element to use for the map.
+         * @param lat The float latitude to start centered on.
+         * @param lng The float longitude to start centered on.
+         * @param zoom The integer zoom to start at.
+         */
+        init: function (elem, lat, lng, zoom) {
+            map = new google.maps.Map(elem, {
+                center: new google.maps.LatLng(lat, lng),
+                zoom: zoom,
+                mapTypeId: google.maps.MapTypeId.ROADMAP
+            });
+            geocoder = new google.maps.Geocoder();
+            infowindow = new google.maps.InfoWindow();
 
-        mapstraction.addControls({
-            pan: true,
-            zoom: 'small',
-            map_type: true
-        });
-        // create a marker positioned at a lat/lon 
-        // my_marker = new mxn.Marker(myPoint);
+            // Set up click listener to create markers.
+            google.maps.event.addListener(map, 'click', function (evt) {
+                var latLng = evt.latLng;
+                openscrape.map.marker(latLng.lat(), latLng.lng());
+            });
+        },
 
-        // my_marker.setIcon('http://mapstraction.com/icon.gif');
+        /**
+         * Create a marker on the map, once reverse geocoding is done.
+         *
+         * @param lat The float latitude where to place the marker.
+         * @param lng The float longitude where to place the marker.
+         */
+        marker: function (lat, lng) {
+            openscrape.map.reverseGeocode(lat, lng)
+                .done(function (address) {
+                    var marker = new google.maps.Marker({
+                        position: new google.maps.LatLng(lat, lng),
+                        map: map
+                    });
+                    google.maps.event.addListener(marker, 'click', function (evt) {
 
-        // mapstraction.addMarker( new mxn.Marker( new mxn.LatLonPoint(37.75,-122.44)));
+                        // TODO
+                        infowindow.setContent(JSON.stringify(address));
+                        infowindow.open(map, marker);
+                    });
+                }).fail(function (message) {
+                    openscrape.alert.warn('Could not create marker: ' + message);
+                });
+        },
 
-        // // add a label to the marker
-        // my_marker.setLabel("<blink>Hello!</blink>");
-        // var text = "<b>Be Happy!</b>";
+        /**
+         * Reverse geocode a latitude/longitude, to obtain an address.
+         *
+         * @param lat The float latitude to reverse geocode.
+         * @param lng The float longitude to reverse geocode.
+         *
+         * @return A Promise that will be resolved with a single
+         * openscrape.addresses when successful, or rejected with
+         * an error message if there is a problem.
+         */
+        reverseGeocode: function (lat, lng) {
+            var dfd = new $.Deferred(),
+                latlng = new google.maps.LatLng(lat, lng);
 
-        // // add info bubble to the marker
-        // my_marker.setInfoBubble(text);
+            geocoder.geocode({ 'latLng': latlng }, function (results, status) {
+                var addresses;
 
-        // // display marker 
-        // mapstraction.addMarker(my_marker);
-        // var foo = function() { mapstraction.removeMarker(my_marker); };
+                if (status === google.maps.GeocoderStatus.OK) {
+                    addresses = [];
+                    _.each(results, function (raw) {
+                        var number,
+                            street,
+                            zip;
+
+                        // only return precise street addresses
+                        if (_.include(raw.types, 'street_address')) {
+                            _.each(raw.address_components, function (component) {
+                                if (_.include(component.types, 'street_number')) {
+                                    number = component.long_name;
+                                }
+                                if (_.include(component.types, 'route')) {
+                                    street = component.long_name;
+                                }
+                                if (_.include(component.types, 'postal_code')) {
+                                    zip = component.long_name;
+                                }
+                            });
+
+                            if (number && street && zip) {
+                                addresses.push(openscrape.address(number, street, zip));
+                            }
+                        }
+                    });
+                    if (addresses.length === 1) {
+                        dfd.resolve(addresses);
+                    } else if (addresses.length === 0) {
+                        dfd.reject("Geocoder failed: no precise addresses "
+                                   + "found for (" + lat + ", " + lng + ")");
+                    } else {
+                        dfd.reject("Geocoder failed: several addresses "
+                                   + "found for (" + lat + ", " + lng + ")"
+                                   + JSON.stringify(addresses));
+                    }
+                } else {
+                    dfd.reject("Geocoder failed: " + status);
+                }
+            });
+
+            return dfd.promise();
+        }
     };
-}());
+}(jQuery));
