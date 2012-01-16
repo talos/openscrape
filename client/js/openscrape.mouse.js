@@ -30,6 +30,8 @@ if (!openscrape) {
     "use strict";
 
     var $mouse = $(),
+        offsetX = 10,
+        offsetY = 10,
         maxWidth = 0,
         maxHeight = 0;
 
@@ -55,8 +57,8 @@ if (!openscrape) {
             $("body").bind('mousemove', function (evt) {
                 if ($mouse.is(':visible')) {
                     $mouse.css({
-                        "left": evt.pageX + "px",
-                        "top": evt.pageY + "px"
+                        "left": (evt.pageX + offsetX) + "px",
+                        "top": (evt.pageY + offsetY) + "px"
                     });
                 }
             });
@@ -87,6 +89,8 @@ if (!openscrape) {
         setHTML: function (html) {
             var $container = $('<div />').html(html);
             $container.find('title').remove();
+            $container.find('script').remove();
+            $container.find('style').remove();
             $mouse.empty().append($container);
             this.resize();
         },

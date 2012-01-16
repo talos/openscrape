@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint nomen: true*/
+/*jslint browser: true,  nomen: true*/
 /*global jQuery, google, _*/
 
 var openscrape;
@@ -31,8 +31,7 @@ if (!openscrape) {
     "use strict";
 
     var map,
-        geocoder,
-        infowindow;
+        geocoder;
 
     openscrape.map = {
 
@@ -40,48 +39,71 @@ if (!openscrape) {
          * Initialize a map.
          *
          * @param elem The DOM element to use for the map.
-         * @param lat The float latitude to start centered on.
-         * @param lng The float longitude to start centered on.
+         * @param initialLat The float latitude to start centered on.
+         * @param initialLng The float longitude to start centered on.
          * @param zoom The integer zoom to start at.
          */
-        init: function (elem, lat, lng, zoom) {
+        init: function (elem, initialLat, initialLng, zoom, instruction) {
+            var dblClickWait; // used as a timer to block single-click event
+
             map = new google.maps.Map(elem, {
-                center: new google.maps.LatLng(lat, lng),
+                center: new google.maps.LatLng(initialLat, initialLng),
                 zoom: zoom,
                 mapTypeId: google.maps.MapTypeId.ROADMAP
             });
             geocoder = new google.maps.Geocoder();
-            infowindow = new google.maps.InfoWindow();
 
             // Set up click listener to create markers.
             google.maps.event.addListener(map, 'click', function (evt) {
+                console.log("MAP EVENT HIT");
+
                 var latLng = evt.latLng;
-                openscrape.map.marker(latLng.lat(), latLng.lng());
+
+                dblClickWait = setTimeout(function () {
+                    //openscrape.map.marker(latLng.lat(), latLng.lng(), pixel.x, pixel.y);
+                    openscrape.map.reverseGeocode(latLng.lat(), latLng.lng())
+                        .done(function (address) {
+                            openscrape.map.addOverlay(address, latLng);
+                        }).fail(function (message) {
+                            openscrape.alert.warn('Could not reverse geocode: ' + message);
+                        });
+
+                }, 500); // wait .5 second to be sure it's not a double click
+            });
+
+            google.maps.event.addListener(map, 'dblclick', function (evt) {
+                clearTimeout(dblClickWait);
             });
         },
 
         /**
-         * Create a marker on the map, once reverse geocoding is done.
+         * Add an overlay for an address visualization.
          *
-         * @param lat The float latitude where to place the marker.
-         * @param lng The float longitude where to place the marker.
+         * @param address The address to visualize.
+         * @param latLng The latLng to add the overlay at.
          */
-        marker: function (lat, lng) {
-            openscrape.map.reverseGeocode(lat, lng)
-                .done(function (address) {
-                    var marker = new google.maps.Marker({
-                        position: new google.maps.LatLng(lat, lng),
-                        map: map
-                    });
-                    google.maps.event.addListener(marker, 'click', function (evt) {
+        addOverlay: function (address, latLng) {
+            var id = openscrape.data.newId();
 
-                        // TODO
-                        infowindow.setContent(JSON.stringify(address));
-                        infowindow.open(map, marker);
-                    });
-                }).fail(function (message) {
-                    openscrape.alert.warn('Could not create marker: ' + message);
+            // draw the visualization
+            openscrape.data.saveTags(id, address);
+            openscrape.request(
+                id,
+                openscrape.instruction.property(address),
+                true,
+                ''
+            ).done(function (resp) {
+                openscrape.data.saveResponse(id, resp);
+
+                // Rich marker example @ http://google-maps-utility-library-v3.googlecode.com/svn/trunk/richmarker/examples/richmarker.html?compiled
+                var overlay = new window.RichMarker({
+                    map: map,
+                    position: latLng,
+                    flat: true, // this just controls... shadow
+                    anchor: window.RichMarkerPosition.MIDDLE,
+                    content: openscrape.visual.draw(id)
                 });
+            });
         },
 
         /**
@@ -91,7 +113,7 @@ if (!openscrape) {
          * @param lng The float longitude to reverse geocode.
          *
          * @return A Promise that will be resolved with a single
-         * openscrape.addresses when successful, or rejected with
+         * openscrape.address when successful, or rejected with
          * an error message if there is a problem.
          */
         reverseGeocode: function (lat, lng) {
@@ -128,7 +150,7 @@ if (!openscrape) {
                         }
                     });
                     if (addresses.length === 1) {
-                        dfd.resolve(addresses);
+                        dfd.resolve(addresses[0]);
                     } else if (addresses.length === 0) {
                         dfd.reject("Geocoder failed: no precise addresses "
                                    + "found for (" + lat + ", " + lng + ")");

@@ -23,15 +23,20 @@
     <!--- google maps api v 3 -->
     <script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?key=AIzaSyCAJzeEfyIp7bjCpduPtkkZ67b-bZC3P4s&sensor=false"></script>
 
+    <!--- RichMarker -->
+    <script type="text/javascript" src="http://google-maps-utility-library-v3.googlecode.com/svn/trunk/richmarker/src/richmarker-compiled.js"></script>
+
     <!-- openscrape -->
     <script type="text/javascript" src="js/openscrape.address.js"></script>
     <script type="text/javascript" src="js/openscrape.alert.js"></script>
     <script type="text/javascript" src="js/openscrape.ajax.js"></script>
     <script type="text/javascript" src="js/openscrape.applet.js"></script>
     <script type="text/javascript" src="js/openscrape.data.js"></script>
+    <script type="text/javascript" src="js/openscrape.instruction.js"></script>
     <script type="text/javascript" src="js/openscrape.interface.js"></script>
     <script type="text/javascript" src="js/openscrape.map.js"></script>
     <script type="text/javascript" src="js/openscrape.mouse.js"></script>
+    <script type="text/javascript" src="js/openscrape.sticky.js"></script>
     <script type="text/javascript" src="js/openscrape.request.js"></script>
     <script type="text/javascript" src="js/openscrape.visual.js"></script>
 
@@ -43,42 +48,9 @@
   </head>
   <body>
     <div id="main">
-
-      <div id="top">
-        <div id="instruction">
-          <div>
-            <label for="instruction">Instruction:</label>
-            <textarea name="instruction"></textarea>
-          </div>
-          <div>
-            <input id="request" type="submit" value="Request" />
-          </div>
-        </div>
+      <div id="map">
       </div>
-
-      <div id="horizontal" class="divider"></div>
-
-      <div id="bottom">
-        <div id="left">
-          <div id="context">
-            <!--- map will go here -->
-            <div>
-              <label for="tags">Tags:</label>
-              <textarea id="tags" name="tags"></textarea>
-            </div>
-          </div>
-          <div id="map">
-          </div>
-        </div>
-
-        <div id="vertical" class="divider"></div>
-
-        <div id="right">
-          <div id="visuals">
-          </div>
-          <input type="button" value="Download SVG" id="download" />
-        </div>
-      </div>
+      <input type="button" value="Download SVG" id="download" />
     </div>
 
     <div id="mouse">
@@ -86,22 +58,14 @@
 
     <script type="text/javascript">
 
-/** Set default values. **/
+/** Initialize interface. **/
 
-$('textarea#tags').text(JSON.stringify({
-    "Street": "Atlantic Ave",
-    "Number": "373",
-    "Borough": "3",
-    "Apt": ""
-}, null, 4));
-$('#instruction textarea').text("instructions/nyc/property.json");
-
-/** Autosubmit on page load. **/
-$(document).ready(function() {
-    $('#request').click();
-});
-
-openscrape.interface(800 / 2, '#visuals', '#request', '#instruction textarea', '#tags', '#download', '#mouse', '#map');
+    openscrape['interface'](
+        800 / 2,
+        '#download',
+        '#mouse',
+        '#map'
+    );
 
     </script>
   </body>

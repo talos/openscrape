@@ -27,27 +27,16 @@ if (!openscrape) {
 (function () {
     "use strict";
 
-    /**
-     * Generate a new address object.
-     *
-     * @param number The number.  Required.
-     * @param street The street name. Required.
-     * @param zip The ZIP code.  Required.
-     *
-     * @return An address object
-     */
-    openscrape.address = function (number, street, zip) {
-        if (!number || !street || !zip) {
-            throw "Must specify number (" + number + ")"
-                + " street (" + street + ") and zip (" + zip + ")";
-        } else {
-            return {
-                Number: number,
-                Street: street,
-                Borough: 3, // todo
-                Apt: '',
-                zip: zip
-            };
+    openscrape.instruction = {
+
+        /**
+         * Get an instruction relevant for obtaining property info.
+         *
+         * @param address The openscrape.address of the property.
+         */
+        property: function (address) {
+            //return "http://accursedware.com:6767/" + address.zip + '/';
+            return window.location.href + "instructions/nyc/property.json";
         }
     };
 }());

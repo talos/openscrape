@@ -1,3 +1,9 @@
+.background {
+    fill: white;
+    fill-opacity: .7;
+    filter: url(#dropshadow);
+}
+
 .node {
     font: 8px sans-serif;
 }

@@ -18,36 +18,23 @@
    *
    ***/
 
+/*globals jQuery*/
+
 var openscrape;
 
 if (!openscrape) {
     openscrape = {}; // Define openscrape if not yet defined
 }
 
-(function () {
+(function ($) {
     "use strict";
 
     /**
-     * Generate a new address object.
+     * Obtain a new sticky from the response to a caustic request.
      *
-     * @param number The number.  Required.
-     * @param street The street name. Required.
-     * @param zip The ZIP code.  Required.
-     *
-     * @return An address object
+     * @param resp The response to a caustic request.
      */
-    openscrape.address = function (number, street, zip) {
-        if (!number || !street || !zip) {
-            throw "Must specify number (" + number + ")"
-                + " street (" + street + ") and zip (" + zip + ")";
-        } else {
-            return {
-                Number: number,
-                Street: street,
-                Borough: 3, // todo
-                Apt: '',
-                zip: zip
-            };
-        }
+    openscrape.sticky = function (resp) {
+        
     };
-}());
+}(jQuery));

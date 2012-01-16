@@ -3,10 +3,6 @@ body {
     margin: 0px;
 }
 
-/* div { */
-/*     border: 1px solid black; */
-/* } */
-
 div#main {
     position: absolute;
     margin: 0px;
@@ -17,51 +13,24 @@ div#main {
     overflow: hidden;
 }
 
-div#top {
-    top: 0px;
-    left: 0px;
-    width: 100%;
-}
-
-div#bottom {
-    bottom: 0px;
-    left: 0px;
-    width: 100%;
-}
-
-div#bottom div {
-    height: 100%;
-    position: absolute;
-}
-
-div#bottom div#left {
-    left: 0px;
-    width: 50%;
-}
-
-div#bottom div#vertical.divider {
-    left: 50%;
-}
-
-div#bottom div#right {
-    right: 0px;
-    width: 50%;
-}
-
-div#bottom div#right input#download {
+input#download {
     position: absolute;
     right: 0px;
     top: 0px;
-}
-
-div.divider {
-    cursor: move;
-    z-index: 1;
 }
 
 div#map {
+    position: absolute;
     width: 100%;
     height: 100%;
+    z-index: 0;
+}
+
+div#visuals {
+    position: absolute;
+    width: 0px;
+    height: 0px;
+    z-index: 1;
 }
 
 div#mouse {
@@ -69,18 +38,7 @@ div#mouse {
     position: absolute;
     background: white;
     border: 1px solid black;
-}
-
-/* div#request { */
-/*     /\*float: right;*\/ */
-/*     position: absolute; */
-/*     top: 1em; */
-/*     right: 1em; */
-/*     width: 200px; */
-/*     border: 1px solid #999; */
-/* } */
-
-textarea {
-    width: 100%;
-    height: 8em;
+    padding: .5em;
+    border-radius: .5em;
+    box-shadow: 3px 3px 5px black;
 }
