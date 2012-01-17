@@ -18,19 +18,10 @@
    *
    ***/
 
-/*jslint nomen: true*/
-/*globals _*/
+/*globals define*/
 
-var openscrape;
-
-if (!openscrape) {
-    openscrape = {}; // Define openscrape if not yet defined
-}
-
-(function () {
+define(['lib/underscore'], function (underscore) {
     "use strict";
-
-    // PRIVATE
 
     var data = {}, // TODO move this to some kind of page or object data store
 
@@ -81,7 +72,7 @@ if (!openscrape) {
          @param newVal the new hash.
          **/
         extend = function (oldVal, extendWith) {
-            return _.extend(
+            return underscore.extend(
                 oldVal === null || typeof oldVal === 'undefined' ? {} : oldVal,
                 extendWith
             );
@@ -111,16 +102,16 @@ if (!openscrape) {
 
     // PUBLIC
 
-    openscrape.data = {
+    return {
         /**
-           Generate a new ID for a response.
+         Generate a new ID for a response.
 
-           @param parentId The parent ID, can be omitted if this is root.
+         @param parentId The parent ID, can be omitted if this is root.
 
-           @return The new ID.
-        **/
+         @return The new ID.
+         **/
         newId: function (parentId) {
-            var id = _.uniqueId('response');
+            var id = underscore.uniqueId('response');
             put(replace, 'parent', id, parentId);
             //if(parentId === null || typeof parentId === 'undefined') {
             //_put('children', _extend_merge, parentId, obj);
@@ -132,10 +123,10 @@ if (!openscrape) {
         getParent: getParent,
 
         /**
-           Get the root ID of an ID.
+         Get the root ID of an ID.
 
-           @param id the ID to find the root of.
-        **/
+         @param id the ID to find the root of.
+         **/
         getRoot: function (id) {
             return ascend(function (memo, parent) { return parent; }, null, id);
         },
@@ -150,9 +141,9 @@ if (!openscrape) {
                 var resp = get('response', id),
                     tags = get('tags', id);
 
-                if (!_.isUndefined(tags)) { // Special tags may not be defined for every ID
+                if (!underscore.isUndefined(tags)) { // Special tags may not be defined for every ID
                     // prefer child values
-                    memo = _.extend({}, tags, memo);
+                    memo = underscore.extend({}, tags, memo);
                 }
                 // if(!_.isUndefined(resp)) {
                 //     if(resp.children.length == 1) {
@@ -171,9 +162,9 @@ if (!openscrape) {
         getCookies: function (id) {
             return ascend(function (memo, id) {
                 var resp = get('response', id);
-                if (!_.isUndefined(resp)) {
+                if (!underscore.isUndefined(resp)) {
                     if (resp.hasOwnProperty('cookie')) {
-                        _.each(resp.cookies, function (cookiesAry, host) {
+                        underscore.each(resp.cookies, function (cookiesAry, host) {
                             // merge array for host if it already exists.
                             if (memo.hasOwnProperty(host)) {
                                 memo.host = memo.host.concat(cookiesAry);
@@ -188,22 +179,22 @@ if (!openscrape) {
         },
 
         /**
-           Save tags independent of other data.  Extends old values with new values.
+         Save tags independent of other data.  Extends old values with new values.
 
-           @param id The ID to associate with the tags.
-           @param tags A JS hash of tags to save.  Should be String-String.
-        **/
+         @param id The ID to associate with the tags.
+         @param tags A JS hash of tags to save.  Should be String-String.
+         **/
         saveTags: function (id, tags) {
             put(extend, 'tags', id, tags);
         },
 
         /**
-           Save a single new tag value independent of other data.  Replaces old value.
+         Save a single new tag value independent of other data.  Replaces old value.
 
-           @param id The ID to associate with the tag.
-           @param name The String name of the tag.
-           @param value The String value of the tag.
-        **/
+         @param id The ID to associate with the tag.
+         @param name The String name of the tag.
+         @param value The String value of the tag.
+         **/
         saveTag: function (id, name, value) {
             var obj = {};
             obj[name] = value;
@@ -211,12 +202,12 @@ if (!openscrape) {
         },
 
         /**
-           Save a response.
+         Save a response.
 
-           @param id Internal ID used for tags.  Different from the ID
-           returned in the response.
-           @param resp The response as a JS object.
-        **/
+         @param id Internal ID used for tags.  Different from the ID
+         returned in the response.
+         @param resp The response as a JS object.
+         **/
         saveResponse: function (id, resp) {
             resp.id = id; // resp is provided with a less useful id originally
             if (resp.hasOwnProperty('children')) {
@@ -236,9 +227,9 @@ if (!openscrape) {
                 // TODO write this as an inject?
                 var ary = [],
                     self = this,
-                    isBranch = _.size(resp.children) > 1;
+                    isBranch = underscore.size(resp.children) > 1;
 
-                _.each(resp.children, function (respArray, name) {
+                underscore.each(resp.children, function (respArray, name) {
                     var childIds = [],
                         groupId = self.newId(id);
 
@@ -252,7 +243,7 @@ if (!openscrape) {
                     }
 
                     // Generate references for response nodes.
-                    _.each(respArray, function (childResp) {
+                    underscore.each(respArray, function (childResp) {
                         var childId = self.newId(groupId);
                         self.saveResponse(childId, childResp);
                         childIds.push(childId);
@@ -272,4 +263,4 @@ if (!openscrape) {
             put(replace, 'response', id, resp);
         }
     };
-}());
+});

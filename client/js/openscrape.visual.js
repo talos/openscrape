@@ -18,19 +18,21 @@
    *
    ***/
 
-/*jslint nomen: true*/
-/*global d3, jQuery, _ */
+/*global define*/
 
-var openscrape;
-
-if (!openscrape) {
-    openscrape = {}; // Define openscrape if not yet defined
-}
-
-(function ($) {
+define([
+    './openscrape.data',
+    './openscrape.mouse',
+    './openscrape.request',
+    './openscrape.visual',
+    'lib/d3',
+    'lib/jquery',
+    'lib/underscore',
+    'lib/json2'
+], function (data, mouse, request, visual, d3, $, underscore, JSON) {
     "use strict";
 
-    var radius,
+    var initialRadius,
 
         /**
          * Stop an event from propagating further.
@@ -43,6 +45,23 @@ if (!openscrape) {
             } else {
                 evt.cancelBubble = true;
             }
+        },
+
+        hypotenuse = function (x1, x2, y1, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        },
+
+        /**
+         * Calculate the distance of the event from x and y.
+         *
+         * @param evt The event
+         * @param x A pixel x value
+         * @param y A pixel y value
+         *
+         * @return The distance of the pointer from x and y.
+         */
+        calcDist = function (evt, x, y) {
+            return hypotenuse(evt.pageX, x, evt.pageY, y);
         },
 
         /**
@@ -70,11 +89,10 @@ if (!openscrape) {
                 node2 = merge.append('feMergeNode')
                     .attr('in', 'SourceGraphic');
 
-            console.log(filter);
             return filter;
         };
 
-    openscrape.visual = {
+    return {
 
         /**
          * Initialize openscrape visuals.
@@ -82,22 +100,22 @@ if (!openscrape) {
          * @param r The radius of svg illustrations.
          */
         init: function (r) {
-            radius = r;
+            initialRadius = r;
         },
 
         /**
          * Draw an openscrape visual.
          *
-         * @param id The root data ID to use when drawing the visual.
+         * @param id The visual's root data ID.
          *
-         * @return An SVG element that is an openscrape visual.
+         * @return A DOM element containing an openscrape visual.
          **/
         draw: function (id) {
             // Set up our svg inside a temporary jQuery container
-            var svg = d3.select($('<div />')[0]).append('svg')
-                    .attr("width", radius * 2)
-                    .attr("height", radius * 2),
-                $svg = $(svg[0]),
+            var $container = $('<div />'),
+                svg = d3.select($container[0]).append('svg')
+                    .attr("width", initialRadius * 2)
+                    .attr("height", initialRadius * 2),
 
                 defs = svg.append('defs'),
                 dropShadow = newDropShadow(defs)
@@ -105,63 +123,20 @@ if (!openscrape) {
 
                 vis = svg.append("g")
                     .attr('id', 'viewport')
-                    .attr("transform", "translate(" + radius + "," + radius + ")"),
+                    .attr("transform", "translate(" + initialRadius + "," + initialRadius + ")"),
 
-                //dragCircle, // TODO refactor this somewhere... else
-                calcDist = function (evt, left, top) {
-                    return Math.sqrt(Math.pow(evt.pageX - left - radius, 2) +
-                                     Math.pow(evt.pageY - top - radius, 2));
-                },
-                dragCircle = function (left, top) {
-                    return function (evt) {
-                        //console.log(calcDist(evt, left, top));
-                        //bgCircle.attr('r', calcDist(evt, left, top));
-                        var dist = calcDist(evt, left, top);
-                        vis.attr("transform",
-                                 "translate(" + radius + "," + radius + ") " +
-                                 "scale(" + (dist / radius) + "," + (dist / radius) + ")");
-                    };
-                },
-                bgCircle = vis.append('circle')
-                    .attr('r', radius)
-                    .classed('background', true)
-                    .on('mousedown', function (d, i) {
-                        var evt = d3.event,
-                            offset = $svg.offset(),
-                            left = offset.left,
-                            top = offset.top;
-
-                        if (calcDist(evt, left, top) > radius * 0.9) {
-                            stopEvent(d3.event);
-                            $svg.bind('mousemove.openscrape', dragCircle(left, top, bgCircle));
-                        } else {
-                            console.log('not absorbing');
-                        }
-                    }).on('mouseup', function (d, i) {
-                        console.log('up');
-                        $svg.unbind('mousemove.openscrape');
-                    }).on('mouseleave', function (d, i) {
-                        console.log('mouseleave');
-                        $svg.unbind('mousemove.openscrape');
-                    }).on('mouseout', function (d, i) {
-                        console.log('mouseout');
-                        $svg.unbind('mousemove.openscrape');
-                    }).on('click', function (d, i) {
-                        // absorb click so it doesn't go through to map
-                        stopEvent(d3.event);
-                    }),
 
                 redraw, // defined as function later on
 
                 tree = d3.layout.tree()
-                    .size([360, radius - 120])
+                    .size([360, initialRadius - 120])
                     .separation(function (a, b) { return (a.parent === b.parent ? 1 : 2) / a.depth; })
                     .children(function (d) {
                         if (d.hasOwnProperty('childIds')) {
                             // Otherwise it is a child node, its children need to be
                             // expanded from IDs into responses.
-                            return _.map(d.childIds, function (childId) {
-                                return openscrape.data.getResponse(childId);
+                            return underscore.map(d.childIds, function (childId) {
+                                return data.getResponse(childId);
                             });
                         } else {
                             // This is a response. Its children
@@ -176,6 +151,38 @@ if (!openscrape) {
                 origin = d3.svg.diagonal.radial()
                     .projection(function (d) { return [0, 0]; }),
 
+                bgCircle = vis.append('circle')
+                    .attr('r', initialRadius)
+                    .classed('background', true)
+                    .on('mousedown', function (d, i) {
+                        var evt = d3.event,
+                            offset = $container.offset(),
+                            left = offset.left,
+                            top = offset.top,
+                            rescaled = $container.data('rescale'),
+                            curRadius = rescaled ?
+                                    hypotenuse(0, rescaled.width / 2, 0, rescaled.height / 2) :
+                                    initialRadius,
+                            curDist = calcDist(evt, left + curRadius, top + curRadius);
+
+                        if (curDist > curRadius - 10) { // 10 pixel live zone
+                            stopEvent(d3.event);
+                            $container.bind('mousemove.openscrape', function (evt) {
+                                var dist = calcDist(evt, left + curRadius, top + curRadius);
+                                $container.rescale(dist * 2, dist * 2);
+                            });
+                        }
+                    }).on('mouseup', function (d, i) {
+                        $container.unbind('mousemove.openscrape');
+                    }).on('mouseleave', function (d, i) {
+                        $container.unbind('mousemove.openscrape');
+                    }).on('mouseout', function (d, i) {
+                        $container.unbind('mousemove.openscrape');
+                    }).on('click', function (d, i) {
+                        // absorb click so it doesn't go through to map
+                        stopEvent(d3.event);
+                    }),
+
                 onClick = function (d, i) {
                     var evt = d3.event,
                         elem = d3.select(evt.target), // should be 'this', but this also works
@@ -184,7 +191,6 @@ if (!openscrape) {
                         glow,
                         oldGrowValues;
 
-                    console.log('onClick node');
                     stopEvent(evt);
 
                     // force request on waits or missings
@@ -203,7 +209,7 @@ if (!openscrape) {
 
                         grow.attr('values', '8;16;8'); // modify existing animation
 
-                        openscrape.request(d.id, d.instruction, true, d.uri)
+                        request(d.id, d.instruction, true, d.uri)
                             .done(function (resp) {
                                 grow.attr('values', oldGrowValues); // restore old animation values
                                 elem.style('fill', oldFill);
@@ -212,8 +218,8 @@ if (!openscrape) {
                                 // elem.classed('loaded', true);
 
                                 glow.remove();
-                                _.extend(d, resp);
-                                openscrape.data.saveResponse(d.id, resp);
+                                underscore.extend(d, resp);
+                                data.saveResponse(d.id, resp);
                                 redraw();
                             });
                     } else if (d.status === 'loaded') {
@@ -223,7 +229,7 @@ if (!openscrape) {
                         // elem.classed('loaded', false);
                         // elem.classed('wait', true);
 
-                        openscrape.data.saveResponse(d.id, d);
+                        data.saveResponse(d.id, d);
                         redraw();
                     }
                 },
@@ -236,15 +242,15 @@ if (!openscrape) {
                  **/
                 onMouseover = function (d, i) {
                     if (d.hasOwnProperty('name')) {
-                        openscrape.mouse.setHTML(d.name);
+                        mouse.setHTML(d.name);
                     } else if (d.status === 'missing') {
-                        openscrape.mouse.setText(JSON.stringify(d.missing));
+                        mouse.setText(JSON.stringify(d.missing));
                     } else if (d.status === 'failed') {
-                        openscrape.mouse.setText(JSON.stringify(d.failed));
+                        mouse.setText(JSON.stringify(d.failed));
                     } else {
                         return;  // don't show mouseover
                     }
-                    openscrape.mouse.show();
+                    mouse.show();
                 },
 
                 /**
@@ -254,7 +260,7 @@ if (!openscrape) {
                  @param i Index of node.
                  **/
                 onMouseout = function (d, i) {
-                    openscrape.mouse.hide();
+                    mouse.hide();
                 };
 
             /**
@@ -262,7 +268,7 @@ if (!openscrape) {
              **/
             redraw = function () {
 
-                var nodes = tree.nodes(openscrape.data.getResponse(id)),
+                var nodes = tree.nodes(data.getResponse(id)),
 
                     link = vis.selectAll("path.link")
                         .data(tree.links(nodes), function (d) {
@@ -363,7 +369,7 @@ if (!openscrape) {
 
             //svg.svgPan('viewport');
             redraw();
-            return svg[0][0];
+            return $container[0];
         }
     };
-}(jQuery));
+});

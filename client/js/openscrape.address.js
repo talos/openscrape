@@ -18,13 +18,9 @@
    *
    ***/
 
-var openscrape;
+/*globals define*/
 
-if (!openscrape) {
-    openscrape = {}; // Define openscrape if not yet defined
-}
-
-(function () {
+define(function () {
     "use strict";
 
     /**
@@ -36,7 +32,7 @@ if (!openscrape) {
      *
      * @return An address object
      */
-    openscrape.address = function (number, street, zip) {
+    var address = function (number, street, zip) {
         if (!number || !street || !zip) {
             throw "Must specify number (" + number + ")"
                 + " street (" + street + ") and zip (" + zip + ")";
@@ -50,4 +46,6 @@ if (!openscrape) {
             };
         }
     };
-}());
+
+    return address;
+});

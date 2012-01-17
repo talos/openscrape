@@ -1,33 +1,27 @@
 /***
-   * Copyright (c) 2012 John Krauss.
-   *
-   * This file is part of Openscrape.
-   *
-   * Openscrape is free software: you can redistribute it and/or modify
-   * it under the terms of the GNU General Public License as published by
-   * the Free Software Foundation, either version 3 of the License, or
-   * (at your option) any later version.
-   *
-   * Openscrape is distributed in the hope that it will be useful,
-   * but WITHOUT ANY WARRANTY; without even the implied warranty of
-   * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   * GNU General Public License for more details.
-   *
-   * You should have received a copy of the GNU General Public License
-   * along with Openscrape.  If not, see <http://www.gnu.org/licenses/>.
-   *
-   ***/
+ * Copyright (c) 2012 John Krauss.
+ *
+ * This file is part of Openscrape.
+ *
+ * Openscrape is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Openscrape is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Openscrape.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ ***/
 
-/*global jQuery*/
+/*global define*/
 
-var openscrape;
-
-if (!openscrape) {
-    openscrape = {};
-}
-
-(function ($) {
-    'use strict';
+define(['./openscrape.alert', 'lib/jquery'], function (alert, $) {
+    "use strict";
 
     // PRIVATE
     var applet,
@@ -61,21 +55,21 @@ if (!openscrape) {
             return errors;
         };
 
-    openscrape.applet = {
+    return {
 
         /**
          Try to enable the applet.
 
          @return A promise that will be resolved when the applet is enabled,
          or rejected if it is not enabled.
-        **/
+         **/
         enable: function () {
             var dfd = $.Deferred();
 
             if (applet) {
                 dfd.resolve(); // applet already available
             } else {
-                openscrape.alert.prompt(promptText)
+                alert.prompt(promptText)
                     .done(function () {
                         // user accepted the prompt
                         var interval,
@@ -97,7 +91,7 @@ if (!openscrape) {
                                 dfd.resolve();
                             } catch (err) {
                                 // Method will throw exception until applet ready.
-                                openscrape.alert.warn('Waiting for applet...');
+                                alert.warn('Waiting for applet...');
                             }
                         }, pollFrequency);
                     }).fail(function () {
@@ -109,13 +103,13 @@ if (!openscrape) {
         },
 
         /**
-           Request <code>jsonRequest</code>.
+         Request <code>jsonRequest</code>.
 
-           @param jsonRequest A request serialized as JSON.
+         @param jsonRequest A request serialized as JSON.
 
-           @return A Promise that will be resolved with the raw JSON response when
-           the request is done, or rejected with a reason for why it failed.
-        **/
+         @return A Promise that will be resolved with the raw JSON response when
+         the request is done, or rejected with a reason for why it failed.
+         **/
         request: function (jsonRequest) {
             var dfd = $.Deferred(),
                 interval;
@@ -143,4 +137,4 @@ if (!openscrape) {
             return dfd.promise();
         }
     };
-}(jQuery));
+});

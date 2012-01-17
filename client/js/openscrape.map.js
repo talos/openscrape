@@ -18,22 +18,90 @@
    *
    ***/
 
-/*jslint browser: true,  nomen: true*/
-/*global jQuery, google, _*/
+/*global define*/
 
-var openscrape;
-
-if (!openscrape) {
-    openscrape = {}; // Define openscrape if not yet defined
-}
-
-(function ($) {
+define([
+    './openscrape.address',
+    './openscrape.alert',
+    './openscrape.data',
+    './openscrape.instruction',
+    './openscrape.request',
+    './openscrape.visual',
+    'lib/jquery',
+    'lib/underscore',
+    'lib/google',
+    'lib/google.rich-marker'
+], function (address, alert, data, instruction, request, visual,
+             $, underscore, google, rich_marker) {
     "use strict";
 
     var map,
-        geocoder;
+        geocoder,
+        diagonal,
+        dblClickWait, // used as a timer to block single-click event
 
-    openscrape.map = {
+        /**
+         * Update diagonal measurement for new zoom.
+         */
+        updateDiagonal = function () {
+            var bounds = map.getBounds(),
+                curCenter = bounds.getCenter(),
+                curNorthEast = bounds.getNorthEast();
+
+            diagonal =
+                Math.sqrt(Math.pow(curCenter.lng() - curNorthEast.lng(), 2) +
+                          Math.pow(curCenter.lat() - curNorthEast.lat(), 2));
+        },
+
+        /**
+         *  Do something only the first time the map is loaded
+         */
+        onLoad = function (evt) {
+            updateDiagonal();
+        },
+
+        /**
+         * Set up click listener to create markers.
+         */
+        onClick = function (evt) {
+            var latLng = evt.latLng;
+
+            dblClickWait = setTimeout(function () {
+                //openscrape.map.marker(latLng.lat(), latLng.lng(), pixel.x, pixel.y);
+                map.reverseGeocode(latLng.lat(), latLng.lng())
+                    .done(function (address) {
+                        map.addOverlay(address, latLng);
+                    }).fail(function (message) {
+                        alert.warn('Could not reverse geocode: ' + message);
+                    });
+
+            }, 500); // wait .5 second to be sure it's not a double click
+        },
+
+        /**
+         * Prevent single-click from firing on double-click
+         */
+        onDblClick = function (evt) {
+            clearTimeout(dblClickWait);
+        },
+
+        /**
+         * Keep track of current zoom level
+         */
+        onBoundsChanged = function (evt) {
+            var lastDiagonal = diagonal,
+                ratio;
+
+            updateDiagonal();
+
+            ratio = lastDiagonal / diagonal;
+
+            if (ratio > 1.05 || ratio < 0.95) {
+                console.log(ratio);
+            }
+        };
+
+    return {
 
         /**
          * Initialize a map.
@@ -44,7 +112,6 @@ if (!openscrape) {
          * @param zoom The integer zoom to start at.
          */
         init: function (elem, initialLat, initialLng, zoom, instruction) {
-            var dblClickWait; // used as a timer to block single-click event
 
             map = new google.maps.Map(elem, {
                 center: new google.maps.LatLng(initialLat, initialLng),
@@ -53,27 +120,11 @@ if (!openscrape) {
             });
             geocoder = new google.maps.Geocoder();
 
-            // Set up click listener to create markers.
-            google.maps.event.addListener(map, 'click', function (evt) {
-                console.log("MAP EVENT HIT");
-
-                var latLng = evt.latLng;
-
-                dblClickWait = setTimeout(function () {
-                    //openscrape.map.marker(latLng.lat(), latLng.lng(), pixel.x, pixel.y);
-                    openscrape.map.reverseGeocode(latLng.lat(), latLng.lng())
-                        .done(function (address) {
-                            openscrape.map.addOverlay(address, latLng);
-                        }).fail(function (message) {
-                            openscrape.alert.warn('Could not reverse geocode: ' + message);
-                        });
-
-                }, 500); // wait .5 second to be sure it's not a double click
-            });
-
-            google.maps.event.addListener(map, 'dblclick', function (evt) {
-                clearTimeout(dblClickWait);
-            });
+            google.maps.event.addListener(map, 'click', onClick);
+            google.maps.event.addListener(map, 'dblclick', onDblClick);
+            google.maps.event.addListener(map, 'bounds_changed', onBoundsChanged);
+            // Thanks to http://stackoverflow.com/questions/832692/how-to-check-if-google-maps-is-fully-loaded
+            google.maps.event.addListenerOnce(map, 'idle', onLoad);
         },
 
         /**
@@ -83,26 +134,34 @@ if (!openscrape) {
          * @param latLng The latLng to add the overlay at.
          */
         addOverlay: function (address, latLng) {
-            var id = openscrape.data.newId();
+            var id = data.newId();
 
             // draw the visualization
-            openscrape.data.saveTags(id, address);
-            openscrape.request(
+            data.saveTags(id, address);
+            request(
                 id,
-                openscrape.instruction.property(address),
+                instruction.property(address),
                 true,
                 ''
             ).done(function (resp) {
-                openscrape.data.saveResponse(id, resp);
+                data.saveResponse(id, resp);
 
                 // Rich marker example @ http://google-maps-utility-library-v3.googlecode.com/svn/trunk/richmarker/examples/richmarker.html?compiled
-                var overlay = new window.RichMarker({
+                var overlay = new rich_marker.RichMarker({
                     map: map,
                     position: latLng,
                     flat: true, // this just controls... shadow
-                    anchor: window.RichMarkerPosition.MIDDLE,
-                    content: openscrape.visual.draw(id)
+                    anchor: rich_marker.RichMarkerPosition.MIDDLE,
+                    content: visual.draw(id)
                 });
+
+                // Re-scale this overlay upon zoom
+                console.log('adding zoom listener');
+                google.maps.event.addListener(map, 'zoom_changed', function () {
+                    //glob_map = map;
+                    console.log('zoom changed');
+                });
+
             });
         },
 
@@ -125,27 +184,27 @@ if (!openscrape) {
 
                 if (status === google.maps.GeocoderStatus.OK) {
                     addresses = [];
-                    _.each(results, function (raw) {
+                    underscore.each(results, function (raw) {
                         var number,
                             street,
                             zip;
 
                         // only return precise street addresses
-                        if (_.include(raw.types, 'street_address')) {
-                            _.each(raw.address_components, function (component) {
-                                if (_.include(component.types, 'street_number')) {
+                        if (underscore.include(raw.types, 'street_address')) {
+                            underscore.each(raw.address_components, function (component) {
+                                if (underscore.include(component.types, 'street_number')) {
                                     number = component.long_name;
                                 }
-                                if (_.include(component.types, 'route')) {
+                                if (underscore.include(component.types, 'route')) {
                                     street = component.long_name;
                                 }
-                                if (_.include(component.types, 'postal_code')) {
+                                if (underscore.include(component.types, 'postal_code')) {
                                     zip = component.long_name;
                                 }
                             });
 
                             if (number && street && zip) {
-                                addresses.push(openscrape.address(number, street, zip));
+                                addresses.push(address(number, street, zip));
                             }
                         }
                     });
@@ -167,4 +226,4 @@ if (!openscrape) {
             return dfd.promise();
         }
     };
-}(jQuery));
+});

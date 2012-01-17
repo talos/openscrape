@@ -18,15 +18,9 @@
    *
    ***/
 
-/*globals jQuery*/
+/*globals define*/
 
-var openscrape;
-
-if (!openscrape) {
-    openscrape = {}; // Define openscrape if not yet defined
-}
-
-(function ($) {
+define(['lib/jquery'], function ($) {
     "use strict";
 
     /**
@@ -34,7 +28,9 @@ if (!openscrape) {
      *
      * @param resp The response to a caustic request.
      */
-    openscrape.sticky = function (resp) {
+    var sticky = function (resp) {
         
     };
-}(jQuery));
+
+    return sticky;
+});

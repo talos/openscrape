@@ -18,15 +18,16 @@
    *
    ***/
 
-/*global jQuery*/
+/*global define*/
 
-var openscrape;
-
-if (!openscrape) {
-    openscrape = {}; // Define openscrape if not yet defined
-}
-
-(function ($) {
+define([
+    './openscrape.alert',
+    './openscrape.data',
+    './openscrape.applet',
+    './openscrape.ajax',
+    'lib/jquery',
+    'lib/json2'
+], function (alert, data, applet, ajax, $, JSON) {
     "use strict";
 
     // PRIVATE
@@ -49,8 +50,8 @@ if (!openscrape) {
                     "id": id,
                     "uri": uri,
                     "instruction": instruction,
-                    "cookies": openscrape.data.getCookies(id),
-                    "tags" : openscrape.data.getTags(id),
+                    "cookies": data.getCookies(id),
+                    "tags" : data.getTags(id),
                     "input": input, // Stringify drops this key if undefined.
                     "force": String(force)
                 });
@@ -59,7 +60,7 @@ if (!openscrape) {
                     .done(function (jsonResp) {
                         dfd.resolve(JSON.parse(jsonResp));
                     }).fail(function (msg) {
-                        openscrape.alert.warn("Request for " + jsonRequest + " failed: " + msg);
+                        alert.warn("Request for " + jsonRequest + " failed: " + msg);
                         dfd.reject(msg);
                     })
                     .always(function () {
@@ -72,7 +73,7 @@ if (!openscrape) {
             if ($queue.queue('caustic').length === 1) {
                 $queue.dequeue('caustic');
             }
-        };
+        },
 
     // PUBLIC
     /**
@@ -88,17 +89,19 @@ if (!openscrape) {
      * object when the request is done, or rejected with a reason for
      * why it failed.
      **/
-    openscrape.request = function (id, instruction, force, uri, input) {
-        var dfd = $.Deferred();
+        request = function (id, instruction, force, uri, input) {
+            var dfd = $.Deferred();
 
-        // Use the applet if it's available, and ajax otherwise.
-        openscrape.applet.enable()
-            .done(function () {
-                queueRequest(openscrape.applet.request, dfd, id, instruction, force, uri, input);
-            }).fail(function () {
-                queueRequest(openscrape.ajax.request, dfd, id, instruction, force, uri, input);
-            });
+            // Use the applet if it's available, and ajax otherwise.
+            applet.enable()
+                .done(function () {
+                    queueRequest(applet.request, dfd, id, instruction, force, uri, input);
+                }).fail(function () {
+                    queueRequest(ajax.request, dfd, id, instruction, force, uri, input);
+                });
 
-        return dfd.promise();
-    };
-}(jQuery));
+            return dfd.promise();
+        };
+
+    return request;
+});

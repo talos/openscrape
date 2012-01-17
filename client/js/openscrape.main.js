@@ -18,23 +18,14 @@
    *
    ***/
 
-/*globals define*/
+/*globals require*/
 
-define(function () {
+(function () {
     "use strict";
 
-    return {
-
-        /**
-         * Get an instruction relevant for obtaining property info.
-         *
-         * @param address The openscrape.address of the property.
-         */
-        property: function (address) {
-            //return "http://accursedware.com:6767/" + address.zip + '/';
-            return window.location.origin +
-                window.location.pathname
-                + "instructions/nyc/property.json";
-        }
-    };
-});
+    require([
+        "./openscrape.ui"
+    ], function (ui) {
+        ui.init(400, '#download', '#mouse', '#map');
+    });
+}());

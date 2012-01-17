@@ -18,15 +18,9 @@
    *
    ***/
 
-/*globals jQuery*/
+/*globals define*/
 
-var openscrape;
-
-if (!openscrape) {
-    openscrape = {}; // Define openscrape if not yet defined
-}
-
-(function ($) {
+define(['lib/jquery'], function ($) {
     "use strict";
 
     // PRIVATE
@@ -35,15 +29,15 @@ if (!openscrape) {
     $.ajaxSetup({ timeout: 40000 });
 
     // PUBLIC
-    openscrape.ajax = {
+    return {
         /**
-           Request <code>jsonRequest</code>.
+         Request <code>jsonRequest</code>.
 
-           @param jsonRequest A request serialized as JSON.
+         @param jsonRequest A request serialized as JSON.
 
-           @return A Promise that will be resolved with the raw JSON response when
-           the request is done, or rejected with a reason for why it failed.
-        **/
+         @return A Promise that will be resolved with the raw JSON response when
+         the request is done, or rejected with a reason for why it failed.
+         **/
         request: function (jsonRequest) {
             var dfd = $.Deferred();
 
@@ -57,4 +51,4 @@ if (!openscrape) {
             return dfd.promise();
         }
     };
-}(jQuery));
+});
