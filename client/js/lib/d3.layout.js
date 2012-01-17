@@ -18,12 +18,19 @@
  *
  ***/
 
-/*global define, d3*/
+/*global define*/
+
+require({
+    paths: {
+        order: 'http://requirejs.org/docs/release/1.0.0/comments/order'
+    }
+});
 
 // location of our d3 libraries
 define([
-    "http://mbostock.github.com/d3/d3.js"
-], function () {
+    "order!./d3",
+    "order!http://mbostock.github.com/d3/d3.layout.js"
+], function (d3) {
     "use strict";
-    return d3; // d3 is hanging out in the global namespace...
+    return d3.layout;
 });

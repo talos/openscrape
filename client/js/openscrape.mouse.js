@@ -20,7 +20,7 @@
 
 /*global define*/
 
-define(['lib/jquery'], function ($) {
+define(['lib/jquery', 'lib/jquery-rescale'], function ($) {
     "use strict";
 
     var $mouse = $(),
@@ -60,7 +60,7 @@ define(['lib/jquery'], function ($) {
 
         resize: function () {
             // depends on jquery-rescale
-            $mouse.rescale(maxWidth, maxHeight, false, -1);
+            $mouse.rescale(maxWidth, maxHeight, {x: 0, y: 0, distort: false, direction: -1});
         },
 
         /**
@@ -85,6 +85,7 @@ define(['lib/jquery'], function ($) {
             $container.find('title').remove();
             $container.find('script').remove();
             $container.find('style').remove();
+            $container.find('link').remove();
             $mouse.empty().append($container);
             this.resize();
         },

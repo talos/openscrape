@@ -26,7 +26,8 @@ define([
     './openscrape.map',
     './openscrape.alert',
     'lib/jquery',
-    '',
+    'lib/jquery-css2txt',
+    'lib/jquery-download',
     'lib/underscore'
 ], function (mouse, visual, map, alert, $, underscore) {
     "use strict";
@@ -47,7 +48,7 @@ define([
                         mapSelector) {
 
             // Set up the mouse-following div
-            mouse.init($(mouseSelector));
+            mouse.init($(mouseSelector), 300, 800);
 
             // Set up the map.
             map.init($(mapSelector)[0], 40.77, -73.98, 11);

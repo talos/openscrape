@@ -53,6 +53,106 @@ define([
                           Math.pow(curCenter.lat() - curNorthEast.lat(), 2));
         },
 
+
+        /**
+         * Add an overlay for an address visualization.
+         *
+         * @param address The address to visualize.
+         * @param latLng The latLng to add the overlay at.
+         */
+        addOverlay = function (address, latLng) {
+            var id = data.newId();
+
+            // draw the visualization
+            data.saveTags(id, address);
+            request(
+                id,
+                instruction.property(address),
+                true,
+                ''
+            ).done(function (resp) {
+                data.saveResponse(id, resp);
+
+                // Rich marker example @ http://google-maps-utility-library-v3.googlecode.com/svn/trunk/richmarker/examples/richmarker.html?compiled
+                var overlay = new rich_marker.RichMarker({
+                    map: map,
+                    position: latLng,
+                    flat: true, // this just controls... shadow
+                    anchor: rich_marker.RichMarkerPosition.MIDDLE,
+                    content: visual.draw(id)
+                });
+
+                // Re-scale this overlay upon zoom
+                console.log('adding zoom listener');
+                google.maps.event.addListener(map, 'zoom_changed', function () {
+                    //glob_map = map;
+                    console.log('zoom changed');
+                });
+
+            });
+        },
+
+        /**
+         * Reverse geocode a latitude/longitude, to obtain an address.
+         *
+         * @param lat The float latitude to reverse geocode.
+         * @param lng The float longitude to reverse geocode.
+         *
+         * @return A Promise that will be resolved with a single
+         * openscrape.address when successful, or rejected with
+         * an error message if there is a problem.
+         */
+        reverseGeocode = function (lat, lng) {
+            var dfd = new $.Deferred(),
+                latlng = new google.maps.LatLng(lat, lng);
+
+            geocoder.geocode({ 'latLng': latlng }, function (results, status) {
+                var addresses;
+
+                if (status === google.maps.GeocoderStatus.OK) {
+                    addresses = [];
+                    underscore.each(results, function (raw) {
+                        var number,
+                            street,
+                            zip;
+
+                        // only return precise street addresses
+                        if (underscore.include(raw.types, 'street_address')) {
+                            underscore.each(raw.address_components, function (component) {
+                                if (underscore.include(component.types, 'street_number')) {
+                                    number = component.long_name;
+                                }
+                                if (underscore.include(component.types, 'route')) {
+                                    street = component.long_name;
+                                }
+                                if (underscore.include(component.types, 'postal_code')) {
+                                    zip = component.long_name;
+                                }
+                            });
+
+                            if (number && street && zip) {
+                                addresses.push(address(number, street, zip));
+                            }
+                        }
+                    });
+                    if (addresses.length === 1) {
+                        dfd.resolve(addresses[0]);
+                    } else if (addresses.length === 0) {
+                        dfd.reject("Geocoder failed: no precise addresses "
+                                   + "found for (" + lat + ", " + lng + ")");
+                    } else {
+                        dfd.reject("Geocoder failed: several addresses "
+                                   + "found for (" + lat + ", " + lng + ")"
+                                   + JSON.stringify(addresses));
+                    }
+                } else {
+                    dfd.reject("Geocoder failed: " + status);
+                }
+            });
+
+            return dfd.promise();
+        },
+
         /**
          *  Do something only the first time the map is loaded
          */
@@ -68,9 +168,9 @@ define([
 
             dblClickWait = setTimeout(function () {
                 //openscrape.map.marker(latLng.lat(), latLng.lng(), pixel.x, pixel.y);
-                map.reverseGeocode(latLng.lat(), latLng.lng())
+                reverseGeocode(latLng.lat(), latLng.lng())
                     .done(function (address) {
-                        map.addOverlay(address, latLng);
+                        addOverlay(address, latLng);
                     }).fail(function (message) {
                         alert.warn('Could not reverse geocode: ' + message);
                     });
@@ -125,105 +225,6 @@ define([
             google.maps.event.addListener(map, 'bounds_changed', onBoundsChanged);
             // Thanks to http://stackoverflow.com/questions/832692/how-to-check-if-google-maps-is-fully-loaded
             google.maps.event.addListenerOnce(map, 'idle', onLoad);
-        },
-
-        /**
-         * Add an overlay for an address visualization.
-         *
-         * @param address The address to visualize.
-         * @param latLng The latLng to add the overlay at.
-         */
-        addOverlay: function (address, latLng) {
-            var id = data.newId();
-
-            // draw the visualization
-            data.saveTags(id, address);
-            request(
-                id,
-                instruction.property(address),
-                true,
-                ''
-            ).done(function (resp) {
-                data.saveResponse(id, resp);
-
-                // Rich marker example @ http://google-maps-utility-library-v3.googlecode.com/svn/trunk/richmarker/examples/richmarker.html?compiled
-                var overlay = new rich_marker.RichMarker({
-                    map: map,
-                    position: latLng,
-                    flat: true, // this just controls... shadow
-                    anchor: rich_marker.RichMarkerPosition.MIDDLE,
-                    content: visual.draw(id)
-                });
-
-                // Re-scale this overlay upon zoom
-                console.log('adding zoom listener');
-                google.maps.event.addListener(map, 'zoom_changed', function () {
-                    //glob_map = map;
-                    console.log('zoom changed');
-                });
-
-            });
-        },
-
-        /**
-         * Reverse geocode a latitude/longitude, to obtain an address.
-         *
-         * @param lat The float latitude to reverse geocode.
-         * @param lng The float longitude to reverse geocode.
-         *
-         * @return A Promise that will be resolved with a single
-         * openscrape.address when successful, or rejected with
-         * an error message if there is a problem.
-         */
-        reverseGeocode: function (lat, lng) {
-            var dfd = new $.Deferred(),
-                latlng = new google.maps.LatLng(lat, lng);
-
-            geocoder.geocode({ 'latLng': latlng }, function (results, status) {
-                var addresses;
-
-                if (status === google.maps.GeocoderStatus.OK) {
-                    addresses = [];
-                    underscore.each(results, function (raw) {
-                        var number,
-                            street,
-                            zip;
-
-                        // only return precise street addresses
-                        if (underscore.include(raw.types, 'street_address')) {
-                            underscore.each(raw.address_components, function (component) {
-                                if (underscore.include(component.types, 'street_number')) {
-                                    number = component.long_name;
-                                }
-                                if (underscore.include(component.types, 'route')) {
-                                    street = component.long_name;
-                                }
-                                if (underscore.include(component.types, 'postal_code')) {
-                                    zip = component.long_name;
-                                }
-                            });
-
-                            if (number && street && zip) {
-                                addresses.push(address(number, street, zip));
-                            }
-                        }
-                    });
-                    if (addresses.length === 1) {
-                        dfd.resolve(addresses[0]);
-                    } else if (addresses.length === 0) {
-                        dfd.reject("Geocoder failed: no precise addresses "
-                                   + "found for (" + lat + ", " + lng + ")");
-                    } else {
-                        dfd.reject("Geocoder failed: several addresses "
-                                   + "found for (" + lat + ", " + lng + ")"
-                                   + JSON.stringify(addresses));
-                    }
-                } else {
-                    dfd.reject("Geocoder failed: " + status);
-                }
-            });
-
-            return dfd.promise();
         }
     };
 });

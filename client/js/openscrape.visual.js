@@ -26,10 +26,11 @@ define([
     './openscrape.request',
     './openscrape.visual',
     'lib/d3',
+    'lib/d3.layout',
     'lib/jquery',
     'lib/underscore',
     'lib/json2'
-], function (data, mouse, request, visual, d3, $, underscore, JSON) {
+], function (data, mouse, request, visual, d3, d3layout, $, underscore, JSON) {
     "use strict";
 
     var initialRadius,
