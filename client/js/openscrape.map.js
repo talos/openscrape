@@ -30,15 +30,17 @@ define([
     'lib/jquery',
     'lib/underscore',
     'lib/google',
-    'lib/google.rich-marker'
+    'lib/google.rich-marker',
+    'lib/json2'
 ], function (address, alert, data, instruction, request, visual,
-             $, underscore, google, rich_marker) {
+             $, underscore, google, rich_marker, JSON) {
     "use strict";
 
     var map,
         geocoder,
         diagonal,
         dblClickWait, // used as a timer to block single-click event
+        overlays = [],
 
         /**
          * Update diagonal measurement for new zoom.
@@ -82,13 +84,7 @@ define([
                     content: visual.draw(id)
                 });
 
-                // Re-scale this overlay upon zoom
-                console.log('adding zoom listener');
-                google.maps.event.addListener(map, 'zoom_changed', function () {
-                    //glob_map = map;
-                    console.log('zoom changed');
-                });
-
+                overlays.push(overlay);
             });
         },
 
@@ -149,7 +145,6 @@ define([
                     dfd.reject("Geocoder failed: " + status);
                 }
             });
-
             return dfd.promise();
         },
 
@@ -190,14 +185,26 @@ define([
          */
         onBoundsChanged = function (evt) {
             var lastDiagonal = diagonal,
-                ratio;
+                ratio,
+                i,
+                $content,
+                scaled,
+                height,
+                width;
 
             updateDiagonal();
 
             ratio = lastDiagonal / diagonal;
 
+            // scale overlays
             if (ratio > 1.05 || ratio < 0.95) {
-                console.log(ratio);
+                for (i = 0; i < overlays.length; i += 1) {
+                    $content = $(overlays[i].content);
+                    scaled = $content.data('rescale');
+                    width = scaled ? scaled.width : $content.width();
+                    height = scaled ? scaled.height : $content.height();
+                    $content.rescale(width * ratio, height * ratio);
+                }
             }
         };
 
@@ -216,7 +223,7 @@ define([
             map = new google.maps.Map(elem, {
                 center: new google.maps.LatLng(initialLat, initialLng),
                 zoom: zoom,
-                mapTypeId: google.maps.MapTypeId.ROADMAP
+                mapTypeId: google.maps.MapTypeId.TERRAIN
             });
             geocoder = new google.maps.Geocoder();
 
