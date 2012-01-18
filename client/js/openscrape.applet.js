@@ -20,7 +20,7 @@
 
 /*global define*/
 
-define(['./openscrape.alert', 'lib/jquery'], function (alert, $) {
+define(['./openscrape.alert', 'lib/jquery', 'lib/json2'], function (alert, $, JSON) {
     "use strict";
 
     // PRIVATE
@@ -28,8 +28,8 @@ define(['./openscrape.alert', 'lib/jquery'], function (alert, $) {
         promptText = 'Scraping hits external servers. You can'
             + ' either proxy through my server (which is slower'
             + ' and costs me!) or you can use the applet.  If'
-            + ' you use the applet, you must confirm '
-            + ' its permissions with the next dialog box.',
+            + ' you use the applet, you may have to confirm'
+            + ' its permissions with an annoying pop-up dialog box.',
         pollFrequency = 200, // how often to poll the applet when requesting
         javaClass = 'com.openscrape.applet.OpenScrapeApplet.class',
         dir = 'jar/',
@@ -69,7 +69,7 @@ define(['./openscrape.alert', 'lib/jquery'], function (alert, $) {
             if (applet) {
                 dfd.resolve(); // applet already available
             } else {
-                alert.prompt(promptText)
+                alert.prompt(promptText, {resolve: 'Applet', reject: 'Proxy'})
                     .done(function () {
                         // user accepted the prompt
                         var interval,

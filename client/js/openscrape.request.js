@@ -32,6 +32,7 @@ define([
 
     // PRIVATE
     var $queue = $({}), // generic queue
+        QUEUE_NAME = 'openscrape.request',
 
         /**
          * Queue a request.
@@ -45,7 +46,9 @@ define([
          * @param input Input String.  Optional.
          */
         queueRequest = function (requester, dfd, id, instruction, force, uri, input) {
-            $queue.queue('caustic', function () {
+            var isFirst = $queue.queue(QUEUE_NAME).length === 0;
+
+            $queue.queue(QUEUE_NAME, function () {
                 var jsonRequest = JSON.stringify({
                     "id": id,
                     "uri": uri,
@@ -64,14 +67,14 @@ define([
                         dfd.reject(msg);
                     })
                     .always(function () {
-                        $queue.dequeue('caustic');
+                        $queue.dequeue(QUEUE_NAME);
                     });
 
             });
 
             // Non-fx queues are not auto-run.
-            if ($queue.queue('caustic').length === 1) {
-                $queue.dequeue('caustic');
+            if (isFirst) {
+                $queue.dequeue(QUEUE_NAME);
             }
         },
 

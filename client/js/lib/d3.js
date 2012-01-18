@@ -22,7 +22,8 @@
 
 // location of our d3 libraries
 define([
-    "http://mbostock.github.com/d3/d3.js"
+    "order!http://mbostock.github.com/d3/d3.js",
+    "order!http://mbostock.github.com/d3/d3.layout.js"
 ], function () {
     "use strict";
     return d3; // d3 is hanging out in the global namespace...

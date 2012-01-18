@@ -197,15 +197,15 @@ define([
             ratio = lastDiagonal / diagonal;
 
             // scale overlays
-            if (ratio > 1.05 || ratio < 0.95) {
-                for (i = 0; i < overlays.length; i += 1) {
-                    $content = $(overlays[i].content);
-                    scaled = $content.data('rescale');
-                    width = scaled ? scaled.width : $content.width();
-                    height = scaled ? scaled.height : $content.height();
-                    $content.rescale(width * ratio, height * ratio);
-                }
-            }
+            // if (ratio > 1.05 || ratio < 0.95) {
+            //     for (i = 0; i < overlays.length; i += 1) {
+            //         $content = $(overlays[i].content);
+            //         scaled = $content.data('rescale');
+            //         width = scaled ? scaled.width : $content.width();
+            //         height = scaled ? scaled.height : $content.height();
+            //         $content.rescale(width * ratio, height * ratio);
+            //     }
+            // }
         };
 
     return {
@@ -223,6 +223,7 @@ define([
             map = new google.maps.Map(elem, {
                 center: new google.maps.LatLng(initialLat, initialLng),
                 zoom: zoom,
+                streetViewControl: false,
                 mapTypeId: google.maps.MapTypeId.TERRAIN
             });
             geocoder = new google.maps.Geocoder();

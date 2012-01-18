@@ -26,11 +26,10 @@ define([
     './openscrape.request',
     './openscrape.visual',
     'lib/d3',
-    'lib/d3.layout',
     'lib/jquery',
     'lib/underscore',
     'lib/json2'
-], function (data, mouse, request, visual, d3, d3layout, $, underscore, JSON) {
+], function (data, mouse, request, visual, d3, $, underscore, JSON) {
     "use strict";
 
     var initialRadius,
@@ -112,7 +111,6 @@ define([
          * @return A DOM element containing an openscrape visual.
          **/
         draw: function (id) {
-            // Set up our svg inside a temporary jQuery container
             var $container = $('<div />'),
                 svg = d3.select($container[0]).append('svg')
                     .attr("width", initialRadius * 2)
@@ -126,12 +124,15 @@ define([
                     .attr('id', 'viewport')
                     .attr("transform", "translate(" + initialRadius + "," + initialRadius + ")"),
 
-
                 redraw, // defined as function later on
 
                 tree = d3.layout.tree()
-                    .size([360, initialRadius - 120])
-                    .separation(function (a, b) { return (a.parent === b.parent ? 1 : 2) / a.depth; })
+                    //.size([360, initialRadius - 120])
+                    .size([90, initialRadius * 0.8])
+                    .separation(function (a, b) {
+                        //return (a.parent === b.parent ? 1 : 2) / a.depth;
+                        return (a.parent === b.parent ? 1 : 3) / (a.depth * 2);
+                    })
                     .children(function (d) {
                         if (d.hasOwnProperty('childIds')) {
                             // Otherwise it is a child node, its children need to be
@@ -147,42 +148,47 @@ define([
                     }),
 
                 diagonal = d3.svg.diagonal.radial()
-                    .projection(function (d) { return [d.y, d.x / 180 * Math.PI]; }),
+                    .projection(function (d) {
+                        //return [d.y, d.x / 180 * Math.PI];
+                        return [d.y, d.x / 180 * Math.PI];
+                    }),
 
                 origin = d3.svg.diagonal.radial()
-                    .projection(function (d) { return [0, 0]; }),
-
-                bgCircle = vis.append('circle')
-                    .attr('r', initialRadius)
-                    .classed('background', true)
-                    .on('mousedown', function (d, i) {
-                        var evt = d3.event,
-                            offset = $container.offset(),
-                            left = offset.left,
-                            top = offset.top,
-                            rescaled = $container.data('rescale'),
-                            curRadius = rescaled ?
-                                    hypotenuse(0, rescaled.width / 2, 0, rescaled.height / 2) :
-                                    initialRadius,
-                            curDist = calcDist(evt, left + curRadius, top + curRadius);
-
-                        if (curDist > curRadius - 10) { // 10 pixel live zone
-                            stopEvent(d3.event);
-                            $container.bind('mousemove.openscrape', function (evt) {
-                                var dist = calcDist(evt, left + curRadius, top + curRadius);
-                                $container.rescale(dist * 2, dist * 2);
-                            });
-                        }
-                    }).on('mouseup', function (d, i) {
-                        $container.unbind('mousemove.openscrape');
-                    }).on('mouseleave', function (d, i) {
-                        $container.unbind('mousemove.openscrape');
-                    }).on('mouseout', function (d, i) {
-                        $container.unbind('mousemove.openscrape');
-                    }).on('click', function (d, i) {
-                        // absorb click so it doesn't go through to map
-                        stopEvent(d3.event);
+                    .projection(function (d) {
+                        return [0, 0];
                     }),
+
+                // bgCircle = vis.append('circle')
+                //     .attr('r', initialRadius)
+                //     .classed('background', true)
+                //     .on('mousedown', function (d, i) {
+                //         var evt = d3.event,
+                //             offset = $container.offset(),
+                //             left = offset.left,
+                //             top = offset.top,
+                //             rescaled = $container.data('rescale'),
+                //             curRadius = rescaled ?
+                //                     hypotenuse(0, rescaled.width / 2, 0, rescaled.height / 2) :
+                //                     initialRadius,
+                //             curDist = calcDist(evt, left + curRadius, top + curRadius);
+
+                //         if (curDist > curRadius - 10) { // 10 pixel live zone
+                //             stopEvent(d3.event);
+                //             $container.bind('mousemove.openscrape', function (evt) {
+                //                 var dist = calcDist(evt, left + curRadius, top + curRadius);
+                //                 $container.rescale(dist * 2, dist * 2);
+                //             });
+                //         }
+                //     }).on('mouseup', function (d, i) {
+                //         $container.unbind('mousemove.openscrape');
+                //     }).on('mouseleave', function (d, i) {
+                //         $container.unbind('mousemove.openscrape');
+                //     }).on('mouseout', function (d, i) {
+                //         $container.unbind('mousemove.openscrape');
+                //     }).on('click', function (d, i) {
+                //         // absorb click so it doesn't go through to map
+                //         stopEvent(d3.event);
+                //     }),
 
                 onClick = function (d, i) {
                     var evt = d3.event,
@@ -196,29 +202,29 @@ define([
 
                     // force request on waits or missings
                     if (d.status === 'wait' || d.status === 'missing') {
-                        oldFill = elem.style('fill');
-                        grow = elem.select('animate');
-                        // make it glow while loading
-                        glow = elem.append('animate')
-                            .attr('attributeType', 'CSS')
-                            .attr('attributeName', 'fill')
-                            .attr('values', '#fff;#f00;#fff')
-                            .attr('repeatCount', 'indefinite')
-                            .attr('dur', '2s')
-                            .attr('begin', '0s');
-                        oldGrowValues = grow.attr('values');
+                        // oldFill = elem.style('fill');
+                        // grow = elem.select('animate');
+                        // // make it glow while loading
+                        // glow = elem.append('animate')
+                        //     .attr('attributeType', 'CSS')
+                        //     .attr('attributeName', 'fill')
+                        //     .attr('values', '#fff;#f00;#fff')
+                        //     .attr('repeatCount', 'indefinite')
+                        //     .attr('dur', '2s')
+                        //     .attr('begin', '0s');
+                        // oldGrowValues = grow.attr('values');
 
-                        grow.attr('values', '8;16;8'); // modify existing animation
+                        // grow.attr('values', '8;16;8'); // modify existing animation
 
                         request(d.id, d.instruction, true, d.uri)
                             .done(function (resp) {
-                                grow.attr('values', oldGrowValues); // restore old animation values
-                                elem.style('fill', oldFill);
+                            //     grow.attr('values', oldGrowValues); // restore old animation values
+                            //     elem.style('fill', oldFill);
 
-                                // elem.classed('wait', false);
-                                // elem.classed('loaded', true);
+                            //     // elem.classed('wait', false);
+                            //     // elem.classed('loaded', true);
 
-                                glow.remove();
+                            //     glow.remove();
                                 underscore.extend(d, resp);
                                 data.saveResponse(d.id, resp);
                                 redraw();
@@ -277,6 +283,7 @@ define([
                         }),
                     node,
                     nodeG;
+                console.log(nodes);
 
                 link.enter()
                     .append("path")
@@ -307,27 +314,38 @@ define([
 
                 // Append circles to all nodes
                 // Append event handlers to circles
-                nodeG.append("circle")
-                    .attr("r", 4.5)
-                    .on("click", onClick)
-                    .on("mouseover", onMouseover)
-                    .on("mouseout", onMouseout);
+                // nodeG.append("circle")
+                //     .attr("r", 4.5)
+                //     .on("click", onClick)
+                //     .on("mouseover", onMouseover)
+                //     .on("mouseout", onMouseout);
 
-                // Larger circles with click listener for wait nodes
-                nodeG.selectAll('.wait circle,.missing circle')
-                    .append('animate')         // animation for wait nodes
-                    .attr('attributeType', 'XML')
-                    .attr('attributeName', 'r')
-                    .attr('values', '5;8;5')
-                    .attr('repeatCount', 'indefinite')
-                    .attr('dur', '2s')
-                    .attr('begin', '0s');
+                // // Larger circles with click listener for wait nodes
+                // nodeG.selectAll('.wait circle,.missing circle')
+                //     .append('animate')         // animation for wait nodes
+                //     .attr('attributeType', 'XML')
+                //     .attr('attributeName', 'r')
+                //     .attr('values', '5;8;5')
+                //     .attr('repeatCount', 'indefinite')
+                //     .attr('dur', '2s')
+                //     .attr('begin', '0s');
+
+                nodeG.append("rect")
+                    .attr('transform', function (d) {
+                        return "rotate(" + (-d.x + 90) + ")";
+                    })
+                    .attr("dx", function (d) { return d.x < 180 ? 8 : -8; })
+                    .attr('width', '100px')
+                    .attr('height', '20px');
 
                 nodeG.append("text")
-                    .attr("dx", function (d) { return d.x < 180 ? 8 : -8; })
-                    .attr("dy", ".31em")
                     .attr("text-anchor", function (d) { return d.x < 180 ? "start" : "end"; })
-                    .attr("transform", function (d) { return d.x < 180 ? null : "rotate(180)"; })
+                    .attr('transform', function (d) {
+                        return "rotate(" + (-d.x + 90) + ")";
+                    })
+                    //.attr("transform", function (d) { return d.x < 180 ? null : "rotate(180)"; })
+                    .attr("dx", function (d) { return d.x < 180 ? 8 : -8; })
+                    .attr("dy", "20px")
                     .text(function (d) {
                         if (d.hasOwnProperty('name')) {
                             if (d.name.length < 20) {

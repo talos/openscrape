@@ -113,9 +113,6 @@ define(['lib/underscore'], function (underscore) {
         newId: function (parentId) {
             var id = underscore.uniqueId('response');
             put(replace, 'parent', id, parentId);
-            //if(parentId === null || typeof parentId === 'undefined') {
-            //_put('children', _extend_merge, parentId, obj);
-            //}
 
             return id;
         },
@@ -134,7 +131,6 @@ define(['lib/underscore'], function (underscore) {
         getResponse: function (id) {
             return get('response', id);
         },
-
 
         getTags: function (id) {
             return ascend(function (memo, id) {
@@ -231,7 +227,8 @@ define(['lib/underscore'], function (underscore) {
 
                 underscore.each(resp.children, function (respArray, name) {
                     var childIds = [],
-                        groupId = self.newId(id);
+                        groupId = self.newId(id),
+                        childObj;
 
                     // Save tag from Find.
                     if (resp.status === 'found') {
@@ -247,13 +244,15 @@ define(['lib/underscore'], function (underscore) {
                         var childId = self.newId(groupId);
                         self.saveResponse(childId, childResp);
                         childIds.push(childId);
-
                     });
-                    ary.push({
+
+                    childObj = {
                         name: name,
                         id: groupId,
                         childIds: childIds
-                    });
+                    };
+
+                    ary.push(childObj);
                 });
                 resp.children = ary;
             } else {

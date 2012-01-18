@@ -5,13 +5,19 @@
 }
 
 .node {
-    font: 8px sans-serif;
+    fill: white;
+}
+
+.node text {
+    fill: black;
+    font: 14px sans-serif;
 }
 
 .node circle {
     fill: #fff;
-    stroke-width: 1.5px;
+    stroke-width: 1.0px;
     stroke: black;
+    filter: url(#dropshadow);
 }
 
 .node.branch circle {
@@ -45,6 +51,7 @@
 /* Illustrator doesn't support class names to style paths?  This works instead. */
 path {
     fill: none;
-    stroke: #ccc;
+    stroke: black;
     stroke-width: 1.5px;
+    filter: url(#dropshadow);
 }

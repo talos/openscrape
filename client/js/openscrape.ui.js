@@ -26,9 +26,9 @@ define([
     './openscrape.map',
     './openscrape.alert',
     'lib/jquery',
+    'lib/underscore',
     'lib/jquery-css2txt',
-    'lib/jquery-download',
-    'lib/underscore'
+    'lib/jquery-download'
 ], function (mouse, visual, map, alert, $, underscore) {
     "use strict";
 
@@ -38,14 +38,18 @@ define([
          * Initialize the openscrape user interface.
          *
          * @param r The pixel radius to use for visuals.
+         * @param alertSelector The CSS selector for the alert box.
          * @param downloadSelector The CSS selector for the download button.
          * @param mouseSelector The CSS selector for the follow-mouse element.
          * @param mapSelector The CSS selector for the map.
          */
         init: function (r,
+                        alertSelector,
                         downloadSelector,
-                        mouseSelector,
-                        mapSelector) {
+                        mapSelector,
+                        mouseSelector) {
+
+            alert.init($(alertSelector));
 
             // Set up the mouse-following div
             mouse.init($(mouseSelector), 300, 800);
