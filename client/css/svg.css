@@ -4,48 +4,9 @@
     filter: url(#dropshadow);
 }
 
-.node {
-    fill: white;
-}
-
-.node text {
+circle.root {
     fill: black;
-    font: 14px sans-serif;
-}
-
-.node circle {
-    fill: #fff;
-    stroke-width: 1.0px;
-    stroke: black;
     filter: url(#dropshadow);
-}
-
-.node.branch circle {
-    stroke: gray;
-}
-
-.node.found circle {
-    stroke: steelblue;
-}
-
-.node.loaded circle {
-    stroke: green;
-}
-
-.node.wait circle {
-    stroke: red;
-    stroke-width: 3px;
-    cursor: pointer;
-}
-
-.node.missing circle {
-    stroke: orange;
-    stroke-width: 3px;
-    cursor: pointer;
-}
-
-.node.failed circle {
-    stroke: orange;
 }
 
 /* Illustrator doesn't support class names to style paths?  This works instead. */
@@ -54,4 +15,45 @@ path {
     stroke: black;
     stroke-width: 1.5px;
     filter: url(#dropshadow);
+}
+
+/* .foreign body { */
+/*     position: relative; */
+/* } */
+
+.foreign div.container {
+    display: block;
+    height: 100px;
+    width: 100px;
+}
+
+.foreign div.container div {
+    display: inline-block;
+    padding: 5px;
+    background: white;
+    border: 1px solid black;
+    max-width: 88px;
+    max-height: 88px;
+    box-shadow: 3px 3px 6px gray;
+    text-overflow: clip;
+}
+
+.foreign div.container div.left     { border-radius: 0em 1em 1em 1em; }
+.foreign div.container div.right    { border-radius: 1em 0em 1em 1em; float: right; }
+
+.foreign .loaded {
+    cursor: pointer;
+}
+
+.foreign .loaded:hover {
+    font-weight: bold;
+}
+
+.foreign .wait {
+    color: blue;
+    cursor: pointer;
+}
+
+.foreign .wait:hover {
+    font-weight: bold;
 }

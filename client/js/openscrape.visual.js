@@ -113,6 +113,7 @@ define([
         draw: function (id) {
             var $container = $('<div />'),
                 svg = d3.select($container[0]).append('svg')
+                    .attr('xmlns', 'http://www.w3.org/2000/svg')
                     .attr("width", initialRadius * 2)
                     .attr("height", initialRadius * 2),
 
@@ -128,10 +129,11 @@ define([
 
                 tree = d3.layout.tree()
                     //.size([360, initialRadius - 120])
-                    .size([90, initialRadius * 0.8])
+                    .size([360, initialRadius - 120])
+                    //.size([90, initialRadius * 0.8])
                     .separation(function (a, b) {
-                        //return (a.parent === b.parent ? 1 : 2) / a.depth;
-                        return (a.parent === b.parent ? 1 : 3) / (a.depth * 2);
+                        return (a.parent === b.parent ? 1 : 4) / a.depth;
+                        //return (a.parent === b.parent ? 1 : 3) / (a.depth * 2);
                     })
                     .children(function (d) {
                         if (d.hasOwnProperty('childIds')) {
@@ -149,7 +151,6 @@ define([
 
                 diagonal = d3.svg.diagonal.radial()
                     .projection(function (d) {
-                        //return [d.y, d.x / 180 * Math.PI];
                         return [d.y, d.x / 180 * Math.PI];
                     }),
 
@@ -158,6 +159,9 @@ define([
                         return [0, 0];
                     }),
 
+                rootCircle = vis.append('circle')
+                    .attr('r', 10)
+                    .classed('root', true),
                 // bgCircle = vis.append('circle')
                 //     .attr('r', initialRadius)
                 //     .classed('background', true)
@@ -283,7 +287,6 @@ define([
                         }),
                     node,
                     nodeG;
-                console.log(nodes);
 
                 link.enter()
                     .append("path")
@@ -330,32 +333,72 @@ define([
                 //     .attr('dur', '2s')
                 //     .attr('begin', '0s');
 
-                nodeG.append("rect")
-                    .attr('transform', function (d) {
-                        return "rotate(" + (-d.x + 90) + ")";
-                    })
-                    .attr("dx", function (d) { return d.x < 180 ? 8 : -8; })
-                    .attr('width', '100px')
-                    .attr('height', '20px');
+                // nodeG.append("rect")
+                //     .attr('transform', function (d) {
+                //         return "rotate(" + (-d.x + 90) + ")";
+                //     })
+                //     .attr("dx", function (d) { return d.x < 180 ? 8 : -8; })
+                //     .attr('width', '100px')
+                //     .attr('height', '20px');
 
-                nodeG.append("text")
-                    .attr("text-anchor", function (d) { return d.x < 180 ? "start" : "end"; })
+                // nodeG.append("text")
+                //     .attr("text-anchor", function (d) { return d.x < 180 ? "start" : "end"; })
+                //     .attr('transform', function (d) {
+                //         return "rotate(" + (-d.x + 90) + ")";
+                //     })
+                //     //.attr("transform", function (d) { return d.x < 180 ? null : "rotate(180)"; })
+                //     .attr("dx", function (d) { return d.x < 180 ? 8 : -8; })
+                //     .attr("dy", "20px")
+                //     .text(function (d) {
+                //         if (d.hasOwnProperty('name')) {
+                //             if (d.name.length < 20) {
+                //                 return d.name;
+                //             } else {
+                //                 return d.name.substr(0, 17) + '...';
+                //             }
+                //         } else {
+                //             return '???';
+                //         }
+                //     });
+
+                nodeG.append('svg:foreignObject')
                     .attr('transform', function (d) {
                         return "rotate(" + (-d.x + 90) + ")";
                     })
-                    //.attr("transform", function (d) { return d.x < 180 ? null : "rotate(180)"; })
-                    .attr("dx", function (d) { return d.x < 180 ? 8 : -8; })
-                    .attr("dy", "20px")
-                    .text(function (d) {
-                        if (d.hasOwnProperty('name')) {
-                            if (d.name.length < 20) {
-                                return d.name;
-                            } else {
-                                return d.name.substr(0, 17) + '...';
-                            }
+                    .classed('foreign', true)
+                    .attr('height', '100')
+                    .attr('width', '100')
+                    .attr('x', function (d) {
+                        if (d.x < 90) {
+                            return 0;
+                        } else if (d.x < 180) {
+                            return 0;
+                        } else if (d.x < 270) {
+                            return -100;
                         } else {
-                            return '???';
+                            return -100;
                         }
+                    })
+                    .append('xhtml:body')
+                    .append('div')
+                    .attr('class', 'container')
+                    .append('div')
+                    .on('click', onClick)
+                    .attr('class', function (d) {
+                        var pos;
+                        if (d.x < 90) {
+                            pos = "left";
+                        } else if (d.x < 180) {
+                            pos = "left";
+                        } else if (d.x < 270) {
+                            pos = "right";
+                        } else {
+                            pos = "right";
+                        }
+                        return d.status ? (d.status + ' ' + pos) : pos;
+                    })
+                    .text(function (d) {
+                        return d.name ? d.name.substring(0, 100) : '';
                     });
 
                 node.transition()
