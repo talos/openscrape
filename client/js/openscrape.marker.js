@@ -18,22 +18,21 @@
    *
    ***/
 
-/*jslint browser: true*/
+/*jslint browser: true, nomen: true*/
 /*global define*/
 
 define([
     'lib/google',
     'lib/google.rich-marker',
     'lib/underscore'
-], function (google, rich_marker, underscore) {
+], function (google, rich_marker, _) {
     "use strict";
 
     return (function () {
 
         /**
          * Create a new overlay on the specified map with the
-         * specified content.  Starts out invisible, and in the center
-         * of the map.
+         * specified content.  Starts out invisible.
          *
          * @param {openscrape.Map} map The openscrape map to display upon.
          * @param {DOM} content Content DOM to display.
@@ -43,19 +42,20 @@ define([
                 map: map.gMap, // TODO binds us to google maps!!
                 visible: false,
                 flat: true,
-                position: map.getCenter(),
+                position: new google.maps.LatLng(0, 0),
                 anchor: rich_marker.RichMarkerPosition.MIDDLE,
                 content: content
             });
+
 
             map.addZoomChangedListener(function (ratio) {
                 // TODO scale content!
                 //$.scale(content);
             });
 
-            this.show = underscore.show(this, this.show);
-            this.hide = underscore.hide(this, this.hide);
-            this.setPosition = underscore.bind(this, this.setPosition);
+            this.show = _.bind(this.show, this);
+            this.hide = _.bind(this.hide, this);
+            this.setPosition = _.bind(this.setPosition, this);
         }
 
         Marker.prototype.show = function () {
@@ -68,7 +68,7 @@ define([
             return this;
         };
 
-        Marker.prototybe.isVisible = function () {
+        Marker.prototype.isVisible = function () {
             return this.rMarker.getVisible();
         };
 

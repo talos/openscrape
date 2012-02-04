@@ -84,7 +84,7 @@ define([
                 dropShadow = newDropShadow(defs)
                     .attr('id', 'dropshadow');
 
-            this.svg = svg;
+            this.svg = svg[0][0];
 
             this.vis = svg.append("g")
                 .attr('id', 'viewport')
@@ -99,9 +99,9 @@ define([
 
             this.response = null;
 
-            this.appendTo = underscore.bind(this.appendTo, this);
+            this.getSVG = underscore.bind(this.getSVG, this);
             this.destroy = underscore.bind(this.destroy, this);
-            this.visualize = underscore.bind(this.visualize, this);
+            this.setResponse = underscore.bind(this.setResponse, this);
             this.render = underscore.bind(this.render, this);
         }
 
@@ -111,7 +111,7 @@ define([
          * @return {SVGElement} containing the visual.
          */
         Visual.prototype.getSVG = function (el) {
-            return this.svg[0];
+            return this.svg;
         };
 
         /**

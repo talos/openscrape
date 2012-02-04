@@ -18,90 +18,106 @@
  *
  ***/
 
+/*jslint nomen: true*/
 /*global define*/
 
-define(['lib/jquery', 'lib/jquery-rescale'], function ($) {
+define([
+    'lib/underscore',
+    'lib/jquery',
+    'lib/jquery-rescale'
+], function (_, $) {
     "use strict";
 
-    var $mouse = $(),
-        offsetX = 10,
-        offsetY = 10,
-        maxWidth = 0,
-        maxHeight = 0;
+    return (function () {
 
-    return {
+        var resize = function () {
+            // depends on jquery-rescale
+            this.$mouse.rescale(this.width,
+                                this.height,
+                                {x: 0, y: 0, distort: false, direction: -1});
+        };
 
         /**
-         Initialize the singleton openscrape.mouse .  Can only be called once.
-
-         @param el The element to use for the mouse.
-         @param w The maximum width of the mouse div.
-         @param h The maximum height of the mouse div.
+         * Initialize the Openscrape.mouse
+         *
+         * @param {DOM} el The element to use for the mouse.
+         * @param {Number} w The maximum width of the mouse div.
+         * @param {Number} h The maximum height of the mouse div.
          **/
-        init: function (el, w, h) {
-            if ($mouse.length > 0) { return; }
+        function Mouse(el, w, h) {
 
-            $mouse = $(el);
-            maxWidth = w;
-            maxHeight = h;
+            var offsetX = 10,
+                offsetY = 10;
 
-            /**
-             Bind global mouse move to manipulating the $mouse element.
-             **/
-            $("body").bind('mousemove', function (evt) {
-                if ($mouse.is(':visible')) {
-                    $mouse.css({
+            this.$mouse = $(el);
+            this.width = w;
+            this.height = h;
+
+            //Bind global mouse move to manipulating the $mouse element.
+            $("body").bind('mousemove', _.bind(function (evt) {
+                if (this.$mouse.is(':visible')) {
+                    this.$mouse.css({
                         "left": (evt.pageX + offsetX) + "px",
                         "top": (evt.pageY + offsetY) + "px"
                     });
                 }
-            });
-        },
-
-        resize: function () {
-            // depends on jquery-rescale
-            $mouse.rescale(maxWidth, maxHeight, {x: 0, y: 0, distort: false, direction: -1});
-        },
-
-        /**
-         Replace the mouse div content text.
-
-         @param text The text to put in the mouse div.
-         **/
-        setText: function (text) {
-            $mouse.empty().text(text);
-            this.resize();
-        },
-
-        /**
-         Replace the mouse div content with some arbitrary HTML.  The
-         DOM will be searched to ensure that it has no <title>
-         elements hanging out.
-
-         @param text The text to put in the mouse div.
-         **/
-        setHTML: function (html) {
-            var $container = $('<div />').html(html);
-            $container.find('title').remove();
-            $container.find('script').remove();
-            $container.find('style').remove();
-            $container.find('link').remove();
-            $mouse.empty().append($container);
-            this.resize();
-        },
-
-        /**
-         Show the div.
-         **/
-        show: function () {
-            $mouse.show();
-        },
-
-        /**
-         Hide the div.
-         **/
-        hide: function () {
-            $mouse.hide();
+            }, this));
         }
-    };
+
+        /**
+         * Replace the mouse div content text.
+         *
+         * @param {String} text The text to put in the mouse div.
+         *
+         * @return {openscrape.Mouse} this
+         **/
+        Mouse.prototype.setText = function (text) {
+            this.$mouse.empty().text(text);
+            resize.call(this);
+            return this;
+        };
+
+        /**
+         * Show the div.
+         *
+         * @return {openscrape.Mouse} this
+         **/
+        Mouse.prototype.show = function () {
+            return this.$mouse.show();
+        };
+
+        /**
+         * Hide the div.
+         *
+         * @return {openscrape.Mouse} this
+         **/
+        Mouse.prototype.hide = function () {
+            return this.$mouse.hide();
+        };
+
+        return Mouse;
+    }());
 });
+
+
+    // return {
+
+
+    //     /**
+    //      Replace the mouse div content with some arbitrary HTML.  The
+    //      DOM will be searched to ensure that it has no <title>
+    //      elements hanging out.
+
+    //      @param text The text to put in the mouse div.
+    //      **/
+    //     setHTML: function (html) {
+    //         var $container = $('<div />').html(html);
+    //         $container.find('title').remove();
+    //         $container.find('script').remove();
+    //         $container.find('style').remove();
+    //         $container.find('link').remove();
+    //         $mouse.empty().append($container);
+    //         this.resize();
+    //     },
+
+//};

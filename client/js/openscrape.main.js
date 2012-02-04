@@ -42,14 +42,12 @@
         'lib/underscore',
         'lib/jquery-css2txt',
         'lib/jquery-download'
-    ], function (mouse, Map, Marker, Visual, request, instruction, alert, $, underscore) {
+    ], function (Mouse, Map, Marker, Visual, request, instruction, alert, $, underscore) {
 
-        var visual, map, marker;
+        var visual, map, marker,
+            mouse = new Mouse($(mouseSelector), 300, 800);
 
         alert.init($(alertSelector));
-
-        // Set up the mouse-following div
-        mouse.init($(mouseSelector), 300, 800);
 
         visual = new Visual(r);
         map = new Map($(mapSelector)[0], 40.77, -73.98, 11);
@@ -67,7 +65,7 @@
             }
         });
 
-        // Destroy the visual, then hid the marker, upon reset.
+        // Destroy the visual, then hide the marker, upon reset.
         $(resetSelector).bind('click', function () {
             visual.destroy().done(function () {
                 marker.hide();

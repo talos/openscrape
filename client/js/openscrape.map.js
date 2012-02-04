@@ -34,23 +34,23 @@ define([
 
     return (function () {
         /**
-         *  Do something only the first time the map is loaded
+         * Save current diagonal measurement.
          */
-        var onLoad = function (evt) {
-            this.saveDiagonal();
+        var saveDiagonal = function () {
+            var bounds = this.gMap.getBounds(),
+                curCenter = bounds.getCenter(),
+                curNorthEast = bounds.getNorthEast();
+
+            this.diagonal =
+                Math.sqrt(Math.pow(curCenter.lng() - curNorthEast.lng(), 2) +
+                          Math.pow(curCenter.lat() - curNorthEast.lat(), 2));
         },
 
             /**
-             * Save current diagonal measurement.
+             *  Do something only the first time the map is loaded
              */
-            saveDiagonal = function () {
-                var bounds = this.getBounds(),
-                    curCenter = bounds.getCenter(),
-                    curNorthEast = bounds.getNorthEast();
-
-                this.diagonal =
-                    Math.sqrt(Math.pow(curCenter.lng() - curNorthEast.lng(), 2) +
-                              Math.pow(curCenter.lat() - curNorthEast.lat(), 2));
+            onLoad = function (evt) {
+                saveDiagonal.call(this);
             },
 
             /**
@@ -85,7 +85,7 @@ define([
                 var lastDiagonal = this.diagonal,
                     ratio;
 
-                this.saveDiagonal();
+                saveDiagonal.call(this);
 
                 ratio = lastDiagonal / this.diagonal;
 
@@ -120,9 +120,9 @@ define([
             this.zoomChangedListeners = [];
             this.dblClickWaitTime = 500;
 
-            this.addLoadListener = _.bind(this, this.addLoadListener);
-            this.addAddressListener = _.bind(this, this.addAddressListener);
-            this.addZoomChangedListener = _.bind(this, this.addZoomChangedListener);
+            this.addLoadListener = _.bind(this.addLoadListener, this);
+            this.addAddressListener = _.bind(this.addAddressListener, this);
+            this.addZoomChangedListener = _.bind(this.addZoomChangedListener, this);
 
             // Thanks to http://stackoverflow.com/questions/832692
             google.maps.event.addListenerOnce(map, 'idle', _.bind(onLoad, this));
