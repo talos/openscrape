@@ -116,9 +116,17 @@ define([
 
     /**
      * Destroy the openscrape visual.
+     *
+     * @return {Promise} A Promise that will be resolved when the visual is
+     * destroyed.
      */
     Visual.prototype.destroy = function () {
         this.response = null;
+        this.render();
+        var dfd = new $.Deferred();
+        setTimeout(function () { dfd.resolve(); }, 1000);
+
+        return dfd.promise();
     };
 
     /**
@@ -135,19 +143,12 @@ define([
      * Redraw.
      **/
     Visual.prototype.render = function () {
-        if (this.response === null) {
-            this.tree.nodes({});
-            return;
-        }
-
-        console.log(this.response);
-
-        var nodes = this.tree.nodes(this.response),
+        var nodes = this.tree.nodes(this.response || {}),
             link = this.vis.selectAll("path.link")
                 .data(this.tree.links(nodes), function (d) {
                     return d.source.id + '_' + d.target.id;
                 }),
-            node = this.vis.selectAll("g.node")
+            node = this.vis.selectAll(".node")
                 .data(nodes, function (d) {
                     return d.id;
                 });
@@ -167,15 +168,18 @@ define([
             .attr('d', origin)
             .remove();
 
-        node.enter().append('svg:foreignObject')
-            .attr('transform', function (d) {
-                return "rotate(" + (-d.x + 90) + ")";
-            })
-            .attr('height', '100')
-            .attr('width', '100')
-            .attr('x', function (d) { return d.x < 180 ? 0 : -100; })
-            .append('xhtml:body')
-            .each(function (d) { d.render(this); });
+        if (this.response) {
+            node.enter().append('svg:foreignObject')
+                .classed('node', true)
+                .attr('transform', function (d) {
+                    return "rotate(" + (-d.x + 90) + ")";
+                })
+                .attr('height', '100')
+                .attr('width', '100')
+                .attr('x', function (d) { return d.x < 180 ? 0 : -100; })
+                .append('xhtml:body')
+                .each(function (d) { d.render(this); });
+        }
 
         node.transition()
             .duration(1000)

@@ -191,14 +191,14 @@ define([
                 self = this;
 
             this.dblClickWait = setTimeout(function () {
-                //openscrape.map.marker(latLng.lat(), latLng.lng(), pixel.x, pixel.y);
-                self.reverseGeocode(latLng.lat(), latLng.lng())
-                    .done(function (address) {
-                        self.visual.destroy();
-                        self.createVisual(address, latLng);
-                    }).fail(function (message) {
-                        alert.warn('Could not reverse geocode: ' + message);
-                    });
+                self.visual.destroy().done(function () {
+                    self.reverseGeocode(latLng.lat(), latLng.lng())
+                        .done(function (address) {
+                            self.createVisual(address, latLng);
+                        }).fail(function (message) {
+                            alert.warn('Could not reverse geocode: ' + message);
+                        });
+                });
 
             }, 500); // wait .5 second to be sure it's not a double click
         };

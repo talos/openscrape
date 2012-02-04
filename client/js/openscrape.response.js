@@ -21,7 +21,7 @@
 /*jslint nomen: true*/
 /*global define*/
 
-define(['lib/underscore', 'lib/json2'], function (underscore, json) {
+define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json, $) {
     "use strict";
 
     /**
@@ -84,7 +84,7 @@ define(['lib/underscore', 'lib/json2'], function (underscore, json) {
         /**
          * A Response is the result of trying to execute a single instruction.
          *
-         * Response.parent : The parent response of this Response.
+         * Response.parentResponse : The parent response of this Response.  There is also a .parent attribute created by d3.
          * Response.children : An array of Value or Response objects.
                                Returns empty array by default.
                                Should be overriden by subclasses.
@@ -100,31 +100,31 @@ define(['lib/underscore', 'lib/json2'], function (underscore, json) {
              * Static method to construct a Response subclass from a JS object.
              *
              * @param obj A JS object.
-             * @param parent The parent Response of this Response.  Optional.
+             * @param parentResponse The parent Response of this Response.  Optional.
              */
-            Response.create = function (obj, parent) {
+            Response.create = function (obj, parentResponse) {
                 switch (obj.status) {
                 case 'loaded':
-                    return new Loaded(obj, parent);
+                    return new Loaded(obj, parentResponse);
                 case 'found':
-                    return new Found(obj, parent);
+                    return new Found(obj, parentResponse);
                 case 'reference':
-                    return new Reference(obj, parent);
+                    return new Reference(obj, parentResponse);
                 case 'wait':
-                    return new Wait(obj, parent);
+                    return new Wait(obj, parentResponse);
                 case 'missing':
-                    return new Missing(obj, parent);
+                    return new Missing(obj, parentResponse);
                 case 'failed':
-                    return new Failed(obj, parent);
+                    return new Failed(obj, parentResponse);
                 default:
                     throw "Unknown Response status: " + obj.status;
                 }
             };
 
-            function Response(obj, parent) {
+            function Response(obj, parentResponse) {
                 this.id = underscore.uniqueId('response_');
-                this.parent = parent;
-                this.hasParent = typeof parent !== 'undefined';
+                this.responseParent = parentResponse;
+                this.hasParent = typeof parentResponse !== 'undefined';
 
                 this.children = [];
 
@@ -137,11 +137,11 @@ define(['lib/underscore', 'lib/json2'], function (underscore, json) {
             // };
 
             Response.prototype.getCookieJar = function (searchParent) {
-                return this.hasParent && searchParent ? this.parent.getCookieJar(true) : {};
+                return this.hasParent && searchParent ? this.parentResponse.getCookieJar(true) : {};
             };
 
             Response.prototype.getTags = function (searchParent) {
-                return this.hasParent && searchParent ? this.parent.getTags(true) : {};
+                return this.hasParent && searchParent ? this.parentResponse.getTags(true) : {};
             };
 
             return Response;
@@ -156,16 +156,18 @@ define(['lib/underscore', 'lib/json2'], function (underscore, json) {
             __extends(Ready, Response);
 
             function Ready(obj) {
+                var self = this;
                 this.name = obj.name;
                 this.description = obj.description;
                 this.values = underscore.map(obj.children, function (responsesAry, name) {
-                    return new Value(name, responsesAry, this);
+                    return new Value(name, responsesAry, self);
                 });
-                this.children = this.values;
 
                 this.getCookieJar = underscore.bind(this.getCookieJar, this);
                 this.getTags = underscore.bind(this.getTags, this);
                 Ready.__super__.constructor.apply(this, arguments);
+
+                this.children = this.values;
             }
 
             Ready.prototype.getCookieJar = function (searchParent) {
@@ -215,7 +217,7 @@ define(['lib/underscore', 'lib/json2'], function (underscore, json) {
             }
 
             Loaded.prototype.render = function (el) {
-
+                $(el).append($('<div />').text(this.name));
             };
 
             Loaded.prototype.getCookieJar = function (searchParent) {
