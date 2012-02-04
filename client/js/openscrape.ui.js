@@ -22,14 +22,14 @@
 
 define([
     './openscrape.mouse',
-    './openscrape.visual',
     './openscrape.map',
+    './openscrape.visual',
     './openscrape.alert',
     'lib/jquery',
     'lib/underscore',
     'lib/jquery-css2txt',
     'lib/jquery-download'
-], function (mouse, visual, map, alert, $, underscore) {
+], function (mouse, Map, Visual, alert, $, underscore) {
     "use strict";
 
     return {
@@ -49,16 +49,15 @@ define([
                         mapSelector,
                         mouseSelector) {
 
+            var visual, map;
+
             alert.init($(alertSelector));
 
             // Set up the mouse-following div
             mouse.init($(mouseSelector), 300, 800);
 
-            // Set up the map.
-            map.init($(mapSelector)[0], 40.77, -73.98, 11);
-
-            // Set up visualizations
-            visual.init(r);
+            visual = new Visual(r);
+            map = new Map($(mapSelector)[0], visual, 40.77, -73.98, 11);
 
             /**
              Handle download request.
@@ -67,17 +66,17 @@ define([
 
              Won't work if browser doesn't support 'data:' scheme.
              **/
-            $(downloadSelector).click(function () {
-                var styleText = underscore.reduce(document.styleSheets, function (memo, sheet) {
-                    return sheet.disabled === false ? memo + $(sheet).css2txt()[0] : memo;
-                }, '');
-                $('svg').attr('xmlns', "http://www.w3.org/2000/svg")
-                    .attr('xmlns:xlink', "http://www.w3.org/1999/xlink")
-                    .prepend($('<style />')
-                             .attr('type', 'text/css')
-                             .text('<![CDATA[  ' + styleText + '  ]]>'))
-                    .download(alert.warn);
-            });
+            // $(downloadSelector).click(function () {
+            //     var styleText = underscore.reduce(document.styleSheets, function (memo, sheet) {
+            //         return sheet.disabled === false ? memo + $(sheet).css2txt()[0] : memo;
+            //     }, '');
+            //     $('svg').attr('xmlns', "http://www.w3.org/2000/svg")
+            //         .attr('xmlns:xlink', "http://www.w3.org/1999/xlink")
+            //         .prepend($('<style />')
+            //                  .attr('type', 'text/css')
+            //                  .text('<![CDATA[  ' + styleText + '  ]]>'))
+            //         .download(alert.warn);
+            // });
         }
     };
 });

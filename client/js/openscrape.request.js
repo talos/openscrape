@@ -22,12 +22,13 @@
 
 define([
     './openscrape.alert',
-    './openscrape.data',
     './openscrape.applet',
     './openscrape.ajax',
+    './openscrape.response',
     'lib/jquery',
-    'lib/json2'
-], function (alert, data, applet, ajax, $, JSON) {
+    'lib/json2',
+    'lib/underscore'
+], function (alert, applet, ajax, response, $, json, underscore) {
     "use strict";
 
     // PRIVATE
@@ -39,29 +40,30 @@ define([
          *
          * @param requester A function to make the request with.
          * @param dfd a Deferred to resolve with the response or reject
-         * @param id The String ID of the request.  Used to get tags.
          * @param instruction A String instruction.
+         * @param tags A JS object of tags.
+         * @param cookies An array of cookies to use.
          * @param force Whether to force a load.
          * @param uri URI to resolve instruction references against.  Optional.
          * @param input Input String.  Optional.
          */
-        queueRequest = function (requester, dfd, id, instruction, force, uri, input) {
+        queueRequest = function (requester, dfd, instruction, tags, cookies, force, uri, input) {
             var isFirst = $queue.queue(QUEUE_NAME).length === 0;
 
             $queue.queue(QUEUE_NAME, function () {
-                var jsonRequest = JSON.stringify({
-                    "id": id,
-                    "uri": uri,
-                    "instruction": instruction,
-                    "cookies": data.getCookies(id),
-                    "tags" : data.getTags(id),
-                    "input": input, // Stringify drops this key if undefined.
-                    "force": String(force)
+                var jsonRequest = json.stringify({
+                    id: underscore.uniqueId('request_'),
+                    uri: uri,
+                    instruction: instruction,
+                    tags : tags,
+                    cookies: cookies,
+                    input: input, // Stringify drops this key if undefined.
+                    force: String(force)
                 });
 
                 requester(jsonRequest)
                     .done(function (jsonResp) {
-                        dfd.resolve(JSON.parse(jsonResp));
+                        dfd.resolve(response(json.parse(jsonResp)));
                     }).fail(function (msg) {
                         alert.warn("Request for " + jsonRequest + " failed: " + msg);
                         dfd.reject(msg);
@@ -82,25 +84,25 @@ define([
     /**
      * Request <code>instruction</code>.
      *
-     * @param id The String ID of the request.  Used to get tags.
      * @param instruction A String instruction.
+     * @param tags A JS object of tags to use in the request.
+     * @param cookies A JS object mapping hosts to arrays of cookies.
      * @param force Whether to force a load.
      * @param uri URI to resolve instruction references against.  Optional.
      * @param input Input String.  Optional.
      *
-     * @return A Promise that wil be resolved with the response as a JS
-     * object when the request is done, or rejected with a reason for
-     * why it failed.
+     * @return A Promise that wil be resolved with an openscrape.Response object
+     * when the request is done, or rejected with a reason for why it failed.
      **/
-        request = function (id, instruction, force, uri, input) {
+        request = function (instruction, tags, cookies, force, uri, input) {
             var dfd = $.Deferred();
 
             // Use the applet if it's available, and ajax otherwise.
             applet.enable()
                 .done(function () {
-                    queueRequest(applet.request, dfd, id, instruction, force, uri, input);
+                    queueRequest(applet.request, dfd, instruction, tags, cookies, force, uri, input);
                 }).fail(function () {
-                    queueRequest(ajax.request, dfd, id, instruction, force, uri, input);
+                    queueRequest(ajax.request, dfd, instruction, tags, cookies, force, uri, input);
                 });
 
             return dfd.promise();

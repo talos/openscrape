@@ -18,75 +18,103 @@
    *
    ***/
 
+/*jslint browser: true*/
 /*global define*/
 
 define([
     './openscrape.address',
     './openscrape.alert',
-    './openscrape.data',
     './openscrape.instruction',
     './openscrape.request',
-    './openscrape.visual',
     'lib/jquery',
     'lib/underscore',
     'lib/google',
     'lib/google.rich-marker',
     'lib/json2'
-], function (address, alert, data, instruction, request, visual,
+], function (address, alert, instruction, request,
              $, underscore, google, rich_marker, JSON) {
     "use strict";
 
-    var map,
-        geocoder,
-        diagonal,
-        dblClickWait, // used as a timer to block single-click event
-        overlays = [],
+    return (function () {
 
         /**
-         * Update diagonal measurement for new zoom.
+         * Initialize a map.
+         *
+         * @param elem The DOM element to use for the map.
+         * @param visual {openscrape.Visual} the visual.
+         * @param initialLat The float latitude to start centered on.
+         * @param initialLng The float longitude to start centered on.
+         * @param zoom The integer zoom to start at.
          */
-        updateDiagonal = function () {
-            var bounds = map.getBounds(),
+        function Map(elem, visual, initialLat, initialLng, zoom) {
+            var center = new google.maps.LatLng(initialLat, initialLng),
+                map = new google.maps.Map(elem, {
+                    center: center,
+                    zoom: zoom,
+                    streetViewControl: false,
+                    mapTypeId: google.maps.MapTypeId.TERRAIN
+                }),
+                visContainer = document.createElement('div');
+            this.geocoder = new google.maps.Geocoder();
+            this.getBounds = underscore.bind(map.getBounds, map);
+            this.visual = visual;
+            this.visual.appendTo(visContainer);
+
+            this.overlay = new rich_marker.RichMarker({
+                map: map,
+                visible: false,
+                flat: true,
+                position: center,
+                anchor: rich_marker.RichMarkerPosition.MIDDLE,
+                content: visContainer
+            });
+
+            //underscore.bindAll(this);
+            this.onLoad = underscore.bind(this.onLoad, this);
+            this.onClick = underscore.bind(this.onClick, this);
+            this.onDblClick = underscore.bind(this.onDblClick, this);
+            this.reverseGeocode = underscore.bind(this.reverseGeocode, this);
+            this.onBoundsChanged = underscore.bind(this.onBoundsChanged, this);
+            this.saveDiagonal = underscore.bind(this.saveDiagonal, this);
+            this.createVisual = underscore.bind(this.createVisual, this);
+
+            google.maps.event.addListener(map, 'click', this.onClick);
+            google.maps.event.addListener(map, 'dblclick', this.onDblClick);
+            google.maps.event.addListener(map, 'bounds_changed', this.onBoundsChanged);
+            // Thanks to http://stackoverflow.com/questions/832692/how-to-check-if-google-maps-is-fully-loaded
+            google.maps.event.addListenerOnce(map, 'idle', this.onLoad);
+
+        }
+
+        /**
+         * Save current diagonal measurement.
+         */
+        Map.prototype.saveDiagonal = function () {
+            var bounds = this.getBounds(),
                 curCenter = bounds.getCenter(),
                 curNorthEast = bounds.getNorthEast();
 
-            diagonal =
+            this.diagonal =
                 Math.sqrt(Math.pow(curCenter.lng() - curNorthEast.lng(), 2) +
                           Math.pow(curCenter.lat() - curNorthEast.lat(), 2));
-        },
-
+        };
 
         /**
-         * Add an overlay for an address visualization.
+         * Switch the overlay to display a new visual.
          *
          * @param address The address to visualize.
          * @param latLng The latLng to add the overlay at.
          */
-        addOverlay = function (address, latLng) {
-            var id = data.newId();
+        Map.prototype.createVisual = function (address, latLng) {
+            var self = this;
 
-            // draw the visualization
-            data.saveTags(id, address);
-            request(
-                id,
-                instruction.property(address),
-                true,
-                ''
-            ).done(function (resp) {
-                data.saveResponse(id, resp);
-
-                // Rich marker example @ http://google-maps-utility-library-v3.googlecode.com/svn/trunk/richmarker/examples/richmarker.html?compiled
-                var overlay = new rich_marker.RichMarker({
-                    map: map,
-                    position: latLng,
-                    flat: true, // this just controls... shadow
-                    anchor: rich_marker.RichMarkerPosition.MIDDLE,
-                    content: visual.draw(id)
+            request(instruction.property(address), address, {}, true, '')
+                .done(function (resp) {
+                    self.visual.visualize(resp);
+                    self.overlay.setPosition(latLng);
+                    self.overlay.setVisible(true);
                 });
-
-                overlays.push(overlay);
-            });
-        },
+        };
 
         /**
          * Reverse geocode a latitude/longitude, to obtain an address.
@@ -98,11 +126,11 @@ define([
          * openscrape.address when successful, or rejected with
          * an error message if there is a problem.
          */
-        reverseGeocode = function (lat, lng) {
+        Map.prototype.reverseGeocode = function (lat, lng) {
             var dfd = new $.Deferred(),
                 latlng = new google.maps.LatLng(lat, lng);
 
-            geocoder.geocode({ 'latLng': latlng }, function (results, status) {
+            this.geocoder.geocode({ 'latLng': latlng }, function (results, status) {
                 var addresses;
 
                 if (status === google.maps.GeocoderStatus.OK) {
@@ -146,45 +174,47 @@ define([
                 }
             });
             return dfd.promise();
-        },
+        };
 
         /**
          *  Do something only the first time the map is loaded
          */
-        onLoad = function (evt) {
-            updateDiagonal();
-        },
+        Map.prototype.onLoad = function (evt) {
+            this.saveDiagonal();
+        };
 
         /**
          * Set up click listener to create markers.
          */
-        onClick = function (evt) {
-            var latLng = evt.latLng;
+        Map.prototype.onClick = function (evt) {
+            var latLng = evt.latLng,
+                self = this;
 
-            dblClickWait = setTimeout(function () {
+            this.dblClickWait = setTimeout(function () {
                 //openscrape.map.marker(latLng.lat(), latLng.lng(), pixel.x, pixel.y);
-                reverseGeocode(latLng.lat(), latLng.lng())
+                self.reverseGeocode(latLng.lat(), latLng.lng())
                     .done(function (address) {
-                        addOverlay(address, latLng);
+                        self.visual.destroy();
+                        self.createVisual(address, latLng);
                     }).fail(function (message) {
                         alert.warn('Could not reverse geocode: ' + message);
                     });
 
             }, 500); // wait .5 second to be sure it's not a double click
-        },
+        };
 
         /**
          * Prevent single-click from firing on double-click
          */
-        onDblClick = function (evt) {
-            clearTimeout(dblClickWait);
-        },
+        Map.prototype.onDblClick = function (evt) {
+            clearTimeout(this.dblClickWait);
+        };
 
         /**
          * Keep track of current zoom level
          */
-        onBoundsChanged = function (evt) {
-            var lastDiagonal = diagonal,
+        Map.prototype.onBoundsChanged = function (evt) {
+            var lastDiagonal = this.diagonal,
                 ratio,
                 i,
                 $content,
@@ -192,9 +222,9 @@ define([
                 height,
                 width;
 
-            updateDiagonal();
+            this.saveDiagonal();
 
-            ratio = lastDiagonal / diagonal;
+            ratio = lastDiagonal / this.diagonal;
 
             // scale overlays
             // if (ratio > 1.05 || ratio < 0.95) {
@@ -207,32 +237,6 @@ define([
             //     }
             // }
         };
-
-    return {
-
-        /**
-         * Initialize a map.
-         *
-         * @param elem The DOM element to use for the map.
-         * @param initialLat The float latitude to start centered on.
-         * @param initialLng The float longitude to start centered on.
-         * @param zoom The integer zoom to start at.
-         */
-        init: function (elem, initialLat, initialLng, zoom, instruction) {
-
-            map = new google.maps.Map(elem, {
-                center: new google.maps.LatLng(initialLat, initialLng),
-                zoom: zoom,
-                streetViewControl: false,
-                mapTypeId: google.maps.MapTypeId.TERRAIN
-            });
-            geocoder = new google.maps.Geocoder();
-
-            google.maps.event.addListener(map, 'click', onClick);
-            google.maps.event.addListener(map, 'dblclick', onDblClick);
-            google.maps.event.addListener(map, 'bounds_changed', onBoundsChanged);
-            // Thanks to http://stackoverflow.com/questions/832692/how-to-check-if-google-maps-is-fully-loaded
-            google.maps.event.addListenerOnce(map, 'idle', onLoad);
-        }
-    };
+        return Map;
+    }());
 });
