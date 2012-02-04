@@ -54,13 +54,12 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
         },
 
         /**
-         * A Value is a single match from a Ready response.  A single
-         * match corresponds to one name, but may have multiple result
-         * responses.
+         * A Value is a single grouping of children responses from a Ready
+         * response.  It must be subclassed to implement .render(el).
          *
+         * Value.name : the name of this Value grouping
          * Value.responses : an array of Response objects.
          * Value.children : alias for Value.responses
-         * Value.render(el) : render this Value onto the DOM `el'.
          */
         Value = (function () {
 
@@ -71,14 +70,51 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
                 });
                 this.children = this.responses;
 
-                this.render = underscore.bind(this.render, this);
             }
 
-            Value.prototype.render = function (el) {
-
-            };
 
             return Value;
+        }()),
+
+        /**
+         * A Match is a Value resulting from a regular expression
+         * match.  It is produced by Found.
+         *
+         * Match.render(el) : render this Match onto the DOM `el'.
+         */
+        Match = (function () {
+            __extends(Match, Value);
+
+            function Match() {
+                this.render = underscore.bind(this.render, this);
+                Match.__super__.constructor.apply(this, arguments);
+            }
+
+            Match.prototype.render = function (el) {
+                $(el).append($('<div />').text("match"));
+            };
+
+            return Match;
+        }()),
+
+        /**
+         * A Page is a Value resulting from a Loaded
+         *
+         * Page.render(el) : render this Page onto the DOM `el'.
+         */
+        Page = (function () {
+            __extends(Page, Value);
+
+            function Page() {
+                this.render = underscore.bind(this.render, this);
+                Page.__super__.constructor.apply(this, arguments);
+            }
+
+            Page.prototype.render = function (el) {
+                $(el).append($('<div />').text("page"));
+            };
+
+            return Page;
         }()),
 
         /**
@@ -132,10 +168,6 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
                 this.getTags = underscore.bind(this.getTags, this);
             }
 
-            // Response.prototype.render = function (el) {
-            //     throw "Not implemented";
-            // };
-
             Response.prototype.getCookieJar = function (searchParent) {
                 return this.hasParent && searchParent ? this.parentResponse.getCookieJar(true) : {};
             };
@@ -149,32 +181,25 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
 
         /**
          * Ready responses were successes.  They have actual values,
-         * names, and descriptions.  Ready does not override Response.render
-         * on its own, however.
+         * names, and descriptions.  Ready subclasses must override .render and .children.
          */
         Ready = (function () {
             __extends(Ready, Response);
 
             function Ready(obj) {
-                var self = this;
                 this.name = obj.name;
                 this.description = obj.description;
-                this.values = underscore.map(obj.children, function (responsesAry, name) {
-                    return new Value(name, responsesAry, self);
-                });
 
                 this.getCookieJar = underscore.bind(this.getCookieJar, this);
                 this.getTags = underscore.bind(this.getTags, this);
                 Ready.__super__.constructor.apply(this, arguments);
-
-                this.children = this.values;
             }
 
             Ready.prototype.getCookieJar = function (searchParent) {
                 var superJar = Ready.__super__.getCookieJar.call(this, searchParent);
 
-                if (this.values.length === 1) {
-                    underscore.each(this.values[0].responses, function (resp) {
+                if (this.children.length === 1) {
+                    underscore.each(this.children[0].responses, function (resp) {
                         underscore.each(resp.getCookieJar(false), function (cookies, host) {
                             accumulate(superJar, host, cookies);
                         });
@@ -187,8 +212,8 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
             Ready.prototype.getTags = function (searchParent) {
                 var superTags = Ready.__super__.getTags.call(this, searchParent);
 
-                if (this.values.length === 1) {
-                    underscore.each(this.values[0].responses, function (resp) {
+                if (this.children.length === 1) {
+                    underscore.each(this.children[0].responses, function (resp) {
                         superTags.extend(resp.getTags(false));
                     });
                 }
@@ -201,7 +226,7 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
 
         /**
          * Loaded responses were the results of loading a page.  They
-         * always have only one value.  They also have cookies from the Response.
+         * always have only one Page.  They also have cookies from the Response.
          */
         Loaded = (function () {
             __extends(Loaded, Ready);
@@ -213,11 +238,15 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
                 this.getCookieJar = underscore.bind(this.getCookieJar, this);
                 this.getTags = underscore.bind(this.getTags, this);
 
+                this.page = new Page(underscore.keys(obj.children)[0], underscore.values(obj.children)[0], this);
+
                 Loaded.__super__.constructor.apply(this, arguments);
+
+                this.children = [this.page];
             }
 
             Loaded.prototype.render = function (el) {
-                $(el).append($('<div />').text(this.name));
+                $(el).append($('<div />').text("loaded"));
             };
 
             Loaded.prototype.getCookieJar = function (searchParent) {
@@ -235,26 +264,31 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
 
         /**
          * Found responses were the results of looking through some
-         * input.  They can have an arbitrary number of values.
+         * input.  They can have an arbitrary number of matches.
          */
         Found = (function () {
             __extends(Found, Ready);
 
-            function Found() {
+            function Found(obj) {
+                var self = this;
                 this.render = underscore.bind(this.render, this);
                 this.getTags = underscore.bind(this.getTags, this);
+                this.matches = underscore.map(obj.children, function (responsesAry, name) {
+                    return new Match(name, responsesAry, self);
+                });
                 Found.__super__.constructor.apply(this, arguments);
+                this.children = this.matches;
             }
 
             Found.prototype.render = function (el) {
-
+                $(el).append($('<div />').text("found"));
             };
 
             Found.prototype.getTags = function (searchParent) {
                 var superTags = Found.__super__.getTags.call(this, searchParent);
 
-                if (this.values.length === 1) {
-                    superTags[this.name] = this.values[0].name;
+                if (this.matches.length === 1) {
+                    superTags[this.name] = this.matches[0].name;
                 }
 
                 return superTags;
@@ -271,6 +305,11 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
         Wait = (function () {
             __extends(Wait, Response);
 
+            var onClick = function (evt) {
+                console.log('wait clicked!');
+                console.log(this);
+            };
+
             function Wait(obj) {
                 this.render = underscore.bind(this.render, this);
                 this.name = obj.name;
@@ -280,7 +319,9 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
             }
 
             Wait.prototype.render = function (el) {
-                
+                var $div = $('<div />').text("wait");
+                $div.bind('click', onClick.bind(this));
+                $(el).append($div);
             };
 
             return Wait;
@@ -305,7 +346,7 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
             }
 
             Reference.prototype.render = function (el) {
-                
+                $(el).append($('<div />').text("reference"));
             };
 
             return Reference;
@@ -329,7 +370,7 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
             }
 
             Missing.prototype.render = function (el) {
-                
+                $(el).append($('<div />').text("missing"));
             };
 
             return Missing;
@@ -353,7 +394,7 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
             }
 
             Failed.prototype.render = function (el) {
-                
+                $(el).append($('<div />').text("failed"));
             };
 
             return Failed;

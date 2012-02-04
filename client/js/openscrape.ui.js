@@ -23,13 +23,16 @@
 define([
     './openscrape.mouse',
     './openscrape.map',
+    './openscrape.marker',
     './openscrape.visual',
+    './openscrape.request',
+    './openscrape.instruction',
     './openscrape.alert',
     'lib/jquery',
     'lib/underscore',
     'lib/jquery-css2txt',
     'lib/jquery-download'
-], function (mouse, Map, Visual, alert, $, underscore) {
+], function (mouse, Map, Marker, Visual, request, instruction, alert, $, underscore) {
     "use strict";
 
     return {
@@ -42,14 +45,16 @@ define([
          * @param downloadSelector The CSS selector for the download button.
          * @param mouseSelector The CSS selector for the follow-mouse element.
          * @param mapSelector The CSS selector for the map.
+         * @param resetSelector The CSS selector for the reset button.
          */
         init: function (r,
                         alertSelector,
                         downloadSelector,
                         mapSelector,
-                        mouseSelector) {
+                        mouseSelector,
+                        resetSelector) {
 
-            var visual, map;
+            var visual, map, marker;
 
             alert.init($(alertSelector));
 
@@ -57,7 +62,27 @@ define([
             mouse.init($(mouseSelector), 300, 800);
 
             visual = new Visual(r);
-            map = new Map($(mapSelector)[0], visual, 40.77, -73.98, 11);
+            map = new Map($(mapSelector)[0], 40.77, -73.98, 11);
+            marker = new Marker(map, visual.getSVG());
+
+            // If the map is clicked and there is no visual, request
+            // the address and draw one.
+            map.addAddressListener(function (address) {
+                if (!marker.isVisible()) {
+                    request(instruction.property(address), address, {}, true, '')
+                        .done(function (resp) {
+                            marker.setPosition(address.latLng).show();
+                            visual.setResponse(resp).render();
+                        });
+                }
+            });
+
+            // Destroy the visual, then hid the marker, upon reset.
+            $(resetSelector).bind('click', function () {
+                visual.destroy().done(function () {
+                    marker.hide();
+                });
+            });
 
             /**
              Handle download request.

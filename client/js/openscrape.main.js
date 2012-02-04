@@ -26,6 +26,6 @@
     require([
         "./openscrape.ui"
     ], function (ui) {
-        ui.init(300, '#alert', '#download', '#map', '#mouse');
+        ui.init(300, '#alert', '#download', '#map', '#mouse', '#reset');
     });
 }());

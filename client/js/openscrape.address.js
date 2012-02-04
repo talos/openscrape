@@ -23,29 +23,27 @@
 define(function () {
     "use strict";
 
-    /**
-     * Generate a new address object.
-     *
-     * @param number The number.  Required.
-     * @param street The street name. Required.
-     * @param zip The ZIP code.  Required.
-     *
-     * @return An address object
-     */
-    var address = function (number, street, zip) {
-        if (!number || !street || !zip) {
-            throw "Must specify number (" + number + ")"
-                + " street (" + street + ") and zip (" + zip + ")";
-        } else {
-            return {
-                Number: number,
-                Street: street,
-                Borough: 3, // todo
-                Apt: '',
-                zip: zip
-            };
-        }
-    };
+    return (function () {
 
-    return address;
+        /**
+         * Generate a new address object.
+         *
+         * @param number The number.
+         * @param street The street name.
+         * @param zip The ZIP code.
+         * @param lat The latitude.
+         * @param lng The longitude.
+         */
+        function Address(number, street, zip, lat, lng) {
+            this.Number = number;
+            this.Street = street;
+            this.zip = zip;
+            this.lat = lat;
+            this.lng = lng;
+
+            this.Borough = 3; // todo
+        }
+
+        return Address;
+    }());
 });
