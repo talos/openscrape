@@ -23,9 +23,74 @@
 (function () {
     "use strict";
 
+    var r = 300,
+        alertSelector = '#alert',
+        downloadSelector = '#download',
+        mapSelector = '#map',
+        mouseSelector = '#mouse',
+        resetSelector = '#reset';
+
     require([
-        "./openscrape.ui"
-    ], function (ui) {
-        ui.init(300, '#alert', '#download', '#map', '#mouse', '#reset');
+        './openscrape.mouse',
+        './openscrape.map',
+        './openscrape.marker',
+        './openscrape.visual',
+        './openscrape.request',
+        './openscrape.instruction',
+        './openscrape.alert',
+        'lib/jquery',
+        'lib/underscore',
+        'lib/jquery-css2txt',
+        'lib/jquery-download'
+    ], function (mouse, Map, Marker, Visual, request, instruction, alert, $, underscore) {
+
+        var visual, map, marker;
+
+        alert.init($(alertSelector));
+
+        // Set up the mouse-following div
+        mouse.init($(mouseSelector), 300, 800);
+
+        visual = new Visual(r);
+        map = new Map($(mapSelector)[0], 40.77, -73.98, 11);
+        marker = new Marker(map, visual.getSVG());
+
+        // If the map is clicked and there is no visual, request
+        // the address and draw one.
+        map.addAddressListener(function (address) {
+            if (!marker.isVisible()) {
+                request(instruction.property(address), address, {}, true, '')
+                    .done(function (resp) {
+                        marker.setPosition(address.latLng).show();
+                        visual.setResponse(resp).render();
+                    });
+            }
+        });
+
+        // Destroy the visual, then hid the marker, upon reset.
+        $(resetSelector).bind('click', function () {
+            visual.destroy().done(function () {
+                marker.hide();
+            });
+        });
+
+        /**
+         Handle download request.
+
+         Compresses all stylesheets into text, adds them to the SVG before hitting download.
+
+         Won't work if browser doesn't support 'data:' scheme.
+         **/
+        // $(downloadSelector).click(function () {
+        //     var styleText = underscore.reduce(document.styleSheets, function (memo, sheet) {
+        //         return sheet.disabled === false ? memo + $(sheet).css2txt()[0] : memo;
+        //     }, '');
+        //     $('svg').attr('xmlns', "http://www.w3.org/2000/svg")
+        //         .attr('xmlns:xlink', "http://www.w3.org/1999/xlink")
+        //         .prepend($('<style />')
+        //                  .attr('type', 'text/css')
+        //                  .text('<![CDATA[  ' + styleText + '  ]]>'))
+        //         .download(alert.warn);
+        // });
     });
 }());
