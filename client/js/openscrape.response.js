@@ -22,14 +22,21 @@
 /*global define*/
 
 define([
-    'text!../templates/response',
-    'text!../templates/ready',
-    'text!../templates/match',
-    'text!../templates/page',
+    'text!../templates/response.mustache',
+    'text!../templates/ready.mustache',
+    'text!../templates/match.mustache',
+    'text!../templates/page.mustache',
+    'text!../templates/wait.mustache',
+    'text!../templates/reference.mustache',
+    'text!../templates/missing.mustache',
+    'text!../templates/failed.mustache',
+    './openscrape.request',
     'lib/underscore',
     'lib/json2',
-    'lib/jquery'
-], function (templates, underscore, json, $) {
+    'lib/jquery',
+    'lib/requirejs.mustache'
+], function (response, ready, match, page, wait, reference,
+             missing, failed, request, _, json, $, mustache) {
     "use strict";
 
     /**
@@ -41,7 +48,7 @@ define([
      * @param array An array of values to accumulate.
      */
     var accumulate = function (obj, key, array) {
-            if (underscore.has(obj, key)) {
+            if (_.has(obj, key)) {
                 obj[key].push.apply(obj[key], array);
             } else {
                 obj[key] = array;
@@ -51,7 +58,7 @@ define([
 
         __extends = function (child, parent) {
             var key;
-            underscore.extend(child, parent);
+            _.extend(child, parent);
             function Ctor() {
                 this.constructor = child;
             }
@@ -72,9 +79,9 @@ define([
         Value = (function () {
 
             function Value(name, responsesAry, parentResponse) {
-                this.id = underscore.uniqueId('value_');
+                this.id = _.uniqueId('value_');
                 this.name = name;
-                this.responses = underscore.map(responsesAry, function (respObj) {
+                this.responses = _.map(responsesAry, function (respObj) {
                     return Response.create(respObj, parentResponse);
                 });
                 this.children = this.responses;
@@ -93,12 +100,12 @@ define([
             __extends(Match, Value);
 
             function Match() {
-                this.render = underscore.bind(this.render, this);
+                this.render = _.bind(this.render, this);
                 Match.__super__.constructor.apply(this, arguments);
             }
 
             Match.prototype.render = function (el) {
-                $(el).append(templates.render('match', this));
+                $(el).html(mustache.render(match, this));
             };
 
             return Match;
@@ -113,13 +120,13 @@ define([
             __extends(Page, Value);
 
             function Page() {
-                this.render = underscore.bind(this.render, this);
+                this.render = _.bind(this.render, this);
                 Page.__super__.constructor.apply(this, arguments);
                 this.pageDataURI = 'data:text/html;charset=utf-8,' + encodeURIComponent(this.name);
             }
 
             Page.prototype.render = function (el) {
-                $(el).append(templates.render(this));
+                $(el).html(mustache.render(page, this));
             };
 
             return Page;
@@ -166,14 +173,15 @@ define([
             };
 
             function Response(obj, parentResponse) {
-                this.id = underscore.uniqueId('response_');
+                this.id = _.uniqueId('response_');
                 this.responseParent = parentResponse;
                 this.hasParent = typeof parentResponse !== 'undefined';
+                this.instruction = obj.instruction;
 
                 this.children = [];
 
-                this.getCookieJar = underscore.bind(this.getCookieJar, this);
-                this.getTags = underscore.bind(this.getTags, this);
+                this.getCookieJar = _.bind(this.getCookieJar, this);
+                this.getTags = _.bind(this.getTags, this);
             }
 
             Response.prototype.getCookieJar = function (searchParent) {
@@ -189,7 +197,7 @@ define([
 
         /**
          * Ready responses were successes.  They have actual values,
-         * names, and descriptions.  Ready subclasses must override .render and .children.
+         * names, and descriptions.  Ready subclasses must override .children.
          */
         Ready = (function () {
             __extends(Ready, Response);
@@ -198,8 +206,9 @@ define([
                 this.name = obj.name;
                 this.description = obj.description;
 
-                this.getCookieJar = underscore.bind(this.getCookieJar, this);
-                this.getTags = underscore.bind(this.getTags, this);
+                this.getCookieJar = _.bind(this.getCookieJar, this);
+                this.getTags = _.bind(this.getTags, this);
+                this.render = _.bind(this.render, this);
                 Ready.__super__.constructor.apply(this, arguments);
             }
 
@@ -207,8 +216,8 @@ define([
                 var superJar = Ready.__super__.getCookieJar.call(this, searchParent);
 
                 if (this.children.length === 1) {
-                    underscore.each(this.children[0].responses, function (resp) {
-                        underscore.each(resp.getCookieJar(false), function (cookies, host) {
+                    _.each(this.children[0].responses, function (resp) {
+                        _.each(resp.getCookieJar(false), function (cookies, host) {
                             accumulate(superJar, host, cookies);
                         });
                     });
@@ -221,12 +230,16 @@ define([
                 var superTags = Ready.__super__.getTags.call(this, searchParent);
 
                 if (this.children.length === 1) {
-                    underscore.each(this.children[0].responses, function (resp) {
+                    _.each(this.children[0].responses, function (resp) {
                         superTags.extend(resp.getTags(false));
                     });
                 }
 
                 return superTags;
+            };
+
+            Ready.prototype.render = function (el) {
+                $(el).html(mustache.render(ready, this));
             };
 
             return Ready;
@@ -242,11 +255,10 @@ define([
             function Loaded(obj) {
                 this.cookieJar = obj.cookies;
 
-                this.render = underscore.bind(this.render, this);
-                this.getCookieJar = underscore.bind(this.getCookieJar, this);
-                this.getTags = underscore.bind(this.getTags, this);
+                this.getCookieJar = _.bind(this.getCookieJar, this);
+                this.getTags = _.bind(this.getTags, this);
 
-                this.page = new Page(underscore.keys(obj.children)[0], underscore.values(obj.children)[0], this);
+                this.page = new Page(_.keys(obj.children)[0], _.values(obj.children)[0], this);
 
                 Loaded.__super__.constructor.apply(this, arguments);
 
@@ -256,15 +268,11 @@ define([
             Loaded.prototype.getCookieJar = function (searchParent) {
                 var superJar = Loaded.__super__.getCookieJar.call(this, searchParent);
 
-                underscore.each(this.cookieJar, function (host, cookies) {
+                _.each(this.cookieJar, function (host, cookies) {
                     accumulate(superJar, host, cookies);
                 });
 
                 return superJar;
-            };
-
-            Loaded.prototype.render = function (el) {
-                
             };
 
             return Loaded;
@@ -279,18 +287,13 @@ define([
 
             function Found(obj) {
                 var self = this;
-                this.render = underscore.bind(this.render, this);
-                this.getTags = underscore.bind(this.getTags, this);
-                this.matches = underscore.map(obj.children, function (responsesAry, name) {
+                this.getTags = _.bind(this.getTags, this);
+                this.matches = _.map(obj.children, function (responsesAry, name) {
                     return new Match(name, responsesAry, self);
                 });
                 Found.__super__.constructor.apply(this, arguments);
                 this.children = this.matches;
             }
-
-            Found.prototype.render = function (el) {
-                $(el).append($('<div />').text("found"));
-            };
 
             Found.prototype.getTags = function (searchParent) {
                 var superTags = Found.__super__.getTags.call(this, searchParent);
@@ -313,13 +316,23 @@ define([
         Wait = (function () {
             __extends(Wait, Response);
 
-            var onClick = function (evt) {
-                console.log('wait clicked!');
-                console.log(this);
+            var load = function (evt) {
+                request(this.instruction,
+                        this.getTags(),
+                        this.getCookieJar(),
+                        true, '')
+                    .done(_.bind(function (resp) {
+                        // TODO does this correctly replace?
+                        var oldId = this.id;
+                        _.extend(this, resp);
+                        this.id = oldId;
+                        this.render();
+                        // TODO render new children?
+                    }, this));
             };
 
             function Wait(obj) {
-                this.render = underscore.bind(this.render, this);
+                this.render = _.bind(this.render, this);
                 this.name = obj.name;
                 this.description = obj.description;
 
@@ -327,9 +340,8 @@ define([
             }
 
             Wait.prototype.render = function (el) {
-                var $div = $('<div />').text("wait");
-                $div.bind('click', onClick.bind(this));
-                $(el).append($div);
+                $(el).html(mustache.render(wait, this))
+                    .find('.load').bind('click', _.bind(load, this));
             };
 
             return Wait;
@@ -344,9 +356,9 @@ define([
             __extends(Reference, Response);
 
             function Reference(obj) {
-                this.render = underscore.bind(this.render, this);
+                this.render = _.bind(this.render, this);
 
-                this.children = underscore.map(obj.references, function (ref) {
+                this.children = _.map(obj.references, function (ref) {
                     return Response.create(ref, this);
                 });
 
@@ -354,7 +366,7 @@ define([
             }
 
             Reference.prototype.render = function (el) {
-                $(el).append($('<div />').text("reference"));
+                $(el).html(mustache.render(reference, this));
             };
 
             return Reference;
@@ -370,7 +382,7 @@ define([
             __extends(Missing, Response);
 
             function Missing(obj) {
-                this.render = underscore.bind(this.render, this);
+                this.render = _.bind(this.render, this);
 
                 this.missing = obj.missing;
 
@@ -378,7 +390,7 @@ define([
             }
 
             Missing.prototype.render = function (el) {
-                $(el).append($('<div />').text("missing"));
+                $(el).html(mustache.render(missing, this));
             };
 
             return Missing;
@@ -394,7 +406,7 @@ define([
             __extends(Failed, Response);
 
             function Failed(obj) {
-                this.render = underscore.bind(this.render, this);
+                this.render = _.bind(this.render, this);
 
                 this.failed = obj.failed;
 
@@ -402,7 +414,7 @@ define([
             }
 
             Failed.prototype.render = function (el) {
-                $(el).append($('<div />').text("failed"));
+                $(el).html(mustache.render(failed, this));
             };
 
             return Failed;
