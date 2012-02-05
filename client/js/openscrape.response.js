@@ -33,10 +33,11 @@ define([
     './openscrape.request',
     'lib/underscore',
     'lib/json2',
+    'lib/requirejs.mustache',
     'lib/jquery',
-    'lib/requirejs.mustache'
+    'lib/jquery-rescale'
 ], function (response, ready, match, page, wait, reference,
-             missing, failed, request, _, json, $, mustache) {
+             missing, failed, request, _, json, mustache, $) {
     "use strict";
 
     /**
@@ -56,6 +57,8 @@ define([
 
         },
 
+        pad = 50,
+
         __extends = function (child, parent) {
             var key;
             _.extend(child, parent);
@@ -70,7 +73,7 @@ define([
 
         /**
          * A Value is a single grouping of children responses from a Ready
-         * response.  It must be subclassed to implement .render(el).
+         * response.  It must be subclassed to provide an .el property.
          *
          * Value.name : the name of this Value grouping
          * Value.responses : an array of Response objects.
@@ -82,10 +85,21 @@ define([
                 this.id = _.uniqueId('value_');
                 this.name = name;
                 this.responses = _.map(responsesAry, function (respObj) {
-                    return Response.create(respObj, parentResponse);
-                });
+                    return Response.create(respObj, this);
+                }, this);
+                this.parentResponse = parentResponse;
                 this.children = this.responses;
+                this.distance = _.bind(this.distance, this);
             }
+
+            /**
+             * @return {Number} How far out this value runs.
+             */
+            Value.prototype.distance = function () {
+                var $el = $(this.el),
+                    width = $el.html() ? $el.width() : 0;
+                return this.parentResponse.distance() + width + pad;
+            };
 
             return Value;
         }()),
@@ -93,20 +107,14 @@ define([
         /**
          * A Match is a Value resulting from a regular expression
          * match.  It is produced by Found.
-         *
-         * Match.render(el) : render this Match onto the DOM `el'.
          */
         Match = (function () {
             __extends(Match, Value);
 
             function Match() {
-                this.render = _.bind(this.render, this);
                 Match.__super__.constructor.apply(this, arguments);
+                this.el = mustache.render(match, this);
             }
-
-            Match.prototype.render = function (el) {
-                $(el).html(mustache.render(match, this));
-            };
 
             return Match;
         }()),
@@ -120,14 +128,10 @@ define([
             __extends(Page, Value);
 
             function Page() {
-                this.render = _.bind(this.render, this);
                 Page.__super__.constructor.apply(this, arguments);
                 this.pageDataURI = 'data:text/html;charset=utf-8,' + encodeURIComponent(this.name);
+                this.el = mustache.render(page, this);
             }
-
-            Page.prototype.render = function (el) {
-                $(el).html(mustache.render(page, this));
-            };
 
             return Page;
         }()),
@@ -135,12 +139,11 @@ define([
         /**
          * A Response is the result of trying to execute a single instruction.
          *
-         * Response.parentResponse : The parent response of this Response.  There is also a .parent attribute created by d3.
+         * Response.parentResponse : The parent response of this Response.
+                                      There is also a .parent attribute created by d3.
          * Response.children : An array of Value or Response objects.
                                Returns empty array by default.
                                Should be overriden by subclasses.
-         * Response.render(el) : render this Response onto the DOM `el'.
-         *                       Subclasses should override this method.
          * Response.getTags(searchParent) : Get the tags associated with this response and, 
          *                                  optionally, its ancestors.
          * Response.getCookieJar(searchParent) : Get The cookie jar associated with this
@@ -151,46 +154,76 @@ define([
              * Static method to construct a Response subclass from a JS object.
              *
              * @param obj A JS object.
-             * @param parentResponse The parent Response of this Response.  Optional.
+             * @param parentValue The parent Value of this Response. Optional
              */
-            Response.create = function (obj, parentResponse) {
+            Response.create = function (obj, parentValue) {
                 switch (obj.status) {
                 case 'loaded':
-                    return new Loaded(obj, parentResponse);
+                    return new Loaded(obj, parentValue);
                 case 'found':
-                    return new Found(obj, parentResponse);
+                    return new Found(obj, parentValue);
                 case 'reference':
-                    return new Reference(obj, parentResponse);
+                    return new Reference(obj, parentValue);
                 case 'wait':
-                    return new Wait(obj, parentResponse);
+                    return new Wait(obj, parentValue);
                 case 'missing':
-                    return new Missing(obj, parentResponse);
+                    return new Missing(obj, parentValue);
                 case 'failed':
-                    return new Failed(obj, parentResponse);
+                    return new Failed(obj, parentValue);
                 default:
                     throw "Unknown Response status: " + obj.status;
                 }
             };
 
-            function Response(obj, parentResponse) {
+            function Response(obj, parentValue) {
                 this.id = _.uniqueId('response_');
-                this.responseParent = parentResponse;
-                this.hasParent = typeof parentResponse !== 'undefined';
+                this.parentValue = parentValue;
+                //this.hasParent = typeof parentResponse !== 'undefined';
                 this.instruction = obj.instruction;
 
                 this.children = [];
 
                 this.getCookieJar = _.bind(this.getCookieJar, this);
                 this.getTags = _.bind(this.getTags, this);
+                this.distance = _.bind(this.distance, this);
             }
 
             Response.prototype.getCookieJar = function (searchParent) {
-                return this.hasParent && searchParent ? this.parentResponse.getCookieJar(true) : {};
+                return this.parentValue && searchParent ? this.parentValue.parentResponse.getCookieJar(true) : {};
             };
 
             Response.prototype.getTags = function (searchParent) {
-                return this.hasParent && searchParent ? this.parentResponse.getTags(true) : {};
+                return this.parentValue && searchParent ? this.parentValue.parentResponse.getTags(true) : {};
             };
+
+            /**
+             * @return {Number} How far from the origin this Response runs.
+             */
+            Response.prototype.distance = function () {
+                var $el = $(this.el),
+                    width = $el.html() ? $el.width() : 0;
+                return (this.parentValue ? this.parentValue.distance() : 0) + width + pad;
+            };
+
+            // /**
+            //  * @return {Array} {'name': 'value'} pairs.
+            //  */
+            // Response.prototype.tagsArray = function () {
+            //     return _.map(this.getTags(true), function (value, name) {
+            //         return {name: name, value: value};
+            //     });
+            // };
+
+            // /**
+            //  * @return {Array} of {Object}s of this format:
+            //  *
+            //  * [{'host': {String}, 'cookies': [{String}, {String}, {String}]}, ...]
+            //  */
+            // Response.prototype.cookiesArray = function () {
+            //     return _.map(this.getCookieJar(true), function (host, cookies) {
+            //         return {host: host, cookies: cookies};
+            //     });
+            // };
 
             return Response;
         }()),
@@ -208,8 +241,9 @@ define([
 
                 this.getCookieJar = _.bind(this.getCookieJar, this);
                 this.getTags = _.bind(this.getTags, this);
-                this.render = _.bind(this.render, this);
                 Ready.__super__.constructor.apply(this, arguments);
+
+                this.el = mustache.render(ready, this);
             }
 
             Ready.prototype.getCookieJar = function (searchParent) {
@@ -236,10 +270,6 @@ define([
                 }
 
                 return superTags;
-            };
-
-            Ready.prototype.render = function (el) {
-                $(el).html(mustache.render(ready, this));
             };
 
             return Ready;
@@ -321,28 +351,26 @@ define([
                         this.getTags(),
                         this.getCookieJar(),
                         true, '')
-                    .done(_.bind(function (resp) {
+                    .done(_.bind(function (respObj) {
+                        console.log(respObj);
+
                         // TODO does this correctly replace?
-                        var oldId = this.id;
-                        _.extend(this, resp);
-                        this.id = oldId;
-                        this.render();
+                        // var oldId = this.id;
+                        // _.extend(this, Response.create(respObj, this.parentValue));
+                        // this.id = oldId;
+                        // this.render();
                         // TODO render new children?
                     }, this));
             };
 
             function Wait(obj) {
-                this.render = _.bind(this.render, this);
                 this.name = obj.name;
                 this.description = obj.description;
 
                 Wait.__super__.constructor.apply(this, arguments);
+                this.el = mustache.render(wait, this);
+                $(this.el).find('.load').bind('click', _.bind(load, this));
             }
-
-            Wait.prototype.render = function (el) {
-                $(el).html(mustache.render(wait, this))
-                    .find('.load').bind('click', _.bind(load, this));
-            };
 
             return Wait;
         }()),
@@ -356,18 +384,13 @@ define([
             __extends(Reference, Response);
 
             function Reference(obj) {
-                this.render = _.bind(this.render, this);
-
                 this.children = _.map(obj.references, function (ref) {
                     return Response.create(ref, this);
                 });
 
                 Reference.__super__.constructor.apply(this, arguments);
+                this.el = mustache.render(reference, this);
             }
-
-            Reference.prototype.render = function (el) {
-                $(el).html(mustache.render(reference, this));
-            };
 
             return Reference;
         }()),
@@ -382,16 +405,11 @@ define([
             __extends(Missing, Response);
 
             function Missing(obj) {
-                this.render = _.bind(this.render, this);
-
                 this.missing = obj.missing;
 
                 Missing.__super__.constructor.apply(this, arguments);
+                this.el = mustache.render(missing, this);
             }
-
-            Missing.prototype.render = function (el) {
-                $(el).html(mustache.render(missing, this));
-            };
 
             return Missing;
         }()),
@@ -406,16 +424,11 @@ define([
             __extends(Failed, Response);
 
             function Failed(obj) {
-                this.render = _.bind(this.render, this);
-
                 this.failed = obj.failed;
 
                 Failed.__super__.constructor.apply(this, arguments);
+                this.el = mustache.render(failed, this);
             }
-
-            Failed.prototype.render = function (el) {
-                $(el).html(mustache.render(failed, this));
-            };
 
             return Failed;
         }());

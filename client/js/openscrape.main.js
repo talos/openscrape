@@ -18,6 +18,7 @@
    *
    ***/
 
+/*jslint nomen: true*/
 /*globals require*/
 
 (function () {
@@ -36,13 +37,14 @@
         './openscrape.marker',
         './openscrape.visual',
         './openscrape.request',
+        './openscrape.response',
         './openscrape.instruction',
         './openscrape.alert',
         'lib/jquery',
-        'lib/underscore',
         'lib/jquery-css2txt',
         'lib/jquery-download'
-    ], function (Mouse, Map, Marker, Visual, request, instruction, alert, $, underscore) {
+    ], function (Mouse, Map, Marker, Visual, request, response,
+                 instruction, alert, $) {
 
         var visual, map, marker,
             mouse = new Mouse($(mouseSelector), 300, 800);
@@ -63,7 +65,8 @@
                           Street: address.street,
                           Borough: address.borough },
                         {}, true, '')
-                    .done(function (resp) {
+                    .done(function (respObj) {
+                        var resp = response(respObj);
                         marker.setPosition(address.lat, address.lng).show();
                         visual.setResponse(resp).render();
                     });
@@ -85,7 +88,7 @@
          Won't work if browser doesn't support 'data:' scheme.
          **/
         // $(downloadSelector).click(function () {
-        //     var styleText = underscore.reduce(document.styleSheets, function (memo, sheet) {
+        //     var styleText = _.reduce(document.styleSheets, function (memo, sheet) {
         //         return sheet.disabled === false ? memo + $(sheet).css2txt()[0] : memo;
         //     }, '');
         //     $('svg').attr('xmlns', "http://www.w3.org/2000/svg")

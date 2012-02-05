@@ -24,11 +24,10 @@ define([
     './openscrape.alert',
     './openscrape.applet',
     './openscrape.ajax',
-    './openscrape.response',
     'lib/jquery',
     'lib/json2',
     'lib/underscore'
-], function (alert, applet, ajax, response, $, json, underscore) {
+], function (alert, applet, ajax, $, json, underscore) {
     "use strict";
 
     // PRIVATE
@@ -63,7 +62,7 @@ define([
 
                 requester(jsonRequest)
                     .done(function (jsonResp) {
-                        dfd.resolve(response(json.parse(jsonResp)));
+                        dfd.resolve(json.parse(jsonResp));
                     }).fail(function (msg) {
                         alert.warn("Request for " + jsonRequest + " failed: " + msg);
                         dfd.reject(msg);
@@ -91,7 +90,7 @@ define([
      * @param uri URI to resolve instruction references against.  Optional.
      * @param input Input String.  Optional.
      *
-     * @return A Promise that wil be resolved with an openscrape.Response object
+     * @return A Promise that wil be resolved with the raw JS object of the response
      * when the request is done, or rejected with a reason for why it failed.
      **/
         request = function (instruction, tags, cookies, force, uri, input) {

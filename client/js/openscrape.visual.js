@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint browser: true*/
+/*jslint browser: true, nomen: true*/
 /*global define*/
 
 define([
@@ -28,7 +28,7 @@ define([
     'lib/jquery',
     'lib/underscore',
     'lib/json2'
-], function (request, visual, d3, $, underscore, JSON) {
+], function (request, visual, d3, $, _, JSON) {
     "use strict";
 
     /**
@@ -91,18 +91,17 @@ define([
                 .attr("transform", "translate(" + r + "," + r + ")");
 
             this.tree = d3.layout.tree()
-                .size([360, r - 120])
+                .size([360, r])
                 .separation(function (a, b) {
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
-                    //return (a.parent === b.parent ? 1 : 3) / (a.depth * 2);
                 });
 
             this.response = null;
 
-            this.getSVG = underscore.bind(this.getSVG, this);
-            this.destroy = underscore.bind(this.destroy, this);
-            this.setResponse = underscore.bind(this.setResponse, this);
-            this.render = underscore.bind(this.render, this);
+            this.getSVG = _.bind(this.getSVG, this);
+            this.destroy = _.bind(this.destroy, this);
+            this.setResponse = _.bind(this.setResponse, this);
+            this.render = _.bind(this.render, this);
         }
 
         /**
@@ -156,38 +155,53 @@ define([
                         return d.id;
                     });
 
-            link.enter()
-                .append("path")
-                .attr('d', origin)
-                .attr("class", "link");
-
-            link.transition()
-                .duration(1000)
-                .attr("d", diagonal);
-
-            link.exit()
-                .transition()
-                .duration(1000)
-                .attr('d', origin)
-                .remove();
-
             if (this.response) {
-                node.enter().append('svg:foreignObject')
+                node.enter()
+                    .append('g')
                     .classed('node', true)
-                // .attr('transform', function (d) {
-                //     return "rotate(" + (-d.x + 90) + ")";
-                // })
+                    .attr('transform', function (d) {
+                        return "rotate(" + (d.x - 90) + ")";
+                    })
+                    .append('svg:foreignObject')
+                    .classed('foreign', true)
+                    // .attr('transform', function (d) {
+                    //     return d.x < 180 ? null : "rotate(180)";
+                    // })
                     .attr('height', '1000')
                     .attr('width', '1000')
-                //.attr('x', function (d) { return d.x < 180 ? 0 : -100; })
                     .append('xhtml:body')
-                    .each(function (d) { d.render(this); });
+                    .each(function (d) {
+                        // todo more elegant -- d.el doesn't gain parent otherwise
+                        var $el = $(d.el).appendTo($(this));
+                        d.el = $el[0];
+
+                        // $el.bind('click', function () {
+                        //     console.log(d);
+                        //     console.log(d.distance());
+                        //     console.log(d.parent.distance());
+                        // });
+                    });
             }
 
             node.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    return "rotate(" + (d.x - 90) + ")translate(" + d.y + ")";
+                    var rotate = d.parent ? d.x - 90 : d.x, // perpendicular root
+                        translate = d.parent ? d.parent.distance() : 0,
+                        scale = 1;
+
+                    return "rotate(" + rotate + ")" +
+                        "translate(" + translate + ")" +
+                        "scale(" + scale + ")";
+                })
+                .select('.foreign')
+                .attr('transform', function (d) {
+                    var $el = $(d.el),
+                        y = $el.html() ? -$el.height() / 2 : 0,
+                        x = d.x < 180 ? 0 : ($el.html() ? -$el.width() : 0),
+                        rotate = d.x < 180 ? 0 : 180;
+
+                    return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
                 });
 
             node.exit()
@@ -198,6 +212,34 @@ define([
                 })
                 .remove();
 
+            link.enter()
+                .append("path")
+                .attr('d', origin)
+                .attr("class", "link");
+
+            link.transition()
+                .duration(1000)
+                .attr("d", function (d, i) {
+                    return diagonal({
+                        source: { x: d.source.x,
+                                  y: d.source.parent ? d.source.parent.distance() : 0},
+                        target: { x: d.target.x,
+                                  y: d.target.parent ? d.target.parent.distance() : 0}
+                    }, i);
+                });
+
+            link.exit()
+                .transition()
+                .duration(1000)
+                .attr('d', origin)
+                .remove();
+
+            // ensure that paths are drawn below nodes
+            this.vis.selectAll('g.node,path.link')
+                .sort(function (a, b) {
+                    // if b has a target, it is a link
+                    return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;
+                });
         };
 
         return Visual;

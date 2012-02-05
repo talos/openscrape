@@ -2,8 +2,16 @@
   {{instruction}}
 </div>
 <div title="Tags" class="tab">
-  {{tags}}
+  {{#tagsArray}}
+    <div>{{name}}: {{value}}</div>
+  {{/tagsArray}}
 </div>
 <div title="Cookies" class="tab">
-  {{cookies}}
+  {{#cookiesArray}}
+    <div>{{host}}
+      {{#cookies}}
+        <div>{{.}}</div>
+      {{/cookies}}
+    </div>
+  {{/cookiesArray}}
 </div>

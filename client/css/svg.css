@@ -1,14 +1,3 @@
-.background {
-    fill: white;
-    fill-opacity: .7;
-    filter: url(#dropshadow);
-}
-
-circle.root {
-    fill: black;
-    filter: url(#dropshadow);
-}
-
 /* Illustrator doesn't support class names to style paths?  This works instead. */
 path {
     fill: none;
@@ -17,43 +6,20 @@ path {
     filter: url(#dropshadow);
 }
 
-/* .foreign body { */
-/*     position: relative; */
-/* } */
-
-.foreign div.container {
-    display: block;
-    height: 100px;
-    width: 100px;
-}
-
-.foreign div.container div {
+.foreign div {
     display: inline-block;
-    padding: 5px;
-    background: white;
+    max-width: 100px;
+    background: rgba(255,255,255,.5);
     border: 1px solid black;
-    max-width: 88px;
-    max-height: 88px;
-    box-shadow: 3px 3px 6px gray;
-    text-overflow: clip;
+    border-radius: 3px;
+    box-shadow: 3px 3px 6px black;
+    -moz-box-shadow: 3px 3px 6px black;
+    -webkit-box-shadow: 3px 3px 6px black;
 }
 
-.foreign div.container div.left     { border-radius: 0em 1em 1em 1em; }
-.foreign div.container div.right    { border-radius: 1em 0em 1em 1em; float: right; }
-
-.foreign .loaded {
-    cursor: pointer;
-}
-
-.foreign .loaded:hover {
-    font-weight: bold;
-}
-
-.foreign .wait {
-    color: blue;
-    cursor: pointer;
-}
-
-.foreign .wait:hover {
-    font-weight: bold;
+.foreign div div {
+    display: block;
+    border: none;
+    padding: .5em;
+    box-shadow: none;
 }
