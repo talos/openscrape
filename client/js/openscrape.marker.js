@@ -24,11 +24,36 @@
 define([
     'lib/google',
     'lib/google.rich-marker',
-    'lib/underscore'
-], function (google, rich_marker, _) {
+    'lib/underscore',
+    'lib/jquery',
+    'lib/jquery-rescale'
+], function (google, rich_marker, _, $) {
     "use strict";
 
     return (function () {
+
+        /**
+         * Rescale the content.
+         */
+        var rescale = function () {
+            var $content = $(this.content),
+                scale = this.map.getScale() / 4, // make things look better close up
+                cssScale = 'scale(' + scale + ',' + scale + ')',
+                cssOrigin = '(50, 100)',
+                properties = [
+                    [ 'transform', 'transform-origin' ],
+                    [ '-ms-transform', '-ms-transform-origin'], /* IE 9 */
+                    [ '-webkit-transform', '-webkit-transform-origin'],/* Safari and Chrome */
+                    [ '-o-transform', '-o-transform-origin'], /* Opera */
+                    [ '-moz-transform', '-moz-transform-origin' ] /* Firefox */
+                ];
+
+            $content.css(_.reduce(properties, function (memo, prop) {
+                memo[prop[0]] = cssScale;
+                memo[prop[1]] = cssOrigin;
+                return memo;
+            }, {}));
+        };
 
         /**
          * Create a new overlay on the specified map with the
@@ -47,18 +72,19 @@ define([
                 content: content
             });
 
+            map.addZoomChangedListener(_.bind(function (ratio) {
+                rescale.call(this);
+            }, this));
 
-            map.addZoomChangedListener(function (ratio) {
-                // TODO scale content!
-                //$.scale(content);
-            });
-
+            this.map = map;
+            this.content = content;
             this.show = _.bind(this.show, this);
             this.hide = _.bind(this.hide, this);
             this.setPosition = _.bind(this.setPosition, this);
         }
 
         Marker.prototype.show = function () {
+            rescale.call(this);
             this.rMarker.setVisible(true);
             return this;
         };
@@ -72,8 +98,14 @@ define([
             return this.rMarker.getVisible();
         };
 
-        Marker.prototype.setPosition = function (latlng) {
-            this.rMarker.setPosition(latlng);
+        /**
+         * Set the marker's position.
+         *
+         * @param {Number} lat The latitude as a decimal
+         * @param {Number} lng THe longitude as a decimal
+         */
+        Marker.prototype.setPosition = function (lat, lng) {
+            this.rMarker.setPosition(new google.maps.LatLng(lat, lng));
             return this;
         };
 

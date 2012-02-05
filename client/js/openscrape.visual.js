@@ -177,8 +177,8 @@ define([
                 // .attr('transform', function (d) {
                 //     return "rotate(" + (-d.x + 90) + ")";
                 // })
-                    .attr('height', '100')
-                    .attr('width', '100')
+                    .attr('height', '1000')
+                    .attr('width', '1000')
                 //.attr('x', function (d) { return d.x < 180 ? 0 : -100; })
                     .append('xhtml:body')
                     .each(function (d) { d.render(this); });

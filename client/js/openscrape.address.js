@@ -35,13 +35,13 @@ define(function () {
          * @param lng The longitude.
          */
         function Address(number, street, zip, lat, lng) {
-            this.Number = number;
-            this.Street = street;
+            this.number = number;
+            this.street = street;
             this.zip = zip;
             this.lat = lat;
             this.lng = lng;
 
-            this.Borough = 3; // todo
+            this.borough = 3; // todo
         }
 
         return Address;

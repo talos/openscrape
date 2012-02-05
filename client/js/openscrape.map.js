@@ -51,6 +51,7 @@ define([
              */
             onLoad = function (evt) {
                 saveDiagonal.call(this);
+                this.initialDiagonal = this.diagonal;
             },
 
             /**
@@ -63,7 +64,7 @@ define([
                     this.geocoder.reverseGeocode(latLng.lat(), latLng.lng())
                         .done(_.bind(function (address) {
                             _.each(this.addressListeners, function (listener) {
-                                listener.call(this, evt);
+                                listener.call(this, address);
                             });
                         }, this)).fail(function (message) {
                             alert.warn('Could not reverse geocode: ' + message);
@@ -79,7 +80,8 @@ define([
             },
 
             /**
-             * Keep track of current zoom level
+             * Keep track of current zoom level.  Bounds change must
+             * be >10% off to trigger events.
              */
             onBoundsChanged = function (evt) {
                 var lastDiagonal = this.diagonal,
@@ -89,9 +91,11 @@ define([
 
                 ratio = lastDiagonal / this.diagonal;
 
-                _.each(this.zoomChangedListeners, function (listener) {
-                    listener.call(this, ratio);
-                });
+                if (ratio > 1.1 || ratio < 0.9) {
+                    _.each(this.zoomChangedListeners, function (listener) {
+                        listener.call(this, ratio);
+                    }, this);
+                }
             };
 
         /**
@@ -111,7 +115,6 @@ define([
                     streetViewControl: false,
                     mapTypeId: google.maps.MapTypeId.TERRAIN
                 });
-            //this.getBounds = _.bind(map.getBounds, map);
             this.gMap = map;
 
             this.geocoder = new Geocoder();
@@ -120,6 +123,7 @@ define([
             this.zoomChangedListeners = [];
             this.dblClickWaitTime = 500;
 
+            this.getScale = _.bind(this.getScale, this);
             this.addLoadListener = _.bind(this.addLoadListener, this);
             this.addAddressListener = _.bind(this.addAddressListener, this);
             this.addZoomChangedListener = _.bind(this.addZoomChangedListener, this);
@@ -129,6 +133,7 @@ define([
             google.maps.event.addListener(map, 'click', _.bind(onClick, this));
             google.maps.event.addListener(map, 'dblclick', _.bind(onDblClick, this));
             google.maps.event.addListener(map, 'bounds_changed', _.bind(onBoundsChanged, this));
+
         }
 
         /**
@@ -169,6 +174,16 @@ define([
         Map.prototype.addZoomChangedListener = function (listener) {
             this.zoomChangedListeners.push(listener);
             return this;
+        };
+
+        /**
+         * Determine how zoomed in this map is compared to how it started.
+         *
+         * @return {Number} Ratio of how tightly the map is zoomed compared
+         *  to how it started.  2 if twice as close, .5 if half as close, etc.
+         */
+        Map.prototype.getScale = function () {
+            return this.initialDiagonal / this.diagonal;
         };
 
         return Map;

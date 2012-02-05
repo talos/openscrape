@@ -23,7 +23,7 @@
 (function () {
     "use strict";
 
-    var r = 300,
+    var r = 600,
         alertSelector = '#alert',
         downloadSelector = '#download',
         mapSelector = '#map',
@@ -57,9 +57,14 @@
         // the address and draw one.
         map.addAddressListener(function (address) {
             if (!marker.isVisible()) {
-                request(instruction.property(address), address, {}, true, '')
+                request(instruction.property(address),
+                        { Apt: '',
+                          Number: address.number,
+                          Street: address.street,
+                          Borough: address.borough },
+                        {}, true, '')
                     .done(function (resp) {
-                        marker.setPosition(address.latLng).show();
+                        marker.setPosition(address.lat, address.lng).show();
                         visual.setResponse(resp).render();
                     });
             }

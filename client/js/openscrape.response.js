@@ -21,7 +21,15 @@
 /*jslint nomen: true*/
 /*global define*/
 
-define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json, $) {
+define([
+    'text!../templates/response',
+    'text!../templates/ready',
+    'text!../templates/match',
+    'text!../templates/page',
+    'lib/underscore',
+    'lib/json2',
+    'lib/jquery'
+], function (templates, underscore, json, $) {
     "use strict";
 
     /**
@@ -65,13 +73,12 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
 
             function Value(name, responsesAry, parentResponse) {
                 this.id = underscore.uniqueId('value_');
+                this.name = name;
                 this.responses = underscore.map(responsesAry, function (respObj) {
                     return Response.create(respObj, parentResponse);
                 });
                 this.children = this.responses;
-
             }
-
 
             return Value;
         }()),
@@ -91,7 +98,7 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
             }
 
             Match.prototype.render = function (el) {
-                $(el).append($('<div />').text("match"));
+                $(el).append(templates.render('match', this));
             };
 
             return Match;
@@ -108,10 +115,11 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
             function Page() {
                 this.render = underscore.bind(this.render, this);
                 Page.__super__.constructor.apply(this, arguments);
+                this.pageDataURI = 'data:text/html;charset=utf-8,' + encodeURIComponent(this.name);
             }
 
             Page.prototype.render = function (el) {
-                $(el).append($('<div />').text("page"));
+                $(el).append(templates.render(this));
             };
 
             return Page;
@@ -245,10 +253,6 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
                 this.children = [this.page];
             }
 
-            Loaded.prototype.render = function (el) {
-                $(el).append($('<div />').text("loaded"));
-            };
-
             Loaded.prototype.getCookieJar = function (searchParent) {
                 var superJar = Loaded.__super__.getCookieJar.call(this, searchParent);
 
@@ -257,6 +261,10 @@ define(['lib/underscore', 'lib/json2', 'lib/jquery'], function (underscore, json
                 });
 
                 return superJar;
+            };
+
+            Loaded.prototype.render = function (el) {
+                
             };
 
             return Loaded;
