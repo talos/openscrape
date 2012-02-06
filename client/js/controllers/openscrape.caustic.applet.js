@@ -115,7 +115,7 @@ define(['./openscrape.alert', 'lib/jquery', 'lib/json2'], function (alert, $, JS
                 interval;
 
             if (applet === null || typeof applet === 'undefined') {
-                dfd.reject("There is no applet available for requests.  Use ajax instead.");
+                dfd.reject("There is no applet available for requests.  Fall back to proxy.");
             } else if (applet.request(jsonRequest)) {
 
                 // poll the applet for a response

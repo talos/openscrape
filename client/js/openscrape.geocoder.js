@@ -28,73 +28,70 @@ define([
 ], function (Address, underscore, $, google) {
     "use strict";
 
-    return (function () {
+    function Geocoder() {
+        this.geocoder = new google.maps.Geocoder();
+        underscore.bind(this.reverseGeocode, this);
+    }
 
-        function Geocoder() {
-            this.geocoder = new google.maps.Geocoder();
-            underscore.bind(this.reverseGeocode, this);
-        }
+    /**
+     * Reverse geocode a latitude/longitude, to obtain an address.
+     *
+     * @param lat The float latitude to reverse geocode.
+     * @param lng The float longitude to reverse geocode.
+     *
+     * @return {Promise} that will be resolved with a single
+     * {openscrape.Address} when successful, or rejected with
+     * an error message if there is a problem.
+     */
+    Geocoder.prototype.reverseGeocode = function (lat, lng) {
+        var dfd = new $.Deferred(),
+            latlng = new google.maps.LatLng(lat, lng);
 
-        /**
-         * Reverse geocode a latitude/longitude, to obtain an address.
-         *
-         * @param lat The float latitude to reverse geocode.
-         * @param lng The float longitude to reverse geocode.
-         *
-         * @return {Promise} that will be resolved with a single
-         * {openscrape.Address} when successful, or rejected with
-         * an error message if there is a problem.
-         */
-        Geocoder.prototype.reverseGeocode = function (lat, lng) {
-            var dfd = new $.Deferred(),
-                latlng = new google.maps.LatLng(lat, lng);
+        this.geocoder.geocode({ 'latLng': latlng }, function (results, status) {
+            var addresses;
 
-            this.geocoder.geocode({ 'latLng': latlng }, function (results, status) {
-                var addresses;
+            if (status === google.maps.GeocoderStatus.OK) {
+                addresses = [];
+                underscore.each(results, function (raw) {
+                    var number,
+                        street,
+                        zip;
 
-                if (status === google.maps.GeocoderStatus.OK) {
-                    addresses = [];
-                    underscore.each(results, function (raw) {
-                        var number,
-                            street,
-                            zip;
-
-                        // only return precise street addresses
-                        if (underscore.include(raw.types, 'street_address')) {
-                            underscore.each(raw.address_components, function (component) {
-                                if (underscore.include(component.types, 'street_number')) {
-                                    number = component.long_name;
-                                }
-                                if (underscore.include(component.types, 'route')) {
-                                    street = component.long_name;
-                                }
-                                if (underscore.include(component.types, 'postal_code')) {
-                                    zip = component.long_name;
-                                }
-                            });
-
-                            if (number && street && zip) {
-                                addresses.push(new Address(number, street, zip, lat, lng));
+                    // only return precise street addresses
+                    if (underscore.include(raw.types, 'street_address')) {
+                        underscore.each(raw.address_components, function (component) {
+                            if (underscore.include(component.types, 'street_number')) {
+                                number = component.long_name;
                             }
-                        }
-                    });
-                    if (addresses.length === 1) {
-                        dfd.resolve(addresses[0]);
-                    } else if (addresses.length === 0) {
-                        dfd.reject("Geocoder failed: no precise addresses "
-                                   + "found for (" + lat + ", " + lng + ")");
-                    } else {
-                        dfd.reject("Geocoder failed: several addresses "
-                                   + "found for (" + lat + ", " + lng + ")"
-                                   + JSON.stringify(addresses));
-                    }
-                } else {
-                    dfd.reject("Geocoder failed: " + status);
-                }
-            });
-            return dfd.promise();
-        };
+                            if (underscore.include(component.types, 'route')) {
+                                street = component.long_name;
+                            }
+                            if (underscore.include(component.types, 'postal_code')) {
+                                zip = component.long_name;
+                            }
+                        });
 
-        return Geocoder;
-    }());
+                        if (number && street && zip) {
+                            addresses.push(new Address(number, street, zip, lat, lng));
+                        }
+                    }
+                });
+                if (addresses.length === 1) {
+                    dfd.resolve(addresses[0]);
+                } else if (addresses.length === 0) {
+                    dfd.reject("Geocoder failed: no precise addresses "
+                               + "found for (" + lat + ", " + lng + ")");
+                } else {
+                    dfd.reject("Geocoder failed: several addresses "
+                               + "found for (" + lat + ", " + lng + ")"
+                               + JSON.stringify(addresses));
+                }
+            } else {
+                dfd.reject("Geocoder failed: " + status);
+            }
+        });
+        return dfd.promise();
+    };
+
+    return new Geocoder();
 });

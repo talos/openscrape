@@ -31,12 +31,13 @@ define(['lib/jquery'], function ($) {
     // PUBLIC
     return {
         /**
-         Request <code>jsonRequest</code>.
-
-         @param jsonRequest A request serialized as JSON.
-
-         @return A Promise that will be resolved with the raw JSON response when
-         the request is done, or rejected with a reason for why it failed.
+         * Request <code>jsonRequest</code>.
+         *
+         * @param {String} jsonRequest A request serialized as JSON.
+         *
+         * @return {Promise} that will be resolved with the raw JSON response
+         * when the request is done, or rejected with a reason for why it
+         * failed.
          **/
         request: function (jsonRequest) {
             var dfd = $.Deferred();

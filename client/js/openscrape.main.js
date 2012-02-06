@@ -24,27 +24,11 @@
 (function () {
     "use strict";
 
-    var r = 600,
-        alertSelector = '#alert',
-        downloadSelector = '#download',
-        mapSelector = '#map',
-        mouseSelector = '#mouse',
-        resetSelector = '#reset';
-
     require([
-        './openscrape.mouse',
-        './openscrape.map',
-        './openscrape.marker',
-        './openscrape.visual',
-        './openscrape.request',
-        './openscrape.response',
-        './openscrape.instruction',
-        './openscrape.alert',
-        'lib/jquery',
-        'lib/jquery-css2txt',
-        'lib/jquery-download'
-    ], function (Mouse, Map, Marker, Visual, request, response,
-                 instruction, alert, $) {
+        './openscrape.map'
+    ], function (Map) {
+
+        var map = new Map();
 
         var visual, map, marker,
             mouse = new Mouse($(mouseSelector), 300, 800);
@@ -59,17 +43,19 @@
         // the address and draw one.
         map.addAddressListener(function (address) {
             if (!marker.isVisible()) {
-                request(instruction.property(address),
-                        { Apt: '',
-                          Number: address.number,
-                          Street: address.street,
-                          Borough: address.borough },
-                        {}, true, '')
-                    .done(function (respObj) {
-                        var resp = response(respObj);
-                        marker.setPosition(address.lat, address.lng).show();
-                        visual.setResponse(resp).render();
-                    });
+                var request = new Request({
+                    instruction: instruction.property(address),
+                    tags: { Apt: '',
+                            Number: address.number,
+                            Street: address.street,
+                            Borough: address.borough },
+                    force: true
+                });
+                request.send().done(function (respObj) {
+                    var resp = new Response(request, respObj);
+                    marker.setPosition(address.lat, address.lng).show();
+                    visual.setResponse(resp).render();
+                });
             }
         });
 

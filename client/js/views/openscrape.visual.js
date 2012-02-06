@@ -21,14 +21,17 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
+/**
+ * A visual is a view that displays the entire tree of nodes inside a
+ * d3 tree on the map.
+ */
 define([
-    './openscrape.request',
-    './openscrape.visual',
+    'lib/google',
+    'lib/google.rich-marker',
     'lib/d3',
-    'lib/jquery',
     'lib/underscore',
-    'lib/json2'
-], function (request, visual, d3, $, _, JSON) {
+    'lib/backbone'
+], function (google, rich_marker, d3, _, backbone) {
     "use strict";
 
     /**
@@ -65,17 +68,25 @@ define([
 
         origin = d3.svg.diagonal.radial().projection(function (d) {
             return [0, 0];
-        });
+        }),
 
-    return (function () {
-        /**
-         * Initialize openscrape visuals.
-         *
-         * @param r The radius of svg illustrations.
-         */
-        function Visual(r) {
-            var el = document.createElement('div'),
-                svg = d3.select(el).append('svg')
+        r = 300; // size of initial visual
+
+    return new backbone.View.extend({
+
+        initialize: function (options) {
+
+            var marker = new rich_marker.RichMarker({
+                map: mapModel.get('gMap'), // TODO binds us to google maps!!
+                visible: false,
+                flat: true,
+                position: new google.maps.LatLng(mapModel.get('lat', mapModel.get('lng'))),
+                anchor: rich_marker.RichMarkerPosition.MIDDLE,
+                content: this.make('div', 'visual')
+            }),
+
+            svg = d3.select(this.el.getContent())
+                    .append('svg')
                     .attr('xmlns', 'http://www.w3.org/2000/svg')
                     .attr("width", r * 2)
                     .attr("height", r * 2),
@@ -84,7 +95,7 @@ define([
                 dropShadow = newDropShadow(defs)
                     .attr('id', 'dropshadow');
 
-            this.svg = svg[0][0];
+            this.$content = this.$(this.el.getContent());
 
             this.vis = svg.append("g")
                 .attr('id', 'viewport')
@@ -96,56 +107,32 @@ define([
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
                 });
 
-            this.response = null;
-
-            this.getSVG = _.bind(this.getSVG, this);
-            this.destroy = _.bind(this.destroy, this);
-            this.setResponse = _.bind(this.setResponse, this);
-            this.render = _.bind(this.render, this);
-        }
+            this.collection.bind('all', this.render, this);
+        },
 
         /**
-         * Retrieve the visual's SVG element.
-         *
-         * @return {SVGElement} containing the visual.
+         * Rescale the content.
          */
-        Visual.prototype.getSVG = function (el) {
-            return this.svg;
-        };
+        rescale: function (scale) {
+            var cssScale = 'scale(' + scale + ',' + scale + ')',
+                cssOrigin = '(50, 100)',
+                properties = [
+                    [ 'transform', 'transform-origin' ],
+                    [ '-ms-transform', '-ms-transform-origin'], /* IE 9 */
+                    [ '-webkit-transform', '-webkit-transform-origin'],/* Safari and Chrome */
+                    [ '-o-transform', '-o-transform-origin'], /* Opera */
+                    [ '-moz-transform', '-moz-transform-origin' ] /* Firefox */
+                ];
 
-        /**
-         * Destroy the openscrape visual.
-         *
-         * @return {Promise} A Promise that will be resolved when the visual is
-         * destroyed.
-         */
-        Visual.prototype.destroy = function () {
-            this.response = null;
-            this.render();
-            var dfd = new $.Deferred();
-            setTimeout(function () { dfd.resolve(); }, 1000);
+            this.$content.css(_.reduce(properties, function (memo, prop) {
+                memo[prop[0]] = cssScale;
+                memo[prop[1]] = cssOrigin;
+                return memo;
+            }, {}));
+        },
 
-            return dfd.promise();
-        };
-
-        /**
-         * Switch which response the visual is displaying.
-         *
-         * @param response {openscrape.Response} The root of
-         * the visual.
-         *
-         * @return {Visual} this
-         */
-        Visual.prototype.setResponse = function (response) {
-            this.response = response;
-            return this;
-        };
-
-        /**
-         * Redraw.
-         **/
-        Visual.prototype.render = function () {
-            var nodes = this.tree.nodes(this.response || {}),
+        render: function () {
+            var nodes = this.tree.nodes(this.collection),
                 link = this.vis.selectAll("path.link")
                     .data(this.tree.links(nodes), function (d) {
                         return d.source.id + '_' + d.target.id;
@@ -155,33 +142,20 @@ define([
                         return d.id;
                     });
 
-            if (this.response) {
-                node.enter()
-                    .append('g')
-                    .classed('node', true)
-                    .attr('transform', function (d) {
-                        return "rotate(" + (d.x - 90) + ")";
-                    })
-                    .append('svg:foreignObject')
-                    .classed('foreign', true)
-                    // .attr('transform', function (d) {
-                    //     return d.x < 180 ? null : "rotate(180)";
-                    // })
-                    .attr('height', '1000')
-                    .attr('width', '1000')
-                    .append('xhtml:body')
-                    .each(function (d) {
-                        // todo more elegant -- d.el doesn't gain parent otherwise
-                        var $el = $(d.el).appendTo($(this));
-                        d.el = $el[0];
-
-                        // $el.bind('click', function () {
-                        //     console.log(d);
-                        //     console.log(d.distance());
-                        //     console.log(d.parent.distance());
-                        // });
-                    });
-            }
+            node.enter()
+                .append('g')
+                .classed('node', true)
+                .attr('transform', function (d) {
+                    return "rotate(" + (d.x - 90) + ")";
+                })
+                .append('svg:foreignObject')
+                .classed('foreign', true)
+                .attr('height', '1000')
+                .attr('width', '1000')
+                .append('xhtml:body')
+                .each(function (d) {
+                    d.el.appendTo(this);
+                });
 
             node.transition()
                 .duration(1000)
@@ -196,9 +170,8 @@ define([
                 })
                 .select('.foreign')
                 .attr('transform', function (d) {
-                    var $el = $(d.el),
-                        y = $el.html() ? -$el.height() / 2 : 0,
-                        x = d.x < 180 ? 0 : ($el.html() ? -$el.width() : 0),
+                    var y = d.el.html() ? -d.el.height() / 2 : 0,
+                        x = d.x < 180 ? 0 : (d.el.html() ? -d.el.width() : 0),
                         rotate = d.x < 180 ? 0 : 180;
 
                     return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
@@ -240,38 +213,7 @@ define([
                     // if b has a target, it is a link
                     return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;
                 });
-        };
+        }
 
-        return Visual;
-    }());
+    })();
 });
-
-        /**
-         * Stop an event from propagating further.
-         *
-         * @param evt the Event to stop.
-         */
-        // stopEvent = function (evt) {
-        //     if (evt.stopPropagation) {
-        //         evt.stopPropagation();
-        //     } else {
-        //         evt.cancelBubble = true;
-        //     }
-        // },
-
-        // hypotenuse = function (x1, x2, y1, y2) {
-        //     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-        // },
-
-        /**
-         * Calculate the distance of the event from x and y.
-         *
-         * @param evt The event
-         * @param x A pixel x value
-         * @param y A pixel y value
-         *
-         * @return The distance of the pointer from x and y.
-         */
-        // calcDist = function (evt, x, y) {
-        //     return hypotenuse(evt.pageX, x, evt.pageY, y);
-        // },
