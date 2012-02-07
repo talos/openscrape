@@ -25,13 +25,13 @@
     "use strict";
 
     require([
-        'lib/jquery',
-        'views/openscrape.map'
-    ], function ($, MapView) {
-
-        var mapView = new MapView({
-            el: $('#map')[0]
-        });
+        'views/openscrape.map',
+        'lib/jquery'
+    ], function (MapView) {
+        var $ = require('jquery'),
+            mapView = new MapView({
+                el: $('#map')[0]
+            });
 
         /**
          Handle download request.

@@ -32,10 +32,10 @@ define([
     /**
      * The global collection of nodes.
      */
-    return new backbone.Collection.extend({
+    return new (backbone.Collection.extend({
         model: node,
 
         store: new Store('nodes')
 
-    })();
+    }))();
 });

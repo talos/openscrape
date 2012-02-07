@@ -39,8 +39,8 @@ define([
         model: map,
 
         initialize: function () {
-            var center = new google.maps.LatLng(this.model.get('lat'),
-                                                this.model.get('lng'));
+            var center = new google.maps.LatLng(this.model.get('center').lat,
+                                                this.model.get('center').lng);
 
             this.gMap = new google.maps.Map(this.el, {
                 center: center,
@@ -49,6 +49,11 @@ define([
                 streetViewControl: false,
                 mapTypeId: google.maps.MapTypeId.TERRAIN
             });
+
+            console.log(this.model);
+            console.log(this.model.toJSON());
+            //console.log(this.model.get('zoom'));
+            console.log(this.gMap);
 
             // construct visual view using raw google map
             this.visual = new Visual({gMap: this.gMap});

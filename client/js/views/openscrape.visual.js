@@ -76,7 +76,10 @@ define([
 
         r = 300; // size of initial visual
 
-    return new backbone.View.extend({
+    return backbone.View.extend({
+
+        tagName: 'div',
+        className: 'visual',
 
         collection: nodes,
 
@@ -88,10 +91,10 @@ define([
                     flat: true,
                     position: new google.maps.LatLng(map.get('lat', map.get('lng'))),
                     anchor: rich_marker.RichMarkerPosition.MIDDLE,
-                    content: this.make('div', 'visual')
+                    content: this.el
                 }),
 
-                svg = d3.select(this.el.getContent())
+                svg = d3.select(this.el)
                     .append('svg')
                     .attr('xmlns', 'http://www.w3.org/2000/svg')
                     .attr("width", r * 2)
@@ -101,7 +104,6 @@ define([
                 dropShadow = newDropShadow(defs)
                     .attr('id', 'dropshadow');
 
-            this.$content = this.$(this.el.getContent());
             this.marker = marker;
 
             this.vis = svg.append("g")
@@ -186,7 +188,7 @@ define([
                     [ '-moz-transform', '-moz-transform-origin' ] /* Firefox */
                 ];
 
-            this.$content.css(_.reduce(properties, function (memo, prop) {
+            this.$el.css(_.reduce(properties, function (memo, prop) {
                 memo[prop[0]] = cssScale;
                 memo[prop[1]] = cssOrigin;
                 return memo;
@@ -284,5 +286,5 @@ define([
                     return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;
                 });
         }
-    })();
+    });
 });

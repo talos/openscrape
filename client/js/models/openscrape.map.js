@@ -34,7 +34,7 @@ define([
 ], function (google, _, backbone, Store) {
     "use strict";
 
-    return new backbone.Model.extend({
+    return new (backbone.Model.extend({
         defaults: {
             zoom: 11,
             center: {
@@ -72,5 +72,5 @@ define([
                 }
             }, this);
         }
-    });
+    }))();
 });
