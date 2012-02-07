@@ -23,19 +23,15 @@
 
 /**
  * A visual is a view that displays the entire tree of nodes inside a
- * d3 tree on the map.
+ * d3 tree..
  */
 define([
-    'lib/google',
-    'lib/google.rich-marker',
     'lib/d3',
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.geocoder',
-    'models/openscrape.map',
     'collections/openscrape.nodes',
     'views/openscrape.node'
-], function (google, rich_marker, d3, _, backbone, geocoder, map, nodes, Node) {
+], function (d3, _, backbone, nodeCollection, NodeView) {
     "use strict";
 
     /**
@@ -46,25 +42,25 @@ define([
      * @return A filter definition.
      */
     var newDropShadow = function (defs) {
-        var filter = defs.append('filter')
-                .attr('height', '130%'),
+            var filter = defs.append('filter')
+                    .attr('height', '130%'),
 
-            blur = filter.append('feGaussianBlur')
-                .attr('in', 'SourceAlpha')
-                .attr('stdDeviation', '3'),
+                blur = filter.append('feGaussianBlur')
+                    .attr('in', 'SourceAlpha')
+                    .attr('stdDeviation', '3'),
 
-            offset = filter.append('feOffset')
-                .attr('dx', '2')
-                .attr('dy', '2')
-                .attr('result', 'offsetblur'),
+                offset = filter.append('feOffset')
+                    .attr('dx', '2')
+                    .attr('dy', '2')
+                    .attr('result', 'offsetblur'),
 
-            merge = filter.append('feMerge'),
-            node1 = merge.append('feMergeNode'),
-            node2 = merge.append('feMergeNode')
-                .attr('in', 'SourceGraphic');
+                merge = filter.append('feMerge'),
+                node1 = merge.append('feMergeNode'),
+                node2 = merge.append('feMergeNode')
+                    .attr('in', 'SourceGraphic');
 
-        return filter;
-    },
+            return filter;
+        },
 
         diagonal = d3.svg.diagonal.radial().projection(function (d) {
             return [d.y, d.x / 180 * Math.PI];
@@ -81,20 +77,11 @@ define([
         tagName: 'div',
         className: 'visual',
 
-        collection: nodes,
+        collection: nodeCollection,
 
         initialize: function (options) {
 
-            var marker = new rich_marker.RichMarker({
-                    map: options.gMap, // TODO binds us to google maps!!
-                    visible: false,
-                    flat: true,
-                    position: new google.maps.LatLng(map.get('lat', map.get('lng'))),
-                    anchor: rich_marker.RichMarkerPosition.MIDDLE,
-                    content: this.el
-                }),
-
-                svg = d3.select(this.el)
+            var svg = d3.select(this.el)
                     .append('svg')
                     .attr('xmlns', 'http://www.w3.org/2000/svg')
                     .attr("width", r * 2)
@@ -103,8 +90,6 @@ define([
                 defs = svg.append('defs'),
                 dropShadow = newDropShadow(defs)
                     .attr('id', 'dropshadow');
-
-            this.marker = marker;
 
             this.vis = svg.append("g")
                 .attr('id', 'viewport')
@@ -116,87 +101,20 @@ define([
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
                 });
 
-            this.collection.on('all', this.render, this);
-            map.on('zoom_change', this.rescale, this);
-            map.on('click', this.mapClick, this);
-        },
-
-        reverseGeocoding: function () {
-            console.log('reverse geocoding');
-        },
-
-        doneReverseGeocoding: function () {
-            console.log('done reverse geocoding');
-        },
-
-        /**
-         * Make a request for the address.
-         */
-        newRequest: function (address) {
-            this.marker.setPosition(new google.maps.LatLng(address.lat, address.lng));
-            this.collection.create({
-                // TODO
-                instruction: window.location.origin +
-                    window.location.pathname
-                    + "instructions/nyc/property.json",
-                tags: {
-                    Number: address.number,
-                    Street: address.street,
-                    Borough: 3 // TODO
-                }
-            });
-        },
-
-        hide: function () {
-            this.marker.setVisible(false);
-        },
-
-        show: function () {
-            this.marker.setVisible(true);
-        },
-
-        /**
-         * If the node collection is empty, then a map click should
-         * build up a new visual.
-         */
-        mapClick: function (lat, lng) {
-            if (this.collection.length === 0) {
-                geocoder.reverseGeocode(lat, lng)
-                    .done(_.bind(function (address) {
-                        this.newRequest(address);
-                    }, this))
-                    .fail(function () {
-                        // TODO
-                    })
-                    .always(_.bind(function () {
-                        this.doneReverseGeocoding();
-                    }, this));
-            }
-        },
-
-        /**
-         * Rescale the content.
-         */
-        rescale: function (scale) {
-            var cssScale = 'scale(' + scale + ',' + scale + ')',
-                cssOrigin = '(50, 100)',
-                properties = [
-                    [ 'transform', 'transform-origin' ],
-                    [ '-ms-transform', '-ms-transform-origin'], /* IE 9 */
-                    [ '-webkit-transform', '-webkit-transform-origin'],/* Safari and Chrome */
-                    [ '-o-transform', '-o-transform-origin'], /* Opera */
-                    [ '-moz-transform', '-moz-transform-origin' ] /* Firefox */
-                ];
-
-            this.$el.css(_.reduce(properties, function (memo, prop) {
-                memo[prop[0]] = cssScale;
-                memo[prop[1]] = cssOrigin;
-                return memo;
-            }, {}));
+            //this.collection.on('all', this.render, this);
+            this.collection.on('sync', this.render, this);
         },
 
         render: function () {
-            var nodes = this.tree.nodes(this.collection.toJSON()),
+            var collection = this.collection,
+
+                // The .nodes function generates nested JSON.
+                // When we need access to the model itself, use
+                // collection.get().
+                nodes = this.tree.nodes(this.rootNode)
+                    .children(function (d) {
+                        return collection.get(d.id).children();
+                    }),
                 link = this.vis.selectAll("path.link")
                     .data(this.tree.links(nodes), function (d) {
                         return d.source.id + '_' + d.target.id;
@@ -220,8 +138,8 @@ define([
                 .append('div')
                 .each(function (d) {
                     // create view for node
-                    var v = new Node({
-                        model: d,
+                    var v = new NodeView({
+                        model: collection.get(d.id),
                         el: this
                     });
                 });

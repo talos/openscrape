@@ -6,14 +6,15 @@
 //     http://backbonejs.org
 
 /*jslint nomen: true */
-/*global define, require*/
+/*global define*/
 
 /*** START REQUIRE.JS ADAPTATION ***/
 
 define([
+    'require',
     'lib/underscore',
     'lib/jquery'
-], function (_) {
+], function (require, _) {
     "use strict";
 
     //this.jQuery = require('jquery');

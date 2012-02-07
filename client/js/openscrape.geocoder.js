@@ -29,7 +29,7 @@ define([
 ], function (require, Address, underscore, google) {
     "use strict";
 
-    var $ = require('lib/jquery');
+    var $ = require('jquery');
 
     function Geocoder() {
         this.geocoder = new google.maps.Geocoder();

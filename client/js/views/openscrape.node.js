@@ -80,26 +80,6 @@ define([
                 success: _.bind(this.done, this),
                 failure: _.bind(this.done, this)
             });
-            // caustic
-            //     .request({
-            //         uri: this.model.get('uri'),
-            //         input: this.model.get('input'),
-            //         instruction: this.model.get('instruction'),
-            //         tags: nodes.tags(this.model.id),
-            //         cookies: nodes.cookies(this.model.id),
-            //         force: true
-            //     })
-
-            // // The raw response has to be dissected to commit it to collection.
-            //     .done(this.model.bind(function (response) {
-            //         while (this.has(response, 'children') {
-
-            //         }
-            //         this.model.save({response: response});
-            //     }, this))
-            //     .always(this.model.bind(function () {
-            //         this.$el.removeClass('loading');
-            //     }), this);
         }
     });
 });

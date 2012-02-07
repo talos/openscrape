@@ -26,12 +26,32 @@
 
     require([
         'views/openscrape.map',
+        'lib/backbone',
         'lib/jquery'
-    ], function (MapView) {
+    ], function (MapView, backbone) {
         var $ = require('jquery'),
             mapView = new MapView({
                 el: $('#map')[0]
             });
+
+        backbone.sync = function (method, model, options) {
+
+            var resp,
+                store = model.store || model.collection.store;
+
+            switch (method) {
+            case "read":    resp = model.id ? store.find(model) : store.findAll(); break;
+            case "create":  resp = store.create(model);                            break;
+            case "update":  resp = store.update(model);                            break;
+            case "delete":  resp = store.destroy(model);                           break;
+            }
+
+            if (resp) {
+                options.success(resp);
+            } else {
+                options.error("Record not found");
+            }
+        };
 
         /**
          Handle download request.

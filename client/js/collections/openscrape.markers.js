@@ -21,31 +21,21 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
+/**
+ * The global collection of map markers.
+ */
 define([
     'lib/underscore',
     'lib/backbone',
     'lib/backbone-localstorage',
-    'models/openscrape.node'
-], function (_, backbone, Store, node) {
+    'models/openscrape.marker'
+], function (_, backbone, Store, marker) {
     "use strict";
 
-    /**
-     * The global collection of nodes.
-     */
-    return new (backbone.Collection.extend({
-        model: node,
+    return (backbone.Collection.extend({
 
-        // Standard storage method override.  TODO breakout
-        store: (function () {
+        store: new Store('markers'),
 
-            var store = new Store('nodes');
-
-            store.find = function (model) {
-                console.log('finding model');
-                console.log(model);
-            };
-
-            return store;
-        }())
-    }))();
+        model: marker
+    })());
 });

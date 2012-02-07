@@ -24,7 +24,7 @@
 /**
  * A backbone model encapsulating the important parts of map state.
  *
- * Fires 'click({lat: , lng: }' and 'zoom_change(scale)' events.
+ * Fires 'click(lat, lng)' and 'zoom_change(scale)' events.
  */
 define([
     'lib/google',
@@ -63,8 +63,9 @@ define([
                 }
 
                 if (this.hasChanged('click')) {
-                    this.trigger('click', { lat: this.get('clickLat'),
-                                            lng: this.get('clickLng') });
+                    this.trigger('click',
+                                 this.get('click').lat,
+                                 this.get('click').lng);
                 }
 
                 if (this.hasChanged('loaded')) {

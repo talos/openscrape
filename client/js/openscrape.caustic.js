@@ -24,11 +24,10 @@
 define([
     'require',
     'lib/json2',
-    'lib/backbone',
     './openscrape.caustic.proxy',
     './openscrape.caustic.applet',
     'lib/jquery'
-], function (require, json, backbone, proxy, applet) {
+], function (require, json, proxy, applet) {
     "use strict";
 
     var $ = require('jquery'),
@@ -63,24 +62,6 @@ define([
             }
         };
 
-    backbone.sync = function (method, model, options) {
-
-        var resp,
-            store = model.localStorage || model.collection.localStorage;
-
-        switch (method) {
-        case "read":    resp = model.id ? store.find(model) : store.findAll(); break;
-        case "create":  resp = store.create(model);                            break;
-        case "update":  resp = store.update(model);                            break;
-        case "delete":  resp = store.destroy(model);                           break;
-        }
-
-        if (resp) {
-            options.success(resp);
-        } else {
-            options.error("Record not found");
-        }
-    };
 });
 
     // return {

@@ -21,31 +21,23 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
+/**
+ * A marker is a single point on the map.  It must have an address and
+ * the ID of a root node.
+ */
 define([
     'lib/underscore',
     'lib/backbone',
-    'lib/backbone-localstorage',
-    'models/openscrape.node'
-], function (_, backbone, Store, node) {
+    'collections/openscrape.markers'
+], function (_, backbone, markers) {
     "use strict";
 
-    /**
-     * The global collection of nodes.
-     */
-    return new (backbone.Collection.extend({
-        model: node,
+    return backbone.Model.extend({
 
-        // Standard storage method override.  TODO breakout
-        store: (function () {
+        collection: markers,
 
-            var store = new Store('nodes');
-
-            store.find = function (model) {
-                console.log('finding model');
-                console.log(model);
-            };
-
-            return store;
-        }())
-    }))();
+        validate: function (attrs) {
+            return _.has(attrs, 'address') && _.has(attrs, 'nodeId');
+        }
+    });
 });

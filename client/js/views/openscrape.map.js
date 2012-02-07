@@ -50,11 +50,6 @@ define([
                 mapTypeId: google.maps.MapTypeId.TERRAIN
             });
 
-            console.log(this.model);
-            console.log(this.model.toJSON());
-            //console.log(this.model.get('zoom'));
-            console.log(this.gMap);
-
             // construct visual view using raw google map
             this.visual = new Visual({gMap: this.gMap});
 
@@ -82,6 +77,30 @@ define([
                     lng: longitude
                 }
             });
+        },
+
+        /**
+         * If the map is clicked and we're not visible, try to geocode and build
+         * a new visual.
+         */
+        mapClick: function (lat, lng) {
+            if (!this.isVisible()) {
+                this.move(lat, lng);
+                this.show();
+                this.reverseGeocoding();
+                geocoder.reverseGeocode(lat, lng)
+                    .done(_.bind(function (address) {
+                        this.createNode(address);
+                    }, this))
+                    .fail(_.bind(function (msg) {
+                        // TODO
+                        console.log(msg);
+                        this.hide();
+                    }, this))
+                    .always(_.bind(function () {
+                        this.doneReverseGeocoding();
+                    }, this));
+            }
         },
 
         update: function () {
