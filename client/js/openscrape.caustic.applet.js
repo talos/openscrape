@@ -20,11 +20,17 @@
 
 /*global define*/
 
-define(['./openscrape.alert', 'lib/jquery', 'lib/json2'], function (alert, $, JSON) {
+define([
+    'require',
+    './openscrape.alert',
+    'lib/json2',
+    'lib/jquery'
+], function (require, alert, json) {
     "use strict";
 
     // PRIVATE
-    var applet,
+    var $ = require('jquery'),
+        applet,
         promptText = 'Scraping hits external servers. You can'
             + ' either proxy through my server (which is slower'
             + ' and costs me!) or you can use the applet.  If'

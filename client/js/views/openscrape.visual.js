@@ -31,9 +31,9 @@ define([
     'lib/d3',
     'lib/underscore',
     'lib/backbone',
-    './openscrape.geocoder',
+    '../openscrape.geocoder',
     'models/openscrape.map',
-    'collections/openscrape.node',
+    'collections/openscrape.nodes',
     'views/openscrape.node'
 ], function (google, rich_marker, d3, _, backbone, geocoder, map, nodes, Node) {
     "use strict";

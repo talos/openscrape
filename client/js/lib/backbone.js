@@ -16,16 +16,20 @@ define([
 ], function (_) {
     "use strict";
 
-    this.$ = require('jQuery');
-
-/*** END REQUIRE.JS ADAPTATION ***/
+    //this.jQuery = require('jquery');
 
   // Initial Setup
   // -------------
 
   // Save a reference to the global object (`window` in the browser, `global`
   // on the server).
-  var root = this;
+    //var root = this;
+
+    var root = {
+        jQuery: require('jquery'),
+        _: _
+    };
+/*** END REQUIRE.JS ADAPTATION ***/
 
   // Save the previous value of the `Backbone` variable, so that it can be
   // restored later on, if `noConflict` is used.
@@ -1301,7 +1305,6 @@ define([
   };
 
 /*** START REQUIRE.JS ADAPTATION ***/
-
 //}.call(this);
 
     return Backbone;

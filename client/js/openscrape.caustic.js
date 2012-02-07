@@ -22,15 +22,17 @@
 /*global define*/
 
 define([
+    'require',
     'lib/json2',
-    'lib/jquery',
     'lib/backbone',
-    'controllers/openscrape.caustic.proxy',
-    'controllers/openscrape.caustic.applet'
-], function (json, $, backbone, proxy, applet) {
+    './openscrape.caustic.proxy',
+    './openscrape.caustic.applet',
+    'lib/jquery'
+], function (require, json, backbone, proxy, applet) {
     "use strict";
 
-    var $queue = $({}), // generic queue
+    var $ = require('jquery'),
+        $queue = $({}), // generic queue
         QUEUE_NAME = 'openscrape.caustic',
 
         /**
@@ -107,4 +109,4 @@ define([
     //         return dfd.promise();
     //     }
     // };
-});
+    // });

@@ -22,11 +22,14 @@
 /*global define*/
 
 define([
+    'require',
     'lib/underscore',
     'lib/jquery',
     'lib/jquery-rescale'
-], function (_, $) {
+], function (require, _) {
     "use strict";
+
+    var $ = require('lib/jquery');
 
     return (function () {
 

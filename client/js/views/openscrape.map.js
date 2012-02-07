@@ -25,18 +25,15 @@
  * This view renders the map.  It also instantiates the Visual view.
  */
 define([
-    'openscrape.geocoder',
     'lib/underscore',
     'lib/google',
     'lib/backbone',
     'models/openscrape.map',
     'views/openscrape.visual'
-], function (geocoder, _, google, backbone, map, Visual) {
+], function (_, google, backbone, map, Visual) {
     "use strict";
 
     return backbone.View.extend({
-        tagName: 'div',
-        className: 'map',
         dblClickWaitTime: 500,
         dblClickWait: null,
         model: map,

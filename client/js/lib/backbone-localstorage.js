@@ -3,9 +3,13 @@
  *  * https://github.com/jeromegn/Backbone.localStorage
  *  */
 
+/*jslint nomen: true*/
 /*global define, localStorage*/
 
-define(['lib/json2'], function (JSON) {
+define([
+    'lib/json2',
+    'lib/underscore'
+], function (JSON, _) {
     "use strict";
 
     // A simple module to persist to localstorage.

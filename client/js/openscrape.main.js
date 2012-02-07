@@ -25,45 +25,12 @@
     "use strict";
 
     require([
-        './openscrape.map'
-    ], function (Map) {
+        'lib/jquery',
+        'views/openscrape.map'
+    ], function ($, MapView) {
 
-        var map = new Map();
-
-        var visual, map, marker,
-            mouse = new Mouse($(mouseSelector), 300, 800);
-
-        alert.init($(alertSelector));
-
-        visual = new Visual(r);
-        map = new Map($(mapSelector)[0], 40.77, -73.98, 11);
-        marker = new Marker(map, visual.getSVG());
-
-        // If the map is clicked and there is no visual, request
-        // the address and draw one.
-        map.addAddressListener(function (address) {
-            if (!marker.isVisible()) {
-                var request = new Request({
-                    instruction: instruction.property(address),
-                    tags: { Apt: '',
-                            Number: address.number,
-                            Street: address.street,
-                            Borough: address.borough },
-                    force: true
-                });
-                request.send().done(function (respObj) {
-                    var resp = new Response(request, respObj);
-                    marker.setPosition(address.lat, address.lng).show();
-                    visual.setResponse(resp).render();
-                });
-            }
-        });
-
-        // Destroy the visual, then hide the marker, upon reset.
-        $(resetSelector).bind('click', function () {
-            visual.destroy().done(function () {
-                marker.hide();
-            });
+        var mapView = new MapView({
+            el: $('#map')[0]
         });
 
         /**

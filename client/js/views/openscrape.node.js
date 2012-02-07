@@ -25,18 +25,18 @@
  * A node view renders a single node information, be it a value or a response.
  */
 define([
-    'text!../templates/ready.mustache',
-    'text!../templates/match.mustache',
-    'text!../templates/page.mustache',
-    'text!../templates/wait.mustache',
-    'text!../templates/reference.mustache',
-    'text!../templates/missing.mustache',
-    'text!../templates/failed.mustache',
+    'text!../../templates/ready.mustache',
+    'text!../../templates/match.mustache',
+    'text!../../templates/page.mustache',
+    'text!../../templates/wait.mustache',
+    'text!../../templates/reference.mustache',
+    'text!../../templates/missing.mustache',
+    'text!../../templates/failed.mustache',
     'lib/requirejs.mustache',
     'lib/underscore',
     'lib/backbone',
-    './openscrape.caustic',
-    'collections/openscrape.node'
+    '../openscrape.caustic',
+    'collections/openscrape.nodes'
 ], function (ready, match, page, wait, reference, missing, failed,
              mustache, _, backbone, caustic, nodes) {
     "use strict";

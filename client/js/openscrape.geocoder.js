@@ -21,12 +21,15 @@
 /*global define*/
 
 define([
+    'require',
     './openscrape.address',
     'lib/underscore',
-    'lib/jquery',
-    'lib/google'
-], function (Address, underscore, $, google) {
+    'lib/google',
+    'lib/jquery'
+], function (require, Address, underscore, google) {
     "use strict";
+
+    var $ = require('lib/jquery');
 
     function Geocoder() {
         this.geocoder = new google.maps.Geocoder();

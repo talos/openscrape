@@ -20,10 +20,11 @@
 
 /*global define*/
 
-define(['lib/jquery'], function ($) {
+define(['require', 'lib/jquery'], function (require) {
     "use strict";
 
-    var $container,
+    var $ = require('lib/jquery'),
+        $container,
         defaultTimeout,
         settings = {
             timeout: 0,
