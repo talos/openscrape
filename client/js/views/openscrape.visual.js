@@ -30,8 +30,12 @@ define([
     'lib/google.rich-marker',
     'lib/d3',
     'lib/underscore',
-    'lib/backbone'
-], function (google, rich_marker, d3, _, backbone) {
+    'lib/backbone',
+    './openscrape.geocoder',
+    'models/openscrape.map',
+    'collections/openscrape.node',
+    'views/openscrape.node'
+], function (google, rich_marker, d3, _, backbone, geocoder, map, nodes, Node) {
     "use strict";
 
     /**
@@ -74,18 +78,20 @@ define([
 
     return new backbone.View.extend({
 
+        collection: nodes,
+
         initialize: function (options) {
 
             var marker = new rich_marker.RichMarker({
-                map: mapModel.get('gMap'), // TODO binds us to google maps!!
-                visible: false,
-                flat: true,
-                position: new google.maps.LatLng(mapModel.get('lat', mapModel.get('lng'))),
-                anchor: rich_marker.RichMarkerPosition.MIDDLE,
-                content: this.make('div', 'visual')
-            }),
+                    map: options.gMap, // TODO binds us to google maps!!
+                    visible: false,
+                    flat: true,
+                    position: new google.maps.LatLng(map.get('lat', map.get('lng'))),
+                    anchor: rich_marker.RichMarkerPosition.MIDDLE,
+                    content: this.make('div', 'visual')
+                }),
 
-            svg = d3.select(this.el.getContent())
+                svg = d3.select(this.el.getContent())
                     .append('svg')
                     .attr('xmlns', 'http://www.w3.org/2000/svg')
                     .attr("width", r * 2)
@@ -96,6 +102,7 @@ define([
                     .attr('id', 'dropshadow');
 
             this.$content = this.$(this.el.getContent());
+            this.marker = marker;
 
             this.vis = svg.append("g")
                 .attr('id', 'viewport')
@@ -107,7 +114,62 @@ define([
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
                 });
 
-            this.collection.bind('all', this.render, this);
+            this.collection.on('all', this.render, this);
+            map.on('zoom_change', this.rescale, this);
+            map.on('click', this.mapClick, this);
+        },
+
+        reverseGeocoding: function () {
+            console.log('reverse geocoding');
+        },
+
+        doneReverseGeocoding: function () {
+            console.log('done reverse geocoding');
+        },
+
+        /**
+         * Make a request for the address.
+         */
+        newRequest: function (address) {
+            this.marker.setPosition(new google.maps.LatLng(address.lat, address.lng));
+            this.collection.create({
+                // TODO
+                instruction: window.location.origin +
+                    window.location.pathname
+                    + "instructions/nyc/property.json",
+                tags: {
+                    Number: address.number,
+                    Street: address.street,
+                    Borough: 3 // TODO
+                }
+            });
+        },
+
+        hide: function () {
+            this.marker.setVisible(false);
+        },
+
+        show: function () {
+            this.marker.setVisible(true);
+        },
+
+        /**
+         * If the node collection is empty, then a map click should
+         * build up a new visual.
+         */
+        mapClick: function (lat, lng) {
+            if (this.collection.length === 0) {
+                geocoder.reverseGeocode(lat, lng)
+                    .done(_.bind(function (address) {
+                        this.newRequest(address);
+                    }, this))
+                    .fail(function () {
+                        // TODO
+                    })
+                    .always(_.bind(function () {
+                        this.doneReverseGeocoding();
+                    }, this));
+            }
         },
 
         /**
@@ -132,7 +194,7 @@ define([
         },
 
         render: function () {
-            var nodes = this.tree.nodes(this.collection),
+            var nodes = this.tree.nodes(this.collection.toJSON()),
                 link = this.vis.selectAll("path.link")
                     .data(this.tree.links(nodes), function (d) {
                         return d.source.id + '_' + d.target.id;
@@ -153,8 +215,13 @@ define([
                 .attr('height', '1000')
                 .attr('width', '1000')
                 .append('xhtml:body')
+                .append('div')
                 .each(function (d) {
-                    d.el.appendTo(this);
+                    // create view for node
+                    var v = new Node({
+                        model: d,
+                        el: this
+                    });
                 });
 
             node.transition()
@@ -182,6 +249,9 @@ define([
                 .duration(1000)
                 .attr("transform", function (d) {
                     return "rotate(0)translate(0)";
+                })
+                .each(function (d) {
+                    d.destroy(); // make sure to destroy our model
                 })
                 .remove();
 
@@ -214,6 +284,5 @@ define([
                     return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;
                 });
         }
-
     })();
 });

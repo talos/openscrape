@@ -40,8 +40,6 @@ define(function () {
             this.zip = zip;
             this.lat = lat;
             this.lng = lng;
-
-            this.borough = 3; // todo
         }
 
         return Address;

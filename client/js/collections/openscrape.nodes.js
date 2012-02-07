@@ -24,14 +24,18 @@
 define([
     'lib/underscore',
     'lib/backbone',
+    'lib/backbone-localstorage',
     'models/openscrape.node'
-], function (_, backbone, node) {
+], function (_, backbone, Store, node) {
     "use strict";
 
     /**
-     * Return a new collection of nodes immediately.
+     * The global collection of nodes.
      */
     return new backbone.Collection.extend({
-        model: node
+        model: node,
+
+        store: new Store('nodes')
+
     })();
 });

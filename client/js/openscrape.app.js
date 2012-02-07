@@ -24,11 +24,10 @@
 define([
     'lib/backbone',
     'lib/underscore',
-    'collections/openscrape.node',
     'models/openscrape.map',
     'views/openscrape.map',
     'views/openscrape.visual'
-], function (backbone, _, NodeCollection, MapModel, MapView, Visual) {
+], function (backbone, _, nodes, MapModel, MapView, Visual) {
     "use strict";
 
     return backbone.View.extend({
@@ -41,10 +40,7 @@ define([
             var mapModel = new MapModel(),
                 mapView = new MapView({
                     model: mapModel
-                }),
-                visual = new Visual({
-                    collection: new NodeCollection()
-                });
+                })
 
             mapModel.on('zoom_change', visual.rescale, visual);
 

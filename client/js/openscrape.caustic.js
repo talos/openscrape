@@ -24,9 +24,10 @@
 define([
     'lib/json2',
     'lib/jquery',
+    'lib/backbone',
     'controllers/openscrape.caustic.proxy',
     'controllers/openscrape.caustic.applet'
-], function (json, $, proxy, applet) {
+], function (json, $, backbone, proxy, applet) {
     "use strict";
 
     var $queue = $({}), // generic queue
@@ -60,30 +61,50 @@ define([
             }
         };
 
-    return {
+    backbone.sync = function (method, model, options) {
 
-        /**
-         * Make a request.
-         *
-         * @param {openscrape.Request} request A request to make.
-         *
-         * @return {Promise} that will be resolved with the raw JS object
-         * of the response when the request is done, or rejected with a
-         * reason for why it failed.
-         **/
-        request: function (request) {
-            var dfd = $.Deferred();
+        var resp,
+            store = model.localStorage || model.collection.localStorage;
 
-            // Use the applet if it's available, and proxy otherwise.
-            // TODO mvc violation
-            applet.enable()
-                .done(function () {
-                    queueRequest(applet.request, dfd, request);
-                }).fail(function () {
-                    queueRequest(proxy.request, dfd, request);
-                });
+        switch (method) {
+        case "read":    resp = model.id ? store.find(model) : store.findAll(); break;
+        case "create":  resp = store.create(model);                            break;
+        case "update":  resp = store.update(model);                            break;
+        case "delete":  resp = store.destroy(model);                           break;
+        }
 
-            return dfd.promise();
+        if (resp) {
+            options.success(resp);
+        } else {
+            options.error("Record not found");
         }
     };
+});
+
+    // return {
+
+    //     /**
+    //      * Make a request.
+    //      *
+    //      * @param {openscrape.Request} request A request to make.
+    //      *
+    //      * @return {Promise} that will be resolved with the raw JS object
+    //      * of the response when the request is done, or rejected with a
+    //      * reason for why it failed.
+    //      **/
+    //     request: function (request) {
+    //         var dfd = $.Deferred();
+
+    //         // Use the applet if it's available, and proxy otherwise.
+    //         // TODO mvc violation
+    //         applet.enable()
+    //             .done(function () {
+    //                 queueRequest(applet.request, dfd, request);
+    //             }).fail(function () {
+    //                 queueRequest(proxy.request, dfd, request);
+    //             });
+
+    //         return dfd.promise();
+    //     }
+    // };
 });

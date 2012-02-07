@@ -29,8 +29,9 @@
 define([
     'lib/google',
     'lib/underscore',
-    'lib/backbone'
-], function (google, _, backbone) {
+    'lib/backbone',
+    'lib/backbone-localstorage'
+], function (google, _, backbone, Store) {
     "use strict";
 
     return new backbone.Model.extend({
@@ -43,6 +44,8 @@ define([
             scale: 1,
             loaded: false
         },
+
+        store: new Store('map'),
 
         validate: function (attrs) {
             return _.has(attrs, 'diagonal');
@@ -62,6 +65,10 @@ define([
                 if (this.hasChanged('click')) {
                     this.trigger('click', { lat: this.get('clickLat'),
                                             lng: this.get('clickLng') });
+                }
+
+                if (this.hasChanged('loaded')) {
+                    this.trigger('loaded');
                 }
             }, this);
         }

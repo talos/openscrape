@@ -33,16 +33,15 @@ define([
     'text!../templates/missing.mustache',
     'text!../templates/failed.mustache',
     'lib/requirejs.mustache',
+    'lib/underscore',
     'lib/backbone',
-    'controllers/caustic'
+    './openscrape.caustic',
+    'collections/openscrape.node'
 ], function (ready, match, page, wait, reference, missing, failed,
-             mustache, backbone, caustic) {
+             mustache, _, backbone, caustic, nodes) {
     "use strict";
 
     return backbone.View.extend({
-        tagName: 'div',
-
-        className: 'node',
 
         templates: {
             match: match,
@@ -60,7 +59,7 @@ define([
         },
 
         initialize: function () {
-            this.model.bind('change', this.render, this);
+            this.model.on('change', this.render, this);
         },
 
         render: function () {
@@ -68,43 +67,39 @@ define([
                 this.templates[this.model.type],
                 this.model
             ));
+            this.model.set('width', this.$el.width());
+        },
+
+        done: function () {
+            this.$el.removeClass('loading');
         },
 
         request: function () {
             this.$el.addClass('loading');
-            caustic.request(this.model.request)
-                .done(this.model.bind(function (response) {
-                    this.model.save({response: response});
-                }, this))
-                .always(this.model.bind(function () {
-                    this.$el.removeClass('loading');
-                }), this);
+            this.model.fetch({
+                success: _.bind(this.done, this),
+                failure: _.bind(this.done, this)
+            });
+            // caustic
+            //     .request({
+            //         uri: this.model.get('uri'),
+            //         input: this.model.get('input'),
+            //         instruction: this.model.get('instruction'),
+            //         tags: nodes.tags(this.model.id),
+            //         cookies: nodes.cookies(this.model.id),
+            //         force: true
+            //     })
+
+            // // The raw response has to be dissected to commit it to collection.
+            //     .done(this.model.bind(function (response) {
+            //         while (this.has(response, 'children') {
+
+            //         }
+            //         this.model.save({response: response});
+            //     }, this))
+            //     .always(this.model.bind(function () {
+            //         this.$el.removeClass('loading');
+            //     }), this);
         }
     });
 });
-    // var pad = 50;
-
-    // return (function () {
-
-    //     function Node(type, context, parent, childType, children) {
-    //         this.id = _.uniqueId('node_');
-    //         this.context = context;
-    //         this.parent = parent;
-    //         this.children = _.map(children, function (child) {
-    //             return new Node(childType, child, this
-    //         }, this);
-    //         this.el = $(render[type](context));
-    //         this.distance = _.bind(this.distance, this);
-    //     }
-
-    //     /**
-    //      * @return {Number} How far from the origin this Node runs.
-    //      */
-    //     Node.prototype.distance = function () {
-    //         var width = this.el.html() ? this.el.width() : 0;
-    //         return (this.parent ? this.parentValue.distance() : 0) + width + pad;
-    //     };
-
-    //     return Node;
-    // }());
-//});
