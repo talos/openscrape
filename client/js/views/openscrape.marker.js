@@ -35,7 +35,7 @@ define([
     'views/openscrape.visual',
     'lib/jquery'
 ], function (require, google, rich_marker, _, backbone, mustache, template,
-             geocoder, mapModel, nodesCollection, VisualView) {
+             geocoder, mapModel, NodesCollection, VisualView) {
     "use strict";
 
     var $ = require('jquery');
@@ -56,11 +56,14 @@ define([
             var lat = this.model.get('lat'),
                 lng = this.model.get('lng');
 
-            //this.content = this.make('div', 'content');
             $(this.el).html(mustache.render(template), this.model);
-            this.$visual = this.$el.find('.visual');
 
-            //this.visual = new Visual(nodes.findByAddress(this.model.get('address')));
+            this.visual = new VisualView({
+                collection: this.model.nodes
+            });
+
+            this.$el.find('.visual').append(this.visual.$el);
+
             this.marker = new rich_marker.RichMarker({
                 map: options.gMap, // TODO binds us to google maps!! :/
                 visible: true,
@@ -73,18 +76,18 @@ define([
             // immediately look for address
             geocoder.reverseGeocode(lat, lng)
                 .done(_.bind(function (address) {
-                    //this.model.save('address', address);
-                    var node = nodesCollection.findByAddress(address)
-                            || nodesCollection.create({ tags: address });
-                    if (node) {
-                        this.$visual.append(new VisualView(node).render().$el);
-                    } else {
-                        console.log(address);
-                        this.model.destroy();
-                    }
+                    this.model.nodes.create({
+                        tags: address,
+                        instruction: '/instructions/nyc/property.json',
+                        uri: '',
+                        status: 'wait'
+                    });
                 }, this))
                 .fail(_.bind(function (reason) {
                     this.model.destroy();
+                }, this))
+                .always(_.bind(function () {
+                    this.$el.find('.geocoding').remove();
                 }, this));
 
             // always keep an eye on zoom changes
@@ -100,9 +103,9 @@ define([
 
         collapse: function () {
             if (this.model.get('collapsed') === true) {
-                this.$visual.hide();
+                this.visual.$el.hide();
             } else {
-                this.$visual.show();
+                this.visual.$el.show();
             }
         },
 

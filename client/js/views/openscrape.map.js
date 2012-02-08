@@ -31,7 +31,7 @@ define([
     'models/openscrape.map',
     'views/openscrape.marker',
     'collections/openscrape.markers'
-], function (_, google, backbone, mapModel, MarkerView, markersCollection) {
+], function (_, google, backbone, mapModel, MarkerView, MarkersCollection) {
     "use strict";
 
     return backbone.View.extend({
@@ -58,6 +58,9 @@ define([
                     this.model.saveBounds(center.lat(), center.lng(),
                                           northEast.lat(), northEast.lng());
                 }, this);
+
+            this.markers = new MarkersCollection();
+            this.$el.addClass('loading');
 
             // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
@@ -92,17 +95,17 @@ define([
         },
 
         loaded: function () {
-            console.log('map loaded');
+            this.$el.removeClass('loading');
         },
 
         click: function () {
-            if (markersCollection.any(function (m) { return !m.get('collapsed'); })) {
+            if (this.markers.any(function (m) { return !m.get('collapsed'); })) {
                 // a click should only collapse existing markers if any are open
-                markersCollection.invoke('save', 'collapsed', true);
+                this.markers.invoke('save', 'collapsed', true);
             } else {
                 // if everything is collapsed, create a new marker
                 var m = new MarkerView({
-                    model: markersCollection.create({
+                    model: this.markers.create({
                         lat: this.model.get('click').lat,
                         lng: this.model.get('click').lng
                     }),

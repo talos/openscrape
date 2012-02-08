@@ -12,16 +12,6 @@ div#alert {
     margin-right: 20%;
 }
 
-div#main {
-    position: absolute;
-    margin: 0px;
-    top: 0px;
-    left: 0px;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-}
-
 div#map {
     position: absolute;
     width: 100%;
@@ -39,13 +29,6 @@ div#mouse {
     box-shadow: 3px 3px 5px black;
 }
 
-div#visuals {
-    position: absolute;
-    width: 0px;
-    height: 0px;
-    z-index: 1;
-}
-
 input#download {
     position: absolute;
     right: 0px;
@@ -56,4 +39,8 @@ input#reset {
     position: absolute;
     right: 0px;
     top: 0px;
+}
+
+.loading {
+    background: url('images/loading.gif') center no-repeat;
 }

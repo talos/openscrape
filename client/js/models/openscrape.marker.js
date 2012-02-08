@@ -27,20 +27,26 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    'collections/openscrape.markers'
-], function (_, backbone, markers) {
+    'collections/openscrape.nodes'
+], function (_, backbone, NodesCollection) {
     "use strict";
 
     return backbone.Model.extend({
-
-        collection: markers,
 
         defaults: {
             collapsed: false
         },
 
+        initialize: function () {
+            this.nodes = new NodesCollection({ id: this.id });
+        },
+
         toggle: function () {
             this.set('collapsed', !this.get('collapsed'));
+        },
+
+        destroy: function () {
+            this.nodes.reset();
         }
     });
 });

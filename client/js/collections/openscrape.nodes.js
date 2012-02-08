@@ -29,41 +29,17 @@ define([
 ], function (_, backbone, Store, NodeModel) {
     "use strict";
 
-    /**
-     * The global collection of nodes.
-     */
-    return new (backbone.Collection.extend({
+    return backbone.Collection.extend({
         model: NodeModel,
 
-        // Standard storage method override.  TODO breakout
-        store: (function () {
-
-            var store = new Store('nodes');
-
-            store.create = function (model) {
-                console.log('creating model');
-                console.log(model);
-
-                return Store.prototype.create.call(store, model);
-            };
-
-            store.update = function (model) {
-                console.log('updating model');
-                console.log(model);
-
-                return Store.prototype.update.call(store, model);
-            };
-
-            return store;
-        }()),
-
         /**
-         * Find a node by address.  Checks tags.
+         * Initialize a new collection of nodes.  Must have an ID.
          */
-        findByAddress: function (address) {
-            return this.find(function (node) {
-                return _.isEqual(node.get('tags'), address);
-            });
+        initialize: function (options) {
+            if (_.has(options, 'id')) {
+                this.store = new Store('nodes' + options.id);
+            }
+            throw "Must initialize nodes collection with an id.";
         }
-    }))();
+    });
 });

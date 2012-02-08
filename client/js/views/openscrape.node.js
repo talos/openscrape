@@ -38,7 +38,7 @@ define([
     '../openscrape.caustic',
     'collections/openscrape.nodes'
 ], function (ready, match, page, wait, reference, missing, failed,
-             mustache, _, backbone, caustic, nodes) {
+             mustache, _, backbone, caustic, nodesCollection) {
     "use strict";
 
     return backbone.View.extend({
@@ -55,12 +55,12 @@ define([
         },
 
         events: {
-            'click #request': 'request'
+            'click #scrape': 'scrape'
         },
 
-        initialize: function () {
-            this.model.on('change', this.render, this);
-        },
+        // initialize: function () {
+        //     this.model.on('change', this.render, this);
+        // },
 
         render: function () {
             this.$el.html(mustache.render(
@@ -70,6 +70,10 @@ define([
             this.model.set('width', this.$el.width());
             this.model.set('height', this.$el.height());
             return this;
+        },
+
+        scrape: function () {
+            
         }
 
         // done: function () {

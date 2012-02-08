@@ -21,9 +21,6 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
-/**
- * The global collection of map markers.
- */
 define([
     'lib/underscore',
     'lib/backbone',
@@ -32,10 +29,10 @@ define([
 ], function (_, backbone, Store, MarkerModel) {
     "use strict";
 
-    return new (backbone.Collection.extend({
+    return backbone.Collection.extend({
 
         store: new Store('markers'),
 
         model: MarkerModel
-    }))();
+    });
 });
