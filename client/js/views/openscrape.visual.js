@@ -29,9 +29,10 @@ define([
     'lib/d3',
     'lib/underscore',
     'lib/backbone',
-    'collections/openscrape.nodes',
-    'views/openscrape.node'
-], function (d3, _, backbone, nodeCollection, NodeView) {
+    'models/openscrape.node',
+    'views/openscrape.node',
+    'collections/openscrape.nodes'
+], function (d3, _, backbone, NodeModel, NodeView, nodesCollection) {
     "use strict";
 
     /**
@@ -77,8 +78,6 @@ define([
         tagName: 'div',
         className: 'visual',
 
-        collection: nodeCollection,
-
         initialize: function (options) {
 
             var svg = d3.select(this.el)
@@ -101,19 +100,16 @@ define([
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
                 });
 
-            //this.collection.on('all', this.render, this);
-            this.collection.on('sync', this.render, this);
+            this.model.on('change', this.render, this);
         },
 
         render: function () {
-            var collection = this.collection,
-
-                // The .nodes function generates nested JSON.
-                // When we need access to the model itself, use
-                // collection.get().
-                nodes = this.tree.nodes(this.rootNode)
+            // The .nodes function generates nested JSON.
+            // When we need access to the model itself, use
+            // nodesCollection.get().
+            var nodes = this.tree.nodes(this.model.toJSON())
                     .children(function (d) {
-                        return collection.get(d.id).children();
+                        return _.invoke(nodesCollection.get(d.id).children(), 'toJSON');
                     }),
                 link = this.vis.selectAll("path.link")
                     .data(this.tree.links(nodes), function (d) {
@@ -138,17 +134,18 @@ define([
                 .append('div')
                 .each(function (d) {
                     // create view for node
-                    var v = new NodeView({
-                        model: collection.get(d.id),
+                    var view = new NodeView({
+                        model: nodesCollection.get(d.id),
                         el: this
                     });
+                    view.render();
                 });
 
             node.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    var rotate = d.parent ? d.x - 90 : d.x, // perpendicular root
-                        translate = d.parent ? d.parent.distance() : 0,
+                    var translate = nodesCollection.get(d.id).get('distance'),
+                        rotate = d.parent ? d.x - 90 : d.x, // perpendicular root
                         scale = 1;
 
                     return "rotate(" + rotate + ")" +
@@ -157,8 +154,9 @@ define([
                 })
                 .select('.foreign')
                 .attr('transform', function (d) {
-                    var y = d.el.html() ? -d.el.height() / 2 : 0,
-                        x = d.x < 180 ? 0 : (d.el.html() ? -d.el.width() : 0),
+                    var model = nodesCollection.get(d.id),
+                        x = d.x < 180 ? 0 : model.get('width'),
+                        y = -model.get('height') / 2,
                         rotate = d.x < 180 ? 0 : 180;
 
                     return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
@@ -170,9 +168,11 @@ define([
                 .attr("transform", function (d) {
                     return "rotate(0)translate(0)";
                 })
-                .each(function (d) {
-                    d.destroy(); // make sure to destroy our model
-                })
+            // no need to destroy model here -- this happens BECAUSE model was destroyed.
+                // .each(function (d) {
+                //     // destroys our 
+                //     nodesCollection.get(d.id).destroy();
+                // })
                 .remove();
 
             link.enter()
@@ -197,12 +197,14 @@ define([
                 .attr('d', origin)
                 .remove();
 
-            // ensure that paths are drawn below nodes
+            // ensure that paths are drawn below nodes through reordering
             this.vis.selectAll('g.node,path.link')
                 .sort(function (a, b) {
                     // if b has a target, it is a link
                     return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;
                 });
+
+            return this;
         }
     });
 });

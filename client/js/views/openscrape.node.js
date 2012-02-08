@@ -68,18 +68,20 @@ define([
                 this.model
             ));
             this.model.set('width', this.$el.width());
-        },
-
-        done: function () {
-            this.$el.removeClass('loading');
-        },
-
-        request: function () {
-            this.$el.addClass('loading');
-            this.model.fetch({
-                success: _.bind(this.done, this),
-                failure: _.bind(this.done, this)
-            });
+            this.model.set('height', this.$el.height());
+            return this;
         }
+
+        // done: function () {
+        //     this.$el.removeClass('loading');
+        // },
+
+        // request: function () {
+        //     this.$el.addClass('loading');
+        //     this.model.fetch({
+        //         success: _.bind(this.done, this),
+        //         failure: _.bind(this.done, this)
+        //     });
+        // }
     });
 });

@@ -22,8 +22,7 @@
 /*global define*/
 
 /**
- * A marker is a single point on the map.  It must have an address and
- * the ID of a root node.
+ * A marker is a single point on the map.  It should have a lng/lat.
  */
 define([
     'lib/underscore',
@@ -36,8 +35,12 @@ define([
 
         collection: markers,
 
-        validate: function (attrs) {
-            return _.has(attrs, 'address') && _.has(attrs, 'nodeId');
+        defaults: {
+            collapsed: false
+        },
+
+        toggle: function () {
+            this.set('collapsed', !this.get('collapsed'));
         }
     });
 });

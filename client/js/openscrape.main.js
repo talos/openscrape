@@ -25,33 +25,25 @@
     "use strict";
 
     require([
+        'require',
         'views/openscrape.map',
         'lib/backbone',
+        './openscrape.sync',
         'lib/jquery'
-    ], function (MapView, backbone) {
-        var $ = require('jquery'),
-            mapView = new MapView({
-                el: $('#map')[0]
-            });
+    ], function (require, MapView, backbone) {
+        var $ = require('jquery');
 
-        backbone.sync = function (method, model, options) {
+        return (new (backbone.View.extend({
 
-            var resp,
-                store = model.store || model.collection.store;
+            el: $('#openscrape'),
 
-            switch (method) {
-            case "read":    resp = model.id ? store.find(model) : store.findAll(); break;
-            case "create":  resp = store.create(model);                            break;
-            case "update":  resp = store.update(model);                            break;
-            case "delete":  resp = store.destroy(model);                           break;
+            initialize: function () {
+                this.$el.append(new MapView().$el);
             }
+        }))());
+    });
+}());
 
-            if (resp) {
-                options.success(resp);
-            } else {
-                options.error("Record not found");
-            }
-        };
 
         /**
          Handle download request.
@@ -71,5 +63,5 @@
         //                  .text('<![CDATA[  ' + styleText + '  ]]>'))
         //         .download(alert.warn);
         // });
-    });
-}());
+//    });
+//}());

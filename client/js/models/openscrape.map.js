@@ -21,57 +21,38 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
-/**
- * A backbone model encapsulating the important parts of map state.
- *
- * Fires 'click(lat, lng)' and 'zoom_change(scale)' events.
- */
 define([
     'lib/google',
     'lib/underscore',
     'lib/backbone',
-    'lib/backbone-localstorage'
+    '../openscrape.store'
 ], function (google, _, backbone, Store) {
     "use strict";
 
     return new (backbone.Model.extend({
         defaults: {
-            zoom: 11,
-            center: {
-                lat: 40.77,
-                lng: -73.98
-            },
-            scale: 1,
-            loaded: false
+            loaded: false,
+            scale: 1
         },
 
         store: new Store('map'),
 
-        validate: function (attrs) {
-            return _.has(attrs, 'diagonal');
-        },
-
         initialize: function () {
-            this.on('change', function () {
-                if (this.hasChanged('diagonal') && this.previous('diagonal')) {
-                    var ratio = this.previous('diagonal') / this.get('diagonal');
+            this.on('change:diagonal', function () {
+                if (this.previous('diagonal')) {
+                    var ratio = this.previous('diagonal') / this.get('diagonal'),
+                        newScale = this.get('scale') * ratio;
 
                     if (ratio > 1.1 || ratio < 0.9) {
-                        this.set('scale', this.get('scale') * ratio);
-                        this.trigger('zoom_change', this.get('scale'));
+                        this.save('scale', newScale);
                     }
                 }
-
-                if (this.hasChanged('click')) {
-                    this.trigger('click',
-                                 this.get('click').lat,
-                                 this.get('click').lng);
-                }
-
-                if (this.hasChanged('loaded')) {
-                    this.trigger('loaded');
-                }
             }, this);
+        },
+
+        saveBounds: function (centerLat, centerLng, northEastLat, northEastLng) {
+            this.save('diagonal', Math.sqrt(Math.pow(centerLng - northEastLng, 2) +
+                                            Math.pow(centerLat - northEastLat, 2)));
         }
     }))();
 });

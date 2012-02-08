@@ -24,28 +24,43 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    'lib/backbone-localstorage',
+    '../openscrape.store',
     'models/openscrape.node'
-], function (_, backbone, Store, node) {
+], function (_, backbone, Store, NodeModel) {
     "use strict";
 
     /**
      * The global collection of nodes.
      */
     return new (backbone.Collection.extend({
-        model: node,
+        model: NodeModel,
 
         // Standard storage method override.  TODO breakout
         store: (function () {
 
             var store = new Store('nodes');
 
-            store.find = function (model) {
-                console.log('finding model');
+            store.create = function (model) {
+                console.log('creating model');
                 console.log(model);
             };
 
+            store.update = function (model) {
+                console.log('updating model');
+                console.log(model);
+
+            };
+
             return store;
-        }())
+        }()),
+
+        /**
+         * Find a node by address.  Checks tags.
+         */
+        findByAddress: function (address) {
+            return this.find(function (node) {
+                return _.isEqual(node.get('tags'), address);
+            });
+        }
     }))();
 });

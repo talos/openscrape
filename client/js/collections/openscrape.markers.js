@@ -27,15 +27,15 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    'lib/backbone-localstorage',
+    '../openscrape.store',
     'models/openscrape.marker'
-], function (_, backbone, Store, marker) {
+], function (_, backbone, Store, MarkerModel) {
     "use strict";
 
-    return (backbone.Collection.extend({
+    return new (backbone.Collection.extend({
 
         store: new Store('markers'),
 
-        model: marker
-    })());
+        model: MarkerModel
+    }))();
 });

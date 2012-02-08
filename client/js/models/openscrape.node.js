@@ -51,46 +51,57 @@ define([
 
         defaults: {
             cookies: {},
-            tags: {}
+            tags: {},
+            ancestors: [], // most recent ancestor is last.
+            children: []
+        },
+
+        initialize: function (resp) {
+
+            // Bubble changes up.
+            this.on('change', function () {
+                _.each(this.get('ancestors'), function (ancestor) {
+                    ancestor.trigger('change');
+                });
+            }, this);
         },
 
         /**
-         * Nodes should be flat, rather than nested.  This makes sure
-         * that is the case.
+         * Nodes should be flat, rather than nested, should reference
+         * their ancestors and immediate children by ID, and should
+         * have a type.
          */
-        initialize: function () {
-            if (this.has('children')) {
-                this.collection.add(this.get('children'));
-                this.unset('children');
+        parse: function (resp) {
+            var childIds = [];
+
+            throw "I CAN HAZ FALE PARSE";
+
+            // resp.type = resp.status;
+            // if (resp.type === 'match' || resp.type === 'page') {
+                
+            // } else {
+            //     _.each(resp.children, function (ary, name) {
+            //         var tags = {};
+            //         if (resp.type === 'found') {
+            //             tags[resp.name] = name;
+            //         }
+            //         childIds.push(this.collection.create({
+            //             ancestors: 
+            //             name: name,
+            //             status: resp.type === 'found' ? 'match' : 'page',
+            //             tags: tags
+            //         }).id);
+            //     }, this);
+            // }
+            // resp.children = childIds;
+            // return resp;
+        },
+
+        validate: function (attributes) {
+            if (!_.has(attributes, 'type')) {
+                return "Node must specify a type.";
             }
-        },
-
-        /**
-         * @return {Array} all the immediate {openscrape.Node}
-         * children of this node.
-         */
-        children: function () {
-            return this.collection.filter(_.bind(function (node) {
-                return node.get('parentId') === this.id;
-            }, this));
-        },
-
-        /**
-         * @return {Array} all the ancestor {openscrape.Node}s of this
-         * node.
-         */
-        ancestors: function () {
-            var parentId = this.get('parentId'),
-                parent,
-                ancestors = [];
-
-            while (typeof parentId !== 'undefined') {
-                parent = this.collection.get(parentId);
-                ancestors.push(parent);
-                parentId = parent.get('parentId');
-            }
-
-            return ancestors;
+            return undefined;
         },
 
         /**
@@ -98,26 +109,26 @@ define([
          * uniquely descended from this node.
          */
         uniqueDescendents: function () {
-            var children = this.children(),
+            var children = this.get('children'),
                 child,
                 descendents;
 
             while (children.length === 1) {
                 child = this.collection.get(children[0]);
                 descendents.push(child);
-                children = child.children();
+                children = child.children;
             }
 
             return descendents;
-        },
+        }
 
         /**
          * @return {Array} of {openscrape.Node} models uniquely above
          * and below this node, including this node at the end.
          */
-        related: function () {
-            return Array.prototype.concat(this.ancestors(), this.descendents(), [this]);
-        },
+        // related: function () {
+        //     return Array.prototype.concat(this.ancestors(), this.descendents(), [this]);
+        // },
 
         /**
          * Return all the cookies for the specified ID, its parents and
@@ -127,13 +138,13 @@ define([
          *
          * {host1: [cookie, cookie...], host2: [cookie, cookie]...}
          */
-        cookies: function () {
-            return _.reduce(
-                _.invoke(this.related(), 'get', 'cookies'),
-                accumulate,
-                {}
-            );
-        },
+        // cookies: function () {
+        //     return _.reduce(
+        //         _.invoke(this.related(), 'get', 'cookies'),
+        //         accumulate,
+        //         {}
+        //     );
+        // },
 
         /**
          * Returns all the tags for the specified ID, its parents, and
@@ -141,25 +152,25 @@ define([
          *
          * @return {Object} of tags.
          */
-        tags: function () {
-            return _.reduce(
-                _.invoke(this.related(), 'get', 'tags'),
-                _.extend,
-                {}
-            );
-        },
+        // tags: function () {
+        //     return _.reduce(
+        //         _.invoke(this.related(), 'get', 'tags'),
+        //         _.extend,
+        //         {}
+        //     );
+        // },
 
         /**
          * Add up all the widths to the first parent.
          *
          * @return {Number} pixels of width from first parent onwards.
          */
-        distance: function () {
-            return _.reduce(
-                _.invoke(this.ancestors(), 'get', 'width'),
-                function (memo, width) { return memo + width; },
-                0
-            );
-        }
+        // distance: function () {
+        //     return _.reduce(
+        //         _.invoke(this.ancestors(), 'get', 'width'),
+        //         function (memo, width) { return memo + width; },
+        //         0
+        //     );
+        // }
     });
 });

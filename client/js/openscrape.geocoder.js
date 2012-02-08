@@ -22,11 +22,11 @@
 
 define([
     'require',
-    './openscrape.address',
     'lib/underscore',
     'lib/google',
+    'lib/json2',
     'lib/jquery'
-], function (require, Address, underscore, google) {
+], function (require, underscore, google, json) {
     "use strict";
 
     var $ = require('jquery');
@@ -42,8 +42,8 @@ define([
      * @param lat The float latitude to reverse geocode.
      * @param lng The float longitude to reverse geocode.
      *
-     * @return {Promise} that will be resolved with a single
-     * {openscrape.Address} when successful, or rejected with
+     * @return {Promise} that will be resolved with a JS object with address
+     * info when successful, or rejected with
      * an error message if there is a problem.
      */
     Geocoder.prototype.reverseGeocode = function (lat, lng) {
@@ -75,7 +75,13 @@ define([
                         });
 
                         if (number && street && zip) {
-                            addresses.push(new Address(number, street, zip, lat, lng));
+                            addresses.push({
+                                number: number,
+                                street: street,
+                                zip: zip,
+                                lat: lat,
+                                lng: lng
+                            });
                         }
                     }
                 });
@@ -87,7 +93,7 @@ define([
                 } else {
                     dfd.reject("Geocoder failed: several addresses "
                                + "found for (" + lat + ", " + lng + ")"
-                               + JSON.stringify(addresses));
+                               + json.stringify(addresses));
                 }
             } else {
                 dfd.reject("Geocoder failed: " + status);

@@ -29,94 +29,86 @@ define([
     'lib/google',
     'lib/backbone',
     'models/openscrape.map',
-    'views/openscrape.visual'
-], function (_, google, backbone, map, Visual) {
+    'views/openscrape.marker',
+    'collections/openscrape.markers'
+], function (_, google, backbone, mapModel, MarkerView, markersCollection) {
     "use strict";
 
     return backbone.View.extend({
-        dblClickWaitTime: 500,
-        dblClickWait: null,
-        model: map,
+        model: mapModel,
+
+        tagName: 'div',
+        id: 'map',
 
         initialize: function () {
-            var center = new google.maps.LatLng(this.model.get('center').lat,
-                                                this.model.get('center').lng);
+            var gMap = new google.maps.Map(this.el, {
+                    center: new google.maps.LatLng(40.77, -73.98),
+                    zoom: 11,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    mapTypeId: google.maps.MapTypeId.TERRAIN
+                }),
+                dblClickWaitTime = 500,
+                dblClickWait = null,
+                saveBounds = _.bind(function () {
+                    var bounds = gMap.getBounds(),
+                        center = bounds.getCenter(),
+                        northEast = bounds.getNorthEast();
 
-            this.gMap = new google.maps.Map(this.el, {
-                center: center,
-                zoom: this.model.get('zoom'),
-                mapTypeControl: false,
-                streetViewControl: false,
-                mapTypeId: google.maps.MapTypeId.TERRAIN
-            });
+                    this.model.saveBounds(center.lat(), center.lng(),
+                                          northEast.lat(), northEast.lng());
+                }, this);
 
-            // construct visual view using raw google map
-            this.visual = new Visual({gMap: this.gMap});
-
+            // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
-            google.maps.event.addListenerOnce(this.gMap, 'idle', _.bind(this.update, this));
-            google.maps.event.addListenerOnce(this.gMap, 'bounds_changed', _.bind(this.update, this));
-            google.maps.event.addListener(this.gMap, 'dblclick', function () {
-                clearTimeout(this.dblClickWait);
+            google.maps.event.addListenerOnce(gMap, 'idle', _.bind(function () {
+                saveBounds();
+                this.model.save('loaded', true);
+            }, this));
+            google.maps.event.addListenerOnce(gMap, 'bounds_changed', _.bind(function () {
+                saveBounds();
+            }, this));
+            google.maps.event.addListener(gMap, 'dblclick', function () {
+                clearTimeout(dblClickWait);
             });
-            google.maps.event.addListener(this.gMap, 'click', _.bind(function (evt) {
+            google.maps.event.addListener(gMap, 'click', _.bind(function (evt) {
                 var latLng = evt.latLng;
 
-                this.dblClickWait = setTimeout(_.bind(function () {
-                    this.click(latLng.lat(), latLng.lng());
-                }, this), this.dblClickWaitTime);
+                dblClickWait = setTimeout(_.bind(function () {
+                    this.model.save({
+                        click: {
+                            lat: latLng.lat(),
+                            lng: latLng.lng()
+                        }
+                    });
+                }, this), dblClickWaitTime);
             }, this));
 
             // TODO bind modification of model back to gmaps display
+            this.model.on('changed:loaded', this.loaded, this);
+            this.model.on('changed:click', this.click, this);
+
+            this.gMap = gMap; // needed to create markers
         },
 
-        click: function (latitude, longitude) {
-            this.model.save({
-                click: {
-                    lat: latitude,
-                    lng: longitude
-                }
-            });
+        loaded: function () {
+            console.log('map loaded');
         },
 
-        /**
-         * If the map is clicked and we're not visible, try to geocode and build
-         * a new visual.
-         */
-        mapClick: function (lat, lng) {
-            if (!this.isVisible()) {
-                this.move(lat, lng);
-                this.show();
-                this.reverseGeocoding();
-                geocoder.reverseGeocode(lat, lng)
-                    .done(_.bind(function (address) {
-                        this.createNode(address);
-                    }, this))
-                    .fail(_.bind(function (msg) {
-                        // TODO
-                        console.log(msg);
-                        this.hide();
-                    }, this))
-                    .always(_.bind(function () {
-                        this.doneReverseGeocoding();
-                    }, this));
+        click: function () {
+            if (markersCollection.any(function (m) { return !m.get('collapsed'); })) {
+                // a click should only collapse existing markers if any are open
+                markersCollection.invoke('save', 'collapsed', true);
+            } else {
+                // if everything is collapsed, create a new marker
+                var m = new MarkerView({
+                    model: markersCollection.create({
+                        lat: this.model.get('click').lat,
+                        lng: this.model.get('click').lng
+                    }),
+                    gMap: this.gMap
+                });
             }
-        },
-
-        update: function () {
-            var bounds = this.gMap.getBounds(),
-                center = bounds.getCenter(),
-                northEast = bounds.getNorthEast();
-
-            this.model.save({
-                loaded: true,
-                center : {
-                    lat: center.lat(),
-                    lng: center.lng()
-                },
-                diagonal: Math.sqrt(Math.pow(center.lng() - northEast.lng(), 2) +
-                                    Math.pow(center.lat() - northEast.lat(), 2))
-            });
         }
     });
 });
