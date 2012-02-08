@@ -78,7 +78,6 @@ define([
 
             // resp.type = resp.status;
             // if (resp.type === 'match' || resp.type === 'page') {
-                
             // } else {
             //     _.each(resp.children, function (ary, name) {
             //         var tags = {};
@@ -95,13 +94,6 @@ define([
             // }
             // resp.children = childIds;
             // return resp;
-        },
-
-        validate: function (attributes) {
-            if (!_.has(attributes, 'type')) {
-                return "Node must specify a type.";
-            }
-            return undefined;
         },
 
         /**

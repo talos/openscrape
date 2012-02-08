@@ -76,7 +76,12 @@ define([
                     //this.model.save('address', address);
                     var node = nodesCollection.findByAddress(address)
                             || nodesCollection.create({ tags: address });
-                    this.$visual.append(new VisualView(node).render().$el);
+                    if (node) {
+                        this.$visual.append(new VisualView(node).render().$el);
+                    } else {
+                        console.log(address);
+                        this.model.destroy();
+                    }
                 }, this))
                 .fail(_.bind(function (reason) {
                     this.model.destroy();

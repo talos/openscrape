@@ -85,8 +85,8 @@ define([
             }, this));
 
             // TODO bind modification of model back to gmaps display
-            this.model.on('changed:loaded', this.loaded, this);
-            this.model.on('changed:click', this.click, this);
+            this.model.on('change:loaded', this.loaded, this);
+            this.model.on('change:click', this.click, this);
 
             this.gMap = gMap; // needed to create markers
         },

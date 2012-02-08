@@ -43,12 +43,15 @@ define([
             store.create = function (model) {
                 console.log('creating model');
                 console.log(model);
+
+                return Store.prototype.create.call(store, model);
             };
 
             store.update = function (model) {
                 console.log('updating model');
                 console.log(model);
 
+                return Store.prototype.update.call(store, model);
             };
 
             return store;
