@@ -35,13 +35,15 @@ define([
     'lib/requirejs.mustache',
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.caustic',
-    'collections/openscrape.nodes'
+    '../openscrape.caustic'
 ], function (ready, match, page, wait, reference, missing, failed,
-             mustache, _, backbone, caustic, nodesCollection) {
+             mustache, _, backbone, caustic) {
     "use strict";
 
     return backbone.View.extend({
+
+        tagName: 'div',
+        className: 'node',
 
         templates: {
             match: match,
@@ -58,34 +60,31 @@ define([
             'click #scrape': 'scrape'
         },
 
-        // initialize: function () {
-        //     this.model.on('change', this.render, this);
-        // },
-
         render: function () {
             this.$el.html(mustache.render(
-                this.templates[this.model.type],
-                this.model
+                this.templates[this.model.get('type')],
+                this.model.toJSON()
             ));
-            this.model.set('width', this.$el.width());
-            this.model.set('height', this.$el.height());
+            this.model.save({
+                width: this.$el.width(),
+                height: this.$el.height()
+            }, {
+                silent: true
+            });
             return this;
         },
 
         scrape: function () {
-            
+            this.save('force', true);
+            this.$el.addClass('loading');
+            caustic.scrape(this.model.asRequest())
+                .done(_.bind(function (resp) {
+                    // todo handle this in store?
+                    this.save(this.model.parse(resp));
+                }, this))
+                .always(_.bind(function () {
+                    this.$el.removeClass('loading');
+                }));
         }
-
-        // done: function () {
-        //     this.$el.removeClass('loading');
-        // },
-
-        // request: function () {
-        //     this.$el.addClass('loading');
-        //     this.model.fetch({
-        //         success: _.bind(this.done, this),
-        //         failure: _.bind(this.done, this)
-        //     });
-        // }
     });
 });

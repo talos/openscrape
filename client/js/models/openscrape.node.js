@@ -27,9 +27,8 @@
  */
 define([
     'lib/underscore',
-    'lib/backbone',
-    'collections/openscrape.nodes'
-], function (_, backbone, nodes) {
+    'lib/backbone'
+], function (_, backbone) {
     "use strict";
 
     /**
@@ -47,80 +46,102 @@ define([
     };
 
     return backbone.Model.extend({
-        collection: nodes,
-
         defaults: {
             cookies: {},
-            tags: {},
-            ancestors: [], // most recent ancestor is last.
-            children: []
-        },
-
-        initialize: function (resp) {
-
-            // Bubble changes up.
-            this.on('change', function () {
-                _.each(this.get('ancestors'), function (ancestor) {
-                    ancestor.trigger('change');
-                });
-            }, this);
+            tags: {}
         },
 
         /**
-         * Nodes should be flat, rather than nested, should reference
+         * Nodes should be flat, rather than nested, should refer to
          * their ancestors and immediate children by ID, and should
          * have a type.
          */
         parse: function (resp) {
-            var childIds = [];
+            resp.childIds = [];
+            resp.ancestors = resp.ancestors || [];
 
-            throw "I CAN HAZ FALE PARSE";
+            var childAncestors = resp.ancestors.concat([this.id]);
 
-            // resp.type = resp.status;
-            // if (resp.type === 'match' || resp.type === 'page') {
-            // } else {
-            //     _.each(resp.children, function (ary, name) {
-            //         var tags = {};
-            //         if (resp.type === 'found') {
-            //             tags[resp.name] = name;
-            //         }
-            //         childIds.push(this.collection.create({
-            //             ancestors: 
-            //             name: name,
-            //             status: resp.type === 'found' ? 'match' : 'page',
-            //             tags: tags
-            //         }).id);
-            //     }, this);
-            // }
-            // resp.children = childIds;
-            // return resp;
+            if (_.has(resp, 'status')) {
+                // is a proper response
+                resp.type = resp.status;
+                _.each(resp.children, function (respAry, valueName) {
+                    var tags = {},
+                        value = {
+                            name: valueName,
+                            ancestors: childAncestors,
+                            type: resp.status === 'loaded' ? 'page' : 'match',
+                            children: respAry,
+                            tags: {}
+                        };
+                    if (resp.type === 'found') {
+                        if (resp.children.length === 1) {
+                            // one-to-one relations keep the tag in the parent
+                            resp.tags[resp.name] = valueName;
+                        } else {
+                            // otherwise, the tag is in the child.
+                            value.tags[resp.name] = valueName;
+                        }
+                    }
+
+                    resp.childIds.push(this.collection.create(value).id);
+                }, this);
+            } else {
+                // is a value
+                _.each(resp.children, function (child) {
+                    child.ancestors = childAncestors;
+                    resp.childIds.push(this.collection.create(child).id);
+                }, this);
+            }
+            delete resp.children;
+            return resp;
         },
 
         /**
-         * @return {Array} of {openscrape.Node} models that are
-         * uniquely descended from this node.
+         * @return The node as a request, with full-tree cookies & tags.
          */
-        uniqueDescendents: function () {
-            var children = this.get('children'),
-                child,
-                descendents;
+        asRequest: function () {
+            return _.extend(this.toJSON(), {
+                tags: this.tags(),
+                cookies: this.cookies()
+            });
+        },
 
-            while (children.length === 1) {
-                child = this.collection.get(children[0]);
-                descendents.push(child);
-                children = child.children;
+        /**
+         * @return {Array} of IDs below this node, excluding only
+         * one-to-many found relations.
+         */
+        oneToOneDescendents: function () {
+            var descendents = [];
+
+            if (this.get('type') !== 'found' || this.get('childIds').length === 1) {
+                descendents.push(this.get('childIds'));
+                _.each(this.collection.getAll(this.get('childIds')), function (child) {
+                    Array.prototype.push.apply(descendents, child.oneToOneDescendents());
+                });
             }
 
             return descendents;
-        }
+        },
 
         /**
-         * @return {Array} of {openscrape.Node} models uniquely above
-         * and below this node, including this node at the end.
+         * @return {Array} of IDs that are one-to-one found relations
+         * both below this node, above, and around it.
          */
-        // related: function () {
-        //     return Array.prototype.concat(this.ancestors(), this.descendents(), [this]);
-        // },
+        related: function () {
+            var related = this.oneToOneDescendents();
+            related.push(this.id);
+
+            _.each(this.get('ancestors'), function (ancestor) {
+                if (!_.include(related, ancestor)) {
+                    related.push(ancestor);
+                    Array.prototype.push.apply(related,
+                                               this.collection.get(ancestor).oneToOneDescendents());
+                }
+            }, this);
+
+            return related;
+        },
 
         /**
          * Return all the cookies for the specified ID, its parents and
@@ -130,13 +151,13 @@ define([
          *
          * {host1: [cookie, cookie...], host2: [cookie, cookie]...}
          */
-        // cookies: function () {
-        //     return _.reduce(
-        //         _.invoke(this.related(), 'get', 'cookies'),
-        //         accumulate,
-        //         {}
-        //     );
-        // },
+        cookies: function () {
+            return _.reduce(
+                _.invoke(this.collection.getAll(this.related()), 'get', 'cookies'),
+                accumulate,
+                {}
+            );
+        },
 
         /**
          * Returns all the tags for the specified ID, its parents, and
@@ -144,25 +165,25 @@ define([
          *
          * @return {Object} of tags.
          */
-        // tags: function () {
-        //     return _.reduce(
-        //         _.invoke(this.related(), 'get', 'tags'),
-        //         _.extend,
-        //         {}
-        //     );
-        // },
+        tags: function () {
+            return _.reduce(
+                _.invoke(this.collection.getAll(this.related()), 'get', 'tags'),
+                _.extend,
+                {}
+            );
+        },
 
         /**
          * Add up all the widths to the first parent.
          *
          * @return {Number} pixels of width from first parent onwards.
          */
-        // distance: function () {
-        //     return _.reduce(
-        //         _.invoke(this.ancestors(), 'get', 'width'),
-        //         function (memo, width) { return memo + width; },
-        //         0
-        //     );
-        // }
+        distance: function () {
+            return _.reduce(
+                _.invoke(this.collection.getAll(this.get('ancestors')), 'get', 'width'),
+                function (memo, width) { return memo + width; },
+                0
+            );
+        }
     });
 });

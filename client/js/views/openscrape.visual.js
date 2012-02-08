@@ -29,10 +29,8 @@ define([
     'lib/d3',
     'lib/underscore',
     'lib/backbone',
-    'models/openscrape.node',
-    'views/openscrape.node',
-    'collections/openscrape.nodes'
-], function (d3, _, backbone, NodeModel, NodeView, nodesCollection) {
+    'views/openscrape.node'
+], function (d3, _, backbone, NodeView) {
     "use strict";
 
     /**
@@ -100,16 +98,17 @@ define([
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
                 });
 
-            this.model.on('change', this.render, this);
+            this.collection.on('change', this.render, this);
         },
 
         render: function () {
             // The .nodes function generates nested JSON.
             // When we need access to the model itself, use
-            // nodesCollection.get().
-            var nodes = this.tree.nodes(this.model.toJSON())
+            // collection.get().
+            var collection = this.collection,
+                nodes = this.tree.nodes(collection.first().toJSON())
                     .children(function (d) {
-                        return _.invoke(nodesCollection.get(d.id).children(), 'toJSON');
+                        return _.invoke(collection.getAll(d.childIds), 'toJSON');
                     }),
                 link = this.vis.selectAll("path.link")
                     .data(this.tree.links(nodes), function (d) {
@@ -135,7 +134,7 @@ define([
                 .each(function (d) {
                     // create view for node
                     var view = new NodeView({
-                        model: nodesCollection.get(d.id),
+                        model: collection.get(d.id),
                         el: this
                     });
                     view.render();
@@ -144,7 +143,7 @@ define([
             node.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    var translate = nodesCollection.get(d.id).get('distance'),
+                    var translate = collection.get(d.id).get('distance'),
                         rotate = d.parent ? d.x - 90 : d.x, // perpendicular root
                         scale = 1;
 
@@ -154,7 +153,7 @@ define([
                 })
                 .select('.foreign')
                 .attr('transform', function (d) {
-                    var model = nodesCollection.get(d.id),
+                    var model = collection.get(d.id),
                         x = d.x < 180 ? 0 : model.get('width'),
                         y = -model.get('height') / 2,
                         rotate = d.x < 180 ? 0 : 180;
@@ -168,11 +167,6 @@ define([
                 .attr("transform", function (d) {
                     return "rotate(0)translate(0)";
                 })
-            // no need to destroy model here -- this happens BECAUSE model was destroyed.
-                // .each(function (d) {
-                //     // destroys our 
-                //     nodesCollection.get(d.id).destroy();
-                // })
                 .remove();
 
             link.enter()
@@ -185,9 +179,9 @@ define([
                 .attr("d", function (d, i) {
                     return diagonal({
                         source: { x: d.source.x,
-                                  y: d.source.parent ? d.source.parent.distance() : 0},
+                                  y: collection.get(d.source.id).distance() },
                         target: { x: d.target.x,
-                                  y: d.target.parent ? d.target.parent.distance() : 0}
+                                  y: collection.get(d.target.id).distance() }
                     }, i);
                 });
 

@@ -62,32 +62,30 @@ define([
             }
         };
 
+    return {
+
+        /**
+         * Scrape a request.
+         *
+         * @param {Object} request a JS object to request.
+         *
+         * @return {Promise} that will be resolved with the raw JS object
+         * of the response when the request is done, or rejected with a
+         * reason for why it failed.
+         **/
+        scrape: function (request) {
+            var dfd = $.Deferred();
+
+            // Use the applet if it's available, and proxy otherwise.
+            // TODO mvc violation
+            applet.enable()
+                .done(function () {
+                    queueRequest(applet.request, dfd, request);
+                }).fail(function () {
+                    queueRequest(proxy.request, dfd, request);
+                });
+
+            return dfd.promise();
+        }
+    };
 });
-
-    // return {
-
-    //     /**
-    //      * Make a request.
-    //      *
-    //      * @param {openscrape.Request} request A request to make.
-    //      *
-    //      * @return {Promise} that will be resolved with the raw JS object
-    //      * of the response when the request is done, or rejected with a
-    //      * reason for why it failed.
-    //      **/
-    //     request: function (request) {
-    //         var dfd = $.Deferred();
-
-    //         // Use the applet if it's available, and proxy otherwise.
-    //         // TODO mvc violation
-    //         applet.enable()
-    //             .done(function () {
-    //                 queueRequest(applet.request, dfd, request);
-    //             }).fail(function () {
-    //                 queueRequest(proxy.request, dfd, request);
-    //             });
-
-    //         return dfd.promise();
-    //     }
-    // };
-    // });

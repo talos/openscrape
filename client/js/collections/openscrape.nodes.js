@@ -40,6 +40,15 @@ define([
                 this.store = new Store('nodes' + options.id);
             }
             throw "Must initialize nodes collection with an id.";
+        },
+
+        /**
+         * Get an array of nodes by ID.
+         */
+        getAll: function (ids) {
+            return this.filter(function (node) {
+                return _.include(ids, node.id);
+            });
         }
     });
 });
