@@ -22,37 +22,42 @@
 /*global define*/
 
 define([
-    'lib/google',
     'lib/underscore',
     'lib/backbone',
     '../openscrape.store'
-], function (google, _, backbone, Store) {
+], function (_, backbone, Store) {
     "use strict";
 
-    return new (backbone.Model.extend({
-        defaults: {
-            loaded: false,
-            scale: 1
-        },
-
+    return backbone.Model.extend({
         store: new Store('map'),
 
-        initialize: function () {
-            this.on('change:diagonal', function () {
-                if (this.previous('diagonal')) {
-                    var ratio = this.previous('diagonal') / this.get('diagonal'),
-                        newScale = this.get('scale') * ratio;
-
-                    if (ratio > 1.1 || ratio < 0.9) {
-                        this.save('scale', newScale);
-                    }
-                }
-            }, this);
+        defaults: function () {
+            return {
+                loaded: false,
+                scale: 1
+            };
         },
 
         saveBounds: function (centerLat, centerLng, northEastLat, northEastLng) {
-            this.save('diagonal', Math.sqrt(Math.pow(centerLng - northEastLng, 2) +
-                                            Math.pow(centerLat - northEastLat, 2)));
+            var newDiagonal = Math.sqrt(Math.pow(centerLng - northEastLng, 2) +
+                                        Math.pow(centerLat - northEastLat, 2)),
+                lastDiagonal = this.get('diagonal'),
+                scale = this.get('scale'),
+                ratio;
+
+            if (lastDiagonal) {
+                ratio = lastDiagonal / newDiagonal;
+                if (ratio > 1.1 || ratio < 0.9) {
+                    scale = scale * ratio;
+                }
+            }
+
+            this.save({
+                lat: centerLat,
+                lng: centerLng,
+                diagonal: newDiagonal,
+                scale: scale
+            });
         }
-    }))();
+    });
 });

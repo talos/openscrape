@@ -73,9 +73,6 @@ define([
 
     return backbone.View.extend({
 
-        tagName: 'div',
-        className: 'visual',
-
         initialize: function (options) {
 
             var svg = d3.select(this.el)
@@ -96,7 +93,10 @@ define([
                 .size([360, r])
                 .separation(function (a, b) {
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
-                });
+                })
+                .children(_.bind(function (d) {
+                    return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
+                }, this));
 
             this.collection.on('change', this.render, this);
         },
@@ -106,10 +106,7 @@ define([
             // When we need access to the model itself, use
             // collection.get().
             var collection = this.collection,
-                nodes = this.tree.nodes(collection.first().toJSON())
-                    .children(function (d) {
-                        return _.invoke(collection.getAll(d.childIds), 'toJSON');
-                    }),
+                nodes = this.tree.nodes(collection.first().toJSON()),
                 link = this.vis.selectAll("path.link")
                     .data(this.tree.links(nodes), function (d) {
                         return d.source.id + '_' + d.target.id;

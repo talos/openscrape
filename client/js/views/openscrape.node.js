@@ -57,7 +57,7 @@ define([
         },
 
         events: {
-            'click #scrape': 'scrape'
+            'click .scrape': 'scrape'
         },
 
         render: function () {
@@ -65,6 +65,7 @@ define([
                 this.templates[this.model.get('type')],
                 this.model.toJSON()
             ));
+
             this.model.save({
                 width: this.$el.width(),
                 height: this.$el.height()
@@ -75,12 +76,13 @@ define([
         },
 
         scrape: function () {
-            this.save('force', true);
+            this.model.save('force', true);
+            console.log(this.model.asRequest());
             this.$el.addClass('loading');
             caustic.scrape(this.model.asRequest())
                 .done(_.bind(function (resp) {
                     // todo handle this in store?
-                    this.save(this.model.parse(resp));
+                    this.model.updateFromRaw(resp);
                 }, this))
                 .always(_.bind(function () {
                     this.$el.removeClass('loading');

@@ -26,11 +26,12 @@
 
     require([
         'require',
+        'models/openscrape.map',
         'views/openscrape.map',
         'lib/backbone',
         './openscrape.sync',
         'lib/jquery'
-    ], function (require, MapView, backbone) {
+    ], function (require, MapModel, MapView, backbone) {
         var $ = require('jquery');
 
         return (new (backbone.View.extend({
@@ -38,7 +39,13 @@
             el: $('#openscrape'),
 
             initialize: function () {
-                this.$el.append(new MapView().$el);
+                var mapModel = new MapModel({
+                    lat: 40.77,
+                    lng: -73.98
+                });
+                this.$el.append(new MapView({
+                    model: mapModel
+                }).$el);
             }
         }))());
     });

@@ -49,9 +49,9 @@ define([
         case "delete":  promise = store.destroy(model);                           break;
         }
 
-        promise
+        return promise
             .done(function (resp) {
-                options.success(resp);
+                options.success(resp.toJSON());
             })
             .fail(function (msg) {
                 options.error(msg);

@@ -1,0 +1,19 @@
+<div class="toggle">
+  {{#collapsed}}
+    <a href="#">O</a>
+  {{/collapsed}}
+  {{^collapsed}}
+  <a href="#">X</a>
+  {{/collapsed}}
+</div>
+{{#geocoding}}
+  <div class="geocoding">
+    Looking up address...
+    <div class="loading"></div>
+  </div>
+{{/geocoding}}
+{{#address}}
+  <div class="address">
+    {{number}} {{street}}, {{zip}}
+  </div>
+{{/address}}

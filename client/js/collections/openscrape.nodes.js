@@ -35,11 +35,12 @@ define([
         /**
          * Initialize a new collection of nodes.  Must have an ID.
          */
-        initialize: function (options) {
+        initialize: function (models, options) {
             if (_.has(options, 'id')) {
                 this.store = new Store('nodes' + options.id);
+            } else {
+                throw "Must initialize nodes collection with an id.";
             }
-            throw "Must initialize nodes collection with an id.";
         },
 
         /**
@@ -49,6 +50,67 @@ define([
             return this.filter(function (node) {
                 return _.include(ids, node.id);
             });
+        },
+
+        /**
+         * Parse and add in raw caustic response input.
+         *
+         * @param {Object} resp
+         *
+         * @return {openscrape.NodeModel}
+         */
+        addRaw: function (resp) {
+
+            var children = resp.children,
+                node,
+                childIds = [],
+                childAncestors = resp.ancestors || [];
+
+            resp.type = resp.type || resp.status;
+
+            delete resp.children;
+
+            node = this.create(resp);
+
+            // Do we have an id set?
+            console.log(node);
+
+            childAncestors.push(node.id);
+
+            if (_.has(resp, 'status')) {
+                // is a proper response
+                node.set('type', resp.status);
+                _.each(children, function (respAry, valueName) {
+                    var value = {
+                            name: valueName,
+                            ancestors: childAncestors,
+                            type: resp.status === 'loaded' ? 'page' : 'match',
+                            children: respAry,
+                            tags: {}
+                        };
+                    if (resp.status === 'found') {
+                        if (children.length === 1) {
+                            // one-to-one relations keep the tag in the parent
+                            resp.tags[resp.name] = valueName;
+                            node.set('tags', resp.tags);
+                        } else {
+                            // otherwise, the tag is in the child.
+                            value.tags[resp.name] = valueName;
+                        }
+                    }
+
+                    childIds.push(this.addRaw(value).id);
+                }, this);
+            } else {
+                // is a value
+                _.each(resp.children, function (child) {
+                    child.ancestors = childAncestors;
+                    childIds.push(this.addRaw(child).id);
+                }, this);
+            }
+            node.save();
+
+            return node;
         }
     });
 });

@@ -28,21 +28,20 @@ define([
     'lib/underscore',
     'lib/google',
     'lib/backbone',
-    'models/openscrape.map',
     'views/openscrape.marker',
     'collections/openscrape.markers'
-], function (_, google, backbone, mapModel, MarkerView, MarkersCollection) {
+], function (_, google, backbone, MarkerView, MarkersCollection) {
     "use strict";
 
     return backbone.View.extend({
-        model: mapModel,
 
         tagName: 'div',
         id: 'map',
 
         initialize: function () {
             var gMap = new google.maps.Map(this.el, {
-                    center: new google.maps.LatLng(40.77, -73.98),
+                    center: new google.maps.LatLng(this.model.get('lat'),
+                                                   this.model.get('lng')),
                     zoom: 11,
                     mapTypeControl: false,
                     streetViewControl: false,
@@ -68,7 +67,7 @@ define([
                 saveBounds();
                 this.model.save('loaded', true);
             }, this));
-            google.maps.event.addListenerOnce(gMap, 'bounds_changed', _.bind(function () {
+            google.maps.event.addListener(gMap, 'bounds_changed', _.bind(function () {
                 saveBounds();
             }, this));
             google.maps.event.addListener(gMap, 'dblclick', function () {
@@ -99,18 +98,21 @@ define([
         },
 
         click: function () {
-            if (this.markers.any(function (m) { return !m.get('collapsed'); })) {
-                // a click should only collapse existing markers if any are open
-                this.markers.invoke('save', 'collapsed', true);
-            } else {
+            if (this.markers.allCollapsed()) {
                 // if everything is collapsed, create a new marker
                 var m = new MarkerView({
                     model: this.markers.create({
                         lat: this.model.get('click').lat,
                         lng: this.model.get('click').lng
+                    }, {
+                        wait: true
                     }),
-                    gMap: this.gMap
+                    gMap: this.gMap,
+                    mapModel: this.model
                 });
+            } else {
+                // a click should only collapse existing markers if any are open
+                this.markers.collapseAll();
             }
         }
     });

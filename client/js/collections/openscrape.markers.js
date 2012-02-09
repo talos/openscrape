@@ -33,6 +33,15 @@ define([
 
         store: new Store('markers'),
 
-        model: MarkerModel
+        model: MarkerModel,
+
+        allCollapsed: function () {
+            // short-circuit if one is not collapsed, return opposite
+            return !this.any(function (m) { return !m.isCollapsed(); });
+        },
+
+        collapseAll: function () {
+            this.invoke('collapse');
+        }
     });
 });

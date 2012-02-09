@@ -47,54 +47,25 @@ define([
 
     return backbone.Model.extend({
         defaults: {
+            ancestors: [],
+            childIds: [],
             cookies: {},
-            tags: {}
+            tags: {},
+            force: false
         },
 
-        /**
-         * Nodes should be flat, rather than nested, should refer to
-         * their ancestors and immediate children by ID, and should
-         * have a type.
-         */
-        parse: function (resp) {
-            resp.childIds = [];
-            resp.ancestors = resp.ancestors || [];
+        updateFromRaw: function (resp) {
+            var children = resp.children;
 
-            var childAncestors = resp.ancestors.concat([this.id]);
-
-            if (_.has(resp, 'status')) {
-                // is a proper response
-                resp.type = resp.status;
-                _.each(resp.children, function (respAry, valueName) {
-                    var tags = {},
-                        value = {
-                            name: valueName,
-                            ancestors: childAncestors,
-                            type: resp.status === 'loaded' ? 'page' : 'match',
-                            children: respAry,
-                            tags: {}
-                        };
-                    if (resp.type === 'found') {
-                        if (resp.children.length === 1) {
-                            // one-to-one relations keep the tag in the parent
-                            resp.tags[resp.name] = valueName;
-                        } else {
-                            // otherwise, the tag is in the child.
-                            value.tags[resp.name] = valueName;
-                        }
-                    }
-
-                    resp.childIds.push(this.collection.create(value).id);
-                }, this);
-            } else {
-                // is a value
-                _.each(resp.children, function (child) {
-                    child.ancestors = childAncestors;
-                    resp.childIds.push(this.collection.create(child).id);
-                }, this);
-            }
             delete resp.children;
-            return resp;
+            resp.childIds = [];
+            resp.type = resp.status;
+
+            // EW
+            _.each(children, function (childResp) {
+                resp.childIds.push(this.collection.addRaw(resp).id);
+            }, this);
+            this.save(resp);
         },
 
         /**

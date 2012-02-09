@@ -29,13 +29,14 @@ define([
     'lib/backbone',
     'lib/requirejs.mustache',
     'text!../../templates/marker.mustache',
+    'text!../../templates/marker.stub.mustache',
     '../openscrape.geocoder',
-    'models/openscrape.map',
     'collections/openscrape.nodes',
     'views/openscrape.visual',
     'lib/jquery'
-], function (require, google, rich_marker, _, backbone, mustache, template,
-             geocoder, mapModel, NodesCollection, VisualView) {
+], function (require, google, rich_marker, _, backbone, mustache,
+             markerTemplate, stubTemplate, geocoder, NodesCollection,
+             VisualView) {
     "use strict";
 
     var $ = require('jquery');
@@ -46,6 +47,7 @@ define([
         className: 'marker',
 
         events: {
+            'click': 'click',
             'click .toggle': 'toggle'
         },
 
@@ -56,13 +58,11 @@ define([
             var lat = this.model.get('lat'),
                 lng = this.model.get('lng');
 
-            $(this.el).html(mustache.render(template), this.model);
-
+            this.$el.html(mustache.render(markerTemplate));
             this.visual = new VisualView({
-                collection: this.model.nodes
+                collection: this.model.nodes,
+                el: this.$el.find('.visual')
             });
-
-            this.$el.find('.visual').append(this.visual.$el);
 
             this.marker = new rich_marker.RichMarker({
                 map: options.gMap, // TODO binds us to google maps!! :/
@@ -73,10 +73,16 @@ define([
                 content: this.el
             });
 
+            this.mapModel = options.mapModel;
+            this.rescale();
+            this.render();
+
+            this.model.set('geocoding', true);
             // immediately look for address
             geocoder.reverseGeocode(lat, lng)
                 .done(_.bind(function (address) {
-                    this.model.nodes.create({
+                    this.model.save('address', address);
+                    this.model.nodes.addRaw({
                         tags: address,
                         instruction: '/instructions/nyc/property.json',
                         uri: '',
@@ -87,34 +93,51 @@ define([
                     this.model.destroy();
                 }, this))
                 .always(_.bind(function () {
-                    this.$el.find('.geocoding').remove();
+                    this.model.unset('geocoding');
                 }, this));
 
             // always keep an eye on zoom changes
-            mapModel.on('change:scale', this.rescale, this);
+            this.mapModel.on('change:scale', this.rescale, this);
 
-            this.model.on('change:collapsed', this.collapse, this);
+            this.model.on('change', this.render, this);
             this.model.on('destroy', this.destroy, this);
         },
 
-        toggle: function () {
+        /**
+         * Stop propagation of clicks on the element proper.
+         */
+        click: function (evt) {
+            evt.stopPropagation();
+        },
+
+        /**
+         * Toggle the full visual display.
+         */
+        toggle: function (evt) {
             this.model.toggle();
         },
 
-        collapse: function () {
-            if (this.model.get('collapsed') === true) {
+        render: function () {
+            if (this.model.isCollapsed()) {
                 this.visual.$el.hide();
+                this.marker.setZIndex(0);
             } else {
                 this.visual.$el.show();
+                this.marker.setZIndex(1);
             }
+            this.$el.find('.stub').html(
+                mustache.render(stubTemplate, this.model.toJSON())
+            );
+            this.marker.draw();
         },
 
         /**
          * Rescale the content.
          */
-        rescale: function (scale) {
-            var cssScale = 'scale(' + scale + ',' + scale + ')',
-                cssOrigin = '(50, 100)',
+        rescale: function () {
+            var scale = this.mapModel.get('scale'),
+                cssScale = 'scale(' + scale + ',' + scale + ')',
+                cssOrigin = '(50, 50)',
                 properties = [
                     [ 'transform', 'transform-origin' ],
                     [ '-ms-transform', '-ms-transform-origin'], /* IE 9 */

@@ -33,20 +33,35 @@ define([
 
     return backbone.Model.extend({
 
-        defaults: {
-            collapsed: false
+        initialize: function () {
+            this.on('add', function () {
+                this.nodes = new NodesCollection([], { id: this.id });
+            }, this);
+
+            this.on('destroy', function () {
+                this.nodes.reset();
+            }, this);
         },
 
-        initialize: function () {
-            this.nodes = new NodesCollection({ id: this.id });
+        expand: function () {
+            this.collection.collapseAll();
+            this.unset('collapsed');
+        },
+
+        collapse: function () {
+            this.set('collapsed', true);
+        },
+
+        isCollapsed: function () {
+            return this.has('collapsed');
         },
 
         toggle: function () {
-            this.set('collapsed', !this.get('collapsed'));
-        },
-
-        destroy: function () {
-            this.nodes.reset();
+            if (this.isCollapsed()) {
+                this.expand();
+            } else {
+                this.collapse();
+            }
         }
     });
 });
