@@ -85,7 +85,8 @@ define([
                 requester(requestStr)
                     .done(function (jsonResp) {
                         dfd.resolve(json.parse(jsonResp));
-                    }).fail(function (msg) {
+                    })
+                    .fail(function (msg) {
                         dfd.reject(msg);
                     })
                     .always(function () {
