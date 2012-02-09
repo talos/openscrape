@@ -18,7 +18,6 @@
    *
    ***/
 
-/*jslint nomen: true*/
 /*global define*/
 
 define([
@@ -26,15 +25,15 @@ define([
     'lib/json2',
     './openscrape.caustic.proxy',
     './openscrape.caustic.applet',
+    './openscrape.queue',
     'models/openscrape.prompt',
     'views/openscrape.prompt',
     'lib/jquery'
-], function (require, json, proxy, applet, PromptModel, PromptView) {
+], function (require, json, proxy, applet, Queue, PromptModel, PromptView) {
     "use strict";
 
     var $ = require('jquery'),
-        $queue = $({}), // generic queue
-        QUEUE_NAME = 'openscrape.caustic',
+        queue = new Queue('caustic'),
         promptModel = new PromptModel({
             text: 'Scraping hits external servers. You can'
                 + ' either proxy through my server (which is slower'
@@ -44,48 +43,8 @@ define([
             resolve: 'Applet',
             reject: 'Proxy'
         }),
-        started = false,
-        queue = function (func) {
-            $queue.queue(QUEUE_NAME, func);
-        },
-        dequeue = function () {
-            if (started === true) {
-                $queue.dequeue(QUEUE_NAME);
-            }
-        },
-        startQueue = function () {
-            started = true;
-            dequeue();
-        },
         requester,
-        promptView,
-
-        /**
-         * Queue a request.
-         *
-         * @param {Object} request The request to make.
-         *
-         * @return {Promise} Will be resolved or rejected with the result
-         * of the request.
-         */
-        queueRequest = function (request) {
-            var dfd = new $.Deferred(),
-                requestStr = json.stringify(request);
-
-            queue(function () {
-                requester(requestStr)
-                    .done(function (jsonResp) {
-                        dfd.resolve(json.parse(jsonResp));
-                    }).fail(function (msg) {
-                        dfd.reject(msg);
-                    })
-                    .always(function () {
-                        dequeue(); // next on the line
-                    });
-            });
-
-            return dfd.promise();
-        };
+        promptView;
 
     promptModel.on('resolved', function () {
         applet.enable().done(function () {
@@ -93,13 +52,13 @@ define([
         }).fail(function () {
             requester = proxy.request;
         }).always(function () {
-            startQueue();
+            queue.start();
         });
     });
 
     promptModel.on('rejected', function () {
         requester = proxy.request;
-        startQueue();
+        queue.start();
     });
 
     return {
@@ -119,7 +78,22 @@ define([
                 promptView = new PromptView({model: promptModel});
             }
 
-            return queueRequest(request);
+            var dfd = new $.Deferred(),
+                requestStr = json.stringify(request);
+
+            queue.queue(function (next) {
+                requester(requestStr)
+                    .done(function (jsonResp) {
+                        dfd.resolve(json.parse(jsonResp));
+                    }).fail(function (msg) {
+                        dfd.reject(msg);
+                    })
+                    .always(function () {
+                        next(); // next on the line
+                    });
+            });
+
+            return dfd.promise();
         }
     };
 });
