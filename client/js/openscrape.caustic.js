@@ -44,6 +44,19 @@ define([
             resolve: 'Applet',
             reject: 'Proxy'
         }),
+        started = false,
+        queue = function (func) {
+            $queue.queue(QUEUE_NAME, func);
+        },
+        dequeue = function () {
+            if (started === true) {
+                $queue.dequeue(QUEUE_NAME);
+            }
+        },
+        startQueue = function () {
+            started = true;
+            dequeue();
+        },
         requester,
         promptView,
 
@@ -56,10 +69,9 @@ define([
          * of the request.
          */
         queueRequest = function (request) {
-            var isFirst = $queue.queue(QUEUE_NAME).length === 0,
-                dfd = new $.Deferred();
+            var dfd = new $.Deferred();
 
-            $queue.queue(QUEUE_NAME, function () {
+            queue(QUEUE_NAME, function () {
                 requester(json.stringify(request))
                     .done(function (jsonResp) {
                         dfd.resolve(json.parse(jsonResp));
@@ -67,14 +79,9 @@ define([
                         dfd.reject(msg);
                     })
                     .always(function () {
-                        $queue.dequeue(QUEUE_NAME);
+                        dequeue(); // next on the line
                     });
             });
-
-            // Non-fx queues are not auto-run.
-            if (isFirst) {
-                $queue.dequeue(QUEUE_NAME);
-            }
 
             return dfd.promise();
         };
@@ -84,11 +91,14 @@ define([
             requester = applet.request;
         }).fail(function () {
             requester = proxy.request;
+        }).always(function () {
+            startQueue();
         });
     });
 
     promptModel.on('rejected', function () {
         requester = proxy.request;
+        startQueue();
     });
 
     return {
