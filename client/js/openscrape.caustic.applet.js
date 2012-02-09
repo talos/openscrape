@@ -22,20 +22,15 @@
 
 define([
     'require',
-    './openscrape.alert',
     'lib/json2',
     'lib/jquery'
-], function (require, alert, json) {
+], function (require, json) {
     "use strict";
 
     // PRIVATE
     var $ = require('jquery'),
         applet,
-        promptText = 'Scraping hits external servers. You can'
-            + ' either proxy through my server (which is slower'
-            + ' and costs me!) or you can use the applet.  If'
-            + ' you use the applet, you may have to confirm'
-            + ' its permissions with an annoying pop-up dialog box.',
+
         pollFrequency = 200, // how often to poll the applet when requesting
         javaClass = 'com.openscrape.applet.OpenScrapeApplet.class',
         dir = 'jar/',
@@ -66,44 +61,43 @@ define([
         /**
          Try to enable the applet.
 
-         @return A promise that will be resolved when the applet is enabled,
-         or rejected if it is not enabled.
+         @return A promise that will be resolved when the applet is ready,
+         or rejected if something went wrong.
          **/
         enable: function () {
-            var dfd = $.Deferred();
+            var dfd = $.Deferred(),
+                interval,
+                $applet;
 
             if (applet) {
                 dfd.resolve(); // applet already available
             } else {
-                alert.prompt(promptText, {resolve: 'Applet', reject: 'Proxy'})
-                    .done(function () {
-                        // user accepted the prompt
-                        var interval,
-                            $applet = $('<applet>').attr({
-                                archive : jar,
-                                codebase : dir,
-                                code : javaClass,
-                                width : '1px',
-                                height : '1px',
-                                mayscript : 'mayscript'
-                            }).appendTo('body');
-                        applet = $applet.get(0); // assign the applet
+                try {
+                    $applet = $('<applet>').attr({
+                        archive : jar,
+                        codebase : dir,
+                        code : javaClass,
+                        width : '1px',
+                        height : '1px',
+                        mayscript : 'mayscript'
+                    }).appendTo('body');
+                    applet = $applet.get(0); // assign the applet
 
-                        // we should only resolve once the applet is ready.
-                        interval = setInterval(function () {
-                            try {
-                                applet.isAvailable();
-                                clearInterval(interval);
-                                dfd.resolve();
-                            } catch (err) {
-                                // Method will throw exception until applet ready.
-                                alert.warn('Waiting for applet...');
-                            }
-                        }, pollFrequency);
-                    }).fail(function () {
-                        // user rejected the prompt
-                        dfd.reject();
-                    });
+                    // we should only resolve once the applet is ready.
+                    // TODO a timer to reject?
+                    interval = setInterval(function () {
+                        try {
+                            applet.isAvailable();
+                            clearInterval(interval);
+                            dfd.resolve();
+                        } catch (err) {
+                            // Method will throw exception until applet ready.
+                            //alert.warn('Waiting for applet...');
+                        }
+                    }, pollFrequency);
+                } catch (err) {
+                    dfd.reject(err);
+                }
             }
             return dfd;
         },
