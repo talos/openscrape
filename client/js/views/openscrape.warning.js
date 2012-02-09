@@ -61,8 +61,7 @@ define([
 
         dismiss: function () {
             this.model.dismiss();
-            this.$el.slideUp();
-            this.remove();
+            this.$el.slideUp('fast', this.$el.remove);
         }
     });
 });
