@@ -43,8 +43,8 @@ define([
         initialize: function () {
             this.$el
                 .hide()
-                .html(mustache.render(template), this.model.toJSON())
-                .appendTo('body')
+                .html(mustache.render(template, this.model.toJSON()))
+                .prependTo('body')
                 .slideDown();
             this.model.on('resolved', this.resolve, this);
             this.model.on('rejected', this.reject, this);
