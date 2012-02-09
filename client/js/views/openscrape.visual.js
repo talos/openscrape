@@ -105,6 +105,8 @@ define([
             // The .nodes function generates nested JSON.
             // When we need access to the model itself, use
             // collection.get().
+            console.log(this.collection.first().toJSON());
+
             var collection = this.collection,
                 nodes = this.tree.nodes(collection.first().toJSON()),
                 link = this.vis.selectAll("path.link")
