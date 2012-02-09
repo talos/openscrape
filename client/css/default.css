@@ -21,25 +21,22 @@ div#map {
 
 div.marker .stub {
     position: absolute;
-    left: -2em;
-    bottom: 0em;
-    width: 4em;
-    height: 2em;
-    background: green;
-    vertical-align: bottom;
+    text-align: center;
+    background: white;
+    border: 1px solid black;
+    font-size: .7em;
+    left: -35px;
+    top: -60px;
+    width: 70px;
+    height: 60px;
+    border-radius: 3px;
+    box-shadow: 3px 3px 6px black;
+    -moz-box-shadow: 3px 3px 6px black;
+    -webkit-box-shadow: 3px 3px 6px black;
 }
-
-/* div.marker .stub div { */
-/*     text-align: center; */
-/*     margin-left: auto; */
-/*     margin-right: auto; */
-/*     background: blue; */
-/*     bottom: 0px; */
-/* } */
 
 div.marker .visual {
     position: absolute;
-    background: red;
     width: 600px;
     height: 600px;
     left: -300px;
