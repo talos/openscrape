@@ -43,7 +43,7 @@ define([
             this.$el
                 .hide()
                 .html(mustache.render(template), this.model.toJSON())
-                .appendTo('body')
+                .prependTo('body')
                 .slideDown();
             this.model.on('dismiss', this.dismiss, this);
         },
