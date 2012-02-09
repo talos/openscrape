@@ -63,16 +63,17 @@ define([
         /**
          * Queue a request.
          *
-         * @param {Object} the request to make.
+         * @param {Object} request The request to make.
          *
-         * @return {Promise} that will be resolved or rejected with the result
+         * @return {Promise} Will be resolved or rejected with the result
          * of the request.
          */
         queueRequest = function (request) {
-            var dfd = new $.Deferred();
+            var dfd = new $.Deferred(),
+                requestStr = json.stringify(request);
 
             queue(QUEUE_NAME, function () {
-                requester(json.stringify(request))
+                requester(requestStr)
                     .done(function (jsonResp) {
                         dfd.resolve(json.parse(jsonResp));
                     }).fail(function (msg) {
@@ -118,7 +119,7 @@ define([
                 promptView = new PromptView(promptModel);
             }
 
-            return queueRequest(request).promise();
+            return queueRequest(request);
         }
     };
 });
