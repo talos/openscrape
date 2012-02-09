@@ -18,16 +18,20 @@
  *
  ***/
 
+/*jslint nomen: true, browser: true*/
 /*global define*/
 
 define([
     'require',
+    'lib/underscore',
     'lib/backbone',
     'lib/requirejs.mustache',
     'text!../../templates/prompt.mustache',
     'lib/jquery'
-], function (require, backbone, mustache, template) {
+], function (require, _, backbone, mustache, template) {
     "use strict";
+
+    var $ = require('jquery');
 
     return backbone.View.extend({
         tagName: 'div',
@@ -36,8 +40,7 @@ define([
 
         events: {
             'click .resolve' : 'resolve',
-            'click .reject'  : 'reject',
-            'keypress body'  : 'resolveOrRejectOnKey'
+            'click .reject'  : 'reject'
         },
 
         initialize: function () {
@@ -48,10 +51,17 @@ define([
                 .slideDown();
             this.model.on('resolved', this.resolve, this);
             this.model.on('rejected', this.reject, this);
+            this.keyEvt = 'keydown.prompt' + this.model.cid;
+            $(document).bind(this.keyEvt, _.bind(this.resolveOrRejectOnKey, this));
+        },
+
+        remove: function () {
+            $(document).unbind(this.keyEvt);
+            backbone.View.prototype.remove.call(this);
         },
 
         dismiss: function () {
-            this.$el.slideUp('fast', this.$el.remove);
+            this.$el.slideUp('fast', _.bind(this.remove, this));
         },
 
         resolve: function () {
