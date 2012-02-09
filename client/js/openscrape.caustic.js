@@ -72,7 +72,7 @@ define([
             var dfd = new $.Deferred(),
                 requestStr = json.stringify(request);
 
-            queue(QUEUE_NAME, function () {
+            queue(function () {
                 requester(requestStr)
                     .done(function (jsonResp) {
                         dfd.resolve(json.parse(jsonResp));
@@ -116,7 +116,7 @@ define([
         scrape: function (request) {
             // Prompt the user if they haven't been prompted.
             if (!promptView) {
-                promptView = new PromptView(promptModel);
+                promptView = new PromptView({model: promptModel});
             }
 
             return queueRequest(request);
