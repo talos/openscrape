@@ -34,10 +34,9 @@ define([
     'text!../../templates/failed.mustache',
     'lib/requirejs.mustache',
     'lib/underscore',
-    'lib/backbone',
-    '../openscrape.caustic'
+    'lib/backbone'
 ], function (ready, match, page, wait, reference, missing, failed,
-             mustache, _, backbone, caustic) {
+             mustache, _, backbone) {
     "use strict";
 
     return backbone.View.extend({
@@ -60,13 +59,26 @@ define([
             'click .scrape': 'scrape'
         },
 
+        initialize: function () {
+            this.model.on('change:type', this.render, this);
+            this.model.on('change:loading', this.renderLoading, this);
+        },
+
+        renderLoading: function (model, loading) {
+            if (loading === true) {
+                this.$el.addClass('loading');
+            } else {
+                this.$el.removeClass('loading');
+            }
+        },
+
         render: function () {
             this.$el.html(mustache.render(
                 this.templates[this.model.get('type')],
                 this.model.toJSON()
             ));
 
-            this.model.save({
+            this.model.set({
                 width: this.$el.width(),
                 height: this.$el.height()
             }, {
@@ -76,17 +88,7 @@ define([
         },
 
         scrape: function () {
-            this.model.save('force', true);
-            console.log(this.model.asRequest());
-            this.$el.addClass('loading');
-            caustic.scrape(this.model.asRequest())
-                .done(_.bind(function (resp) {
-                    // todo handle this in store?
-                    this.model.updateFromRaw(resp);
-                }, this))
-                .always(_.bind(function () {
-                    this.$el.removeClass('loading');
-                }));
+            this.model.scrape();
         }
     });
 });
