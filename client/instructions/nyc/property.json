@@ -1,12 +1,12 @@
 {
 	"load" : "http://webapps.nyc.gov:8084/CICS/fin1/find001I",
-	"name" : "{{{Number}}} {{{Street}}}",
+	"name" : "Department of Finance Lookup",
 	"method" : "post",
 	"posts" : {
-		"FHOUSENUM" : "{{Number}}",
-		"FSTNAME"   : "{{Street}}",
-		"FBORO"     : "{{Borough}}",
-		"FAPTNUM"   : "{{Apt}}"
+		"FHOUSENUM" : "{{number}}",
+		"FSTNAME"   : "{{street}}",
+		"FBORO"     : "{{borough}}",
+		"FAPTNUM"   : "{{apt}}"
 	},
 	"then" : [{
 		"description" : "The names of the owners",
