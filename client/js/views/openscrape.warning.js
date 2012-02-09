@@ -18,16 +18,20 @@
  *
  ***/
 
+/*jslint browser: true, nomen: true*/
 /*global define*/
 
 define([
     'require',
+    'lib/underscore',
     'lib/backbone',
     'lib/requirejs.mustache',
     'text!../../templates/warning.mustache',
     'lib/jquery'
-], function (require, backbone, mustache, template) {
+], function (require, _,  backbone, mustache, template) {
     "use strict";
+
+    var $ = require('jquery');
 
     return backbone.View.extend({
         tagName: 'div',
@@ -35,8 +39,7 @@ define([
         className: 'warning',
 
         events: {
-            'click .ok': 'dismiss',
-            'keypress body': 'dismissOnKey'
+            'click .ok': 'dismiss'
         },
 
         initialize: function () {
@@ -46,6 +49,18 @@ define([
                 .prependTo('body')
                 .slideDown();
             this.model.on('dismiss', this.dismiss, this);
+            this.keyEvt = 'keydown.warning' + this.model.cid;
+            $(document).bind(this.keyEvt, _.bind(this.dismissOnKey, this));
+        },
+
+        remove: function () {
+            $(document).unbind(this.keyEvt);
+            backbone.View.prototype.remove.call(this);
+        },
+
+        dismiss: function () {
+            this.model.dismiss();
+            this.$el.slideUp('fast', _.bind(this.remove, this));
         },
 
         dismissOnKey: function (evt) {
@@ -57,11 +72,6 @@ define([
                 this.dismiss();
                 break;
             }
-        },
-
-        dismiss: function () {
-            this.model.dismiss();
-            this.$el.slideUp('fast', this.$el.remove);
         }
     });
 });
