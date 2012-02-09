@@ -98,15 +98,14 @@ define([
                     return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
                 }, this));
 
-            this.collection.on('change', this.render, this);
+            this.collection.on('add', this.render, this);
+            this.collection.on('remove', this.render, this);
         },
 
         render: function () {
             // The .nodes function generates nested JSON.
             // When we need access to the model itself, use
             // collection.get().
-            console.log(this.collection.first().toJSON());
-
             var collection = this.collection,
                 nodes = this.tree.nodes(collection.first().toJSON()),
                 link = this.vis.selectAll("path.link")
