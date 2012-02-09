@@ -34,15 +34,19 @@ define([
             };
         },
 
+        isResolved: function () {
+            return this.has('resolved');
+        },
+
         resolve: function () {
-            if (!this.has('resolved')) {
+            if (!this.isResolved()) {
                 this.set('resolved', true);
                 this.trigger('resolved');
             }
         },
 
         reject: function () {
-            if (!this.has('resolved')) {
+            if (!this.isResolved()) {
                 this.set('resolved', false);
                 this.trigger('rejected');
             }
