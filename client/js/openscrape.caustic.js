@@ -26,23 +26,38 @@ define([
     'lib/json2',
     './openscrape.caustic.proxy',
     './openscrape.caustic.applet',
+    'models/openscrape.prompt',
+    'views/openscrape.prompt',
     'lib/jquery'
-], function (require, json, proxy, applet) {
+], function (require, json, proxy, applet, PromptModel, PromptView) {
     "use strict";
 
     var $ = require('jquery'),
         $queue = $({}), // generic queue
         QUEUE_NAME = 'openscrape.caustic',
+        promptModel = new PromptModel({
+            text: 'Scraping hits external servers. You can'
+                + ' either proxy through my server (which is slower'
+                + ' and costs me!) or you can use the applet.  If'
+                + ' you use the applet, you may have to confirm'
+                + ' its permissions with an annoying pop-up dialog box.',
+            resolve: 'Applet',
+            reject: 'Proxy'
+        }),
+        requester,
+        promptView,
 
         /**
          * Queue a request.
          *
-         * @param {function} requester A function to make the request with.
-         * @param {Deferred} dfd a Deferred to resolve with the response or reject
-         * @param {Request} request the {openscrape.Request} to make.
+         * @param {Object} the request to make.
+         *
+         * @return {Promise} that will be resolved or rejected with the result
+         * of the request.
          */
-        queueRequest = function (requester, dfd, request) {
-            var isFirst = $queue.queue(QUEUE_NAME).length === 0;
+        queueRequest = function (request) {
+            var isFirst = $queue.queue(QUEUE_NAME).length === 0,
+                dfd = new $.Deferred();
 
             $queue.queue(QUEUE_NAME, function () {
                 requester(json.stringify(request))
@@ -60,7 +75,21 @@ define([
             if (isFirst) {
                 $queue.dequeue(QUEUE_NAME);
             }
+
+            return dfd.promise();
         };
+
+    promptModel.on('resolved', function () {
+        applet.enable().done(function () {
+            requester = applet.request;
+        }).fail(function () {
+            requester = proxy.request;
+        });
+    });
+
+    promptModel.on('rejected', function () {
+        requester = proxy.request;
+    });
 
     return {
 
@@ -74,18 +103,12 @@ define([
          * reason for why it failed.
          **/
         scrape: function (request) {
-            var dfd = $.Deferred();
+            // Prompt the user if they haven't been prompted.
+            if (!promptView) {
+                promptView = new PromptView(promptModel);
+            }
 
-            // Use the applet if it's available, and proxy otherwise.
-            // TODO mvc violation
-            applet.enable()
-                .done(function () {
-                    queueRequest(applet.request, dfd, request);
-                }).fail(function () {
-                    queueRequest(proxy.request, dfd, request);
-                });
-
-            return dfd.promise();
+            return queueRequest(request).promise();
         }
     };
 });
