@@ -27,8 +27,9 @@
  */
 define([
     'lib/underscore',
-    'lib/backbone'
-], function (_, backbone) {
+    'lib/backbone',
+    '../openscrape.caustic'
+], function (_, backbone, caustic) {
     "use strict";
 
     /**
@@ -46,26 +47,100 @@ define([
     };
 
     return backbone.Model.extend({
-        defaults: {
-            ancestors: [],
-            childIds: [],
-            cookies: {},
-            tags: {},
-            force: false
+        defaults: function () {
+            return {
+                ancestors: [],
+                childIds: [],
+                cookies: {},
+                tags: {},
+                force: false
+            };
         },
 
-        updateFromRaw: function (resp) {
-            var children = resp.children;
+        initialize: function () {
+            // is this a bug in backbone? not done automatically, even
+            // if you pass collection to constructor
+            //this.collection.add(this);
+            this.normalize();
+        },
 
-            delete resp.children;
-            resp.childIds = [];
-            resp.type = resp.status;
+        /**
+         * Flatten all children into separate childIDs.
+         */
+        normalize: function () {
+            this.save({}, {silent: true}); // ninja grab our ID
 
-            // EW
-            _.each(children, function (childResp) {
-                resp.childIds.push(this.collection.addRaw(resp).id);
-            }, this);
-            this.save(resp);
+            var children = this.get('children'),
+                childIds = this.get('childIds'),
+                childAncestors = this.get('ancestors').concat([this.id]),
+                status;
+
+            this.unset('children', {silent: true});
+
+            // console.log(this.id);
+            // console.log(this.collection);
+
+            if (this.has('status')) {
+                // is a proper response, create values for children
+                status = this.get('status');
+                this.set('type', status, {silent: true});
+                _.each(children, function (respAry, valueName) {
+                    var childTags = {},
+                        thisTags = this.get('tags');
+
+                    if (status === 'found') {
+                        if (children.length === 1) {
+                            // one-to-one relations store the tag here
+                            thisTags[this.get('name')] = valueName;
+                            this.set('tags', thisTags, {silent: true});
+                        } else {
+                            // otherwise, the tag is in the child.
+                            childTags[this.get('name')] = valueName;
+                        }
+                    }
+
+                    childIds.push(this.collection.create({
+                        name: valueName,
+                        ancestors: childAncestors,
+                        type: status === 'loaded' ? 'page' : 'match',
+                        children: respAry,
+                        tags: childTags
+                    }).id);
+                }, this);
+            } else {
+                // is a value, already has responses for children
+                _.each(children, function (child) {
+                    child.ancestors = childAncestors;
+                    delete child.id;
+                    childIds.push(this.collection.create(child).id);
+                }, this);
+            }
+
+            this.set('childIds', childIds);
+            this.save();
+        },
+
+        loading: function () {
+            this.set('loading', true);
+        },
+
+        finished: function () {
+            this.unset('loading');
+        },
+
+        scrape: function (resp) {
+            this.save('force', true);
+            this.loading();
+            caustic.scrape(this.asRequest())
+                .done(_.bind(function (resp) {
+                    // todo handle this in store?
+                    delete resp.id;
+                    this.set(resp, {silent: true});
+                    this.normalize();
+                }, this))
+                .always(_.bind(function () {
+                    this.finished();
+                }, this));
         },
 
         /**
