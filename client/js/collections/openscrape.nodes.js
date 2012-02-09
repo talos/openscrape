@@ -68,12 +68,10 @@ define([
 
             resp.type = resp.type || resp.status;
 
+            delete resp.id; // todo right now, caustic assigns the same id to every nested child.
             delete resp.children;
 
             node = this.create(resp);
-
-            // Do we have an id set?
-            console.log(node);
 
             childAncestors.push(node.id);
 
