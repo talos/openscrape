@@ -51,8 +51,7 @@ define([
         },
 
         dismiss: function () {
-            this.$el.slideUp();
-            this.remove();
+            this.$el.slideUp('fast', this.$el.remove);
         },
 
         resolve: function () {
