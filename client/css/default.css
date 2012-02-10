@@ -37,10 +37,10 @@ div.marker .stub {
 
 div.marker .visual {
     position: absolute;
-    width: 600px;
-    height: 600px;
-    left: -300px;
-    top: -300px;
+    width: 3000px;
+    height: 3000px;
+    left: -1500px;
+    top: -1500px;
 }
 
 div#mouse {
