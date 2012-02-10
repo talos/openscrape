@@ -44,7 +44,8 @@ define([
             }
         });
         return memo;
-    };
+    },
+        gap = 60; // cap between nodes.  TODO make this part of model.
 
     return backbone.Model.extend({
         defaults: function () {
@@ -58,10 +59,10 @@ define([
         },
 
         initialize: function () {
-            // is this a bug in backbone? not done automatically, even
-            // if you pass collection to constructor
-            //this.collection.add(this);
             this.normalize();
+
+            // console.log('initialize');
+            // console.log(JSON.stringify(this));
         },
 
         /**
@@ -76,9 +77,6 @@ define([
                 status;
 
             this.unset('children', {silent: true});
-
-            // console.log(this.id);
-            // console.log(this.collection);
 
             if (this.has('status')) {
                 // is a proper response, create values for children
@@ -116,8 +114,17 @@ define([
                 }, this);
             }
 
+            if (_.include(childIds, this.id)) {
+                throw "Self referential child";
+            }
+
             this.set('childIds', childIds);
+
             this.save();
+
+            // the collection is added to BEFORE the childIds are saved,
+            // so this special event is necessary.
+            this.trigger('normalized');
         },
 
         loading: function () {
@@ -131,6 +138,7 @@ define([
         scrape: function (resp) {
             this.save('force', true);
             this.loading();
+
             caustic.scrape(this.asRequest())
                 .done(_.bind(function (resp) {
                     // todo handle this in store?
@@ -154,19 +162,21 @@ define([
         },
 
         /**
+         * @param excludeId a child ID to ignore when tracking down.  Optional.
+         *
          * @return {Array} of IDs below this node, excluding only
          * one-to-many found relations.
          */
-        oneToOneDescendents: function () {
-            var descendents = [];
+        oneToOneDescendents: function (excludeId) {
+            var descendents = [],
+                isBranch = this.get('type') === 'found' && this.get('childIds').length > 1,
+                childIds = _.without(this.get('childIds'), excludeId);
 
-            if (this.get('type') !== 'found' || this.get('childIds').length === 1) {
-                descendents.push(this.get('childIds'));
-                _.each(this.collection.getAll(this.get('childIds')), function (child) {
-                    Array.prototype.push.apply(descendents, child.oneToOneDescendents());
+            if (!isBranch) {
+                _.each(this.collection.getAll(childIds), function (child) {
+                    Array.prototype.push.apply(descendents, child.oneToOneDescendents(excludeId));
                 });
             }
-
             return descendents;
         },
 
@@ -182,7 +192,7 @@ define([
                 if (!_.include(related, ancestor)) {
                     related.push(ancestor);
                     Array.prototype.push.apply(related,
-                                               this.collection.get(ancestor).oneToOneDescendents());
+                                               this.collection.get(ancestor).oneToOneDescendents(this.id));
                 }
             }, this);
 
@@ -212,9 +222,10 @@ define([
          * @return {Object} of tags.
          */
         tags: function () {
+            console.log('tags array: ' + JSON.stringify(_.invoke(this.collection.getAll(this.related()), 'get', 'tags')));
             return _.reduce(
                 _.invoke(this.collection.getAll(this.related()), 'get', 'tags'),
-                _.extend,
+                function (memo, tags) { return _.extend(memo, tags); },
                 {}
             );
         },
@@ -227,7 +238,7 @@ define([
         distance: function () {
             return _.reduce(
                 _.invoke(this.collection.getAll(this.get('ancestors')), 'get', 'width'),
-                function (memo, width) { return memo + width; },
+                function (memo, width) { return memo + width + gap; },
                 0
             );
         }
