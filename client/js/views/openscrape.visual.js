@@ -98,14 +98,13 @@ define([
                     return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
                 }, this));
 
-            this.collection.on('add', this.render, this);
+            this.collection.on('normalized', this.render, this);
             this.collection.on('remove', this.render, this);
         },
 
         render: function () {
             // The .nodes function generates nested JSON.
             // When we need access to the model itself, use
-            // collection.get().
             var collection = this.collection,
                 nodes = this.tree.nodes(collection.first().toJSON()),
                 link = this.vis.selectAll("path.link")
@@ -121,7 +120,9 @@ define([
                 .append('g')
                 .classed('node', true)
                 .attr('transform', function (d) {
-                    return "rotate(" + (d.x - 90) + ")";
+                    // correct orientation upon entry
+                    var rotate = d.parent ? d.x - 90 : d.x;
+                    return "rotate(" + rotate + ")";
                 })
                 .append('svg:foreignObject')
                 .classed('foreign', true)
@@ -141,7 +142,7 @@ define([
             node.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    var translate = collection.get(d.id).get('distance'),
+                    var translate = collection.get(d.id).distance(),
                         rotate = d.parent ? d.x - 90 : d.x, // perpendicular root
                         scale = 1;
 
@@ -152,7 +153,7 @@ define([
                 .select('.foreign')
                 .attr('transform', function (d) {
                     var model = collection.get(d.id),
-                        x = d.x < 180 ? 0 : model.get('width'),
+                        x = d.x < 180 ? 0 : -model.get('width'),
                         y = -model.get('height') / 2,
                         rotate = d.x < 180 ? 0 : 180;
 
