@@ -69,7 +69,7 @@ define([
             return [0, 0];
         }),
 
-        r = 300; // size of initial visual
+        r = 1500; // size of initial visual
 
     return backbone.View.extend({
 
