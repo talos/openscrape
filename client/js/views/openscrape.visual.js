@@ -69,7 +69,7 @@ define([
             return [0, 0];
         }),
 
-        r = 1500; // size of initial visual
+        r = 5000; // size of initial visual
 
     return backbone.View.extend({
 
@@ -102,9 +102,29 @@ define([
                     }
                 }, this));
 
+            this.collection.on('add', this.render, this);
             this.collection.on('change:hidden', this.render, this);
-            this.collection.on('scrape', this.render, this);
+            this.collection.on('change:childIds', this.render, this);
             this.collection.on('remove', this.render, this);
+        },
+
+        collapse: function () {
+            var node = this.vis.selectAll('.gNode').data([]),
+                link = this.vis.selectAll('path.link').data([]);
+
+            node.exit()
+                .transition()
+                .duration(1000)
+                .attr("transform", function (d) {
+                    return 'translate(0)scale(0)';
+                })
+                .remove();
+
+            link.exit()
+                .transition()
+                .duration(1000)
+                .attr('d', origin)
+                .remove();
         },
 
         /**
@@ -129,7 +149,7 @@ define([
                     .data(this.tree.links(nodes), function (d) {
                         return d.source.id + '_' + d.target.id;
                     }),
-                node = this.vis.selectAll(".node")
+                node = this.vis.selectAll(".gNode")
                     .data(nodes, function (d) {
                         return d.id;
                     }),
@@ -137,24 +157,23 @@ define([
 
             node.enter()
                 .append('g')
-                .classed('node', true)
+                .classed('gNode', true)
                 .attr('transform', function (d) {
                     // correct orientation upon entry
                     var rotate = d.parent ? d.x - 90 : d.x;
-                    return "rotate(" + rotate + ")";
+                    return "rotate(" + rotate + ")scale(0)";
                 })
                 .append('svg:foreignObject')
                 .classed('foreign', true)
                 .attr('width', function (d) {
-                    //return collection.get(d.id).get('maxWidth');
-                    return 800;
+                    return NodeView.prototype.iframeWidth;
                 })
                 .attr('height', function (d) {
-                    //return collection.get(d.id).get('maxHeight');
-                    return 600;
+                    return NodeView.prototype.iframeHeight;
                 })
                 .append('xhtml:body')
                 .append('div')
+                .classed('node', true)
                 .each(function (d) {
                     // create view for node
                     var view = new NodeView({
@@ -197,7 +216,6 @@ define([
                 .duration(1000)
                 .attr("transform", function (d) {
                     return 'translate(0)scale(0)';
-                    //return "rotate(0)translate(0)";
                 })
                 .remove();
 
@@ -224,7 +242,7 @@ define([
                 .remove();
 
             // ensure that paths are drawn below nodes through reordering
-            this.vis.selectAll('g.node,path.link')
+            this.vis.selectAll('g.gNode,path.link')
                 .sort(function (a, b) {
                     // if b has a target, it is a link
                     return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;

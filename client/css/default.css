@@ -19,28 +19,12 @@ div#map {
     z-index: 0;
 }
 
-div.marker .stub {
-    position: absolute;
-    text-align: center;
-    background: white;
-    border: 1px solid black;
-    font-size: .7em;
-    left: -35px;
-    top: -60px;
-    width: 70px;
-    height: 60px;
-    border-radius: 3px;
-    box-shadow: 3px 3px 6px black;
-    -moz-box-shadow: 3px 3px 6px black;
-    -webkit-box-shadow: 3px 3px 6px black;
-}
-
 div.marker .visual {
     position: absolute;
-    width: 3000px;
-    height: 3000px;
-    left: -1500px;
-    top: -1500px;
+    width: 10000px;
+    height: 10000px;
+    left: -5000px;
+    top: -5000px;
 }
 
 div#mouse {
@@ -66,5 +50,5 @@ input#reset {
 }
 
 .loading {
-    background: url('images/loading.gif') center no-repeat;
+    background: url('images/loading.gif') center no-repeat !important;
 }

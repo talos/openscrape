@@ -65,7 +65,7 @@ define([
             // Thanks to http://stackoverflow.com/questions/832692
             google.maps.event.addListenerOnce(gMap, 'idle', _.bind(function () {
                 saveBounds();
-                this.model.save('loaded', true);
+                this.loaded();
             }, this));
             google.maps.event.addListener(gMap, 'bounds_changed', _.bind(function () {
                 saveBounds();
@@ -77,19 +77,18 @@ define([
                 var latLng = evt.latLng;
 
                 dblClickWait = setTimeout(_.bind(function () {
-                    this.model.save({
-                        click: {
-                            lat: latLng.lat(),
-                            lng: latLng.lng()
-                        }
-                    });
+                    this.click(latLng.lat(), latLng.lng());
                 }, this), dblClickWaitTime);
             }, this));
 
             // TODO bind modification of model back to gmaps display
-            this.model.on('change:loaded', this.loaded, this);
-            this.model.on('change:click', this.click, this);
+            this.markers.on('forceStopDrag', function () {
+                google.maps.event.trigger(gMap, 'dragend');
+            });
 
+            this.model.on('change:scale', function (model, scale) {
+                this.markers.rescale(scale);
+            }, this);
             this.gMap = gMap; // needed to create markers
         },
 
@@ -97,18 +96,19 @@ define([
             this.$el.removeClass('loading');
         },
 
-        click: function () {
+        click: function (lat, lng) {
             if (this.markers.allCollapsed()) {
                 // if everything is collapsed, create a new marker
                 var m = new MarkerView({
                     model: this.markers.create({
-                        lat: this.model.get('click').lat,
-                        lng: this.model.get('click').lng
+                        lat: lat,
+                        lng: lng,
+                        scale: this.model.get('scale')
                     }, {
                         wait: true
                     }),
-                    gMap: this.gMap,
-                    mapModel: this.model
+                    gMap: this.gMap
+                    //mapModel: this.model
                 });
             } else {
                 // a click should only collapse existing markers if any are open

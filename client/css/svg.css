@@ -6,20 +6,17 @@ path {
     filter: url(#dropshadow);
 }
 
-.foreign div {
-    display: inline-block;
-    max-width: 100px;
-    background: rgba(255,255,255,.5);
+.foreign div.node {
+    background: rgba(255,255,255,.75);
     border: 1px solid black;
+    padding: .5em;
     border-radius: 3px;
+    display: inline-block;
     box-shadow: 3px 3px 6px black;
     -moz-box-shadow: 3px 3px 6px black;
     -webkit-box-shadow: 3px 3px 6px black;
 }
 
-.foreign div div {
-    display: block;
-    border: none;
-    padding: .5em;
-    box-shadow: none;
+.foreign div.node div {
+    max-width: 100px;
 }

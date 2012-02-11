@@ -44,71 +44,15 @@ define([
         },
 
         /**
-         * Get an array of nodes by ID.
+         * Get an array of nodes from an array of IDs.
+         *
+         * @param {Array} ids array of IDs.
+         *
+         * @return {Array} of nodes in the same order as the original ids.
+         * If an ID was not found, it will have a null entry.
          */
         getAll: function (ids) {
-            return this.filter(function (node) {
-                return _.include(ids, node.id);
-            });
-        },
-
-        /**
-         * Parse and add in raw caustic response input.
-         *
-         * @param {Object} resp
-         *
-         * @return {openscrape.NodeModel}
-         */
-        addRaw: function (resp) {
-
-            var children = resp.children,
-                node,
-                childIds = [],
-                childAncestors = resp.ancestors || [];
-
-            resp.type = resp.type || resp.status;
-
-            delete resp.id; // todo right now, caustic assigns the same id to every nested child.
-            delete resp.children;
-
-            node = this.create(resp);
-
-            childAncestors.push(node.id);
-
-            if (_.has(resp, 'status')) {
-                // is a proper response
-                node.set('type', resp.status);
-                _.each(children, function (respAry, valueName) {
-                    var value = {
-                            name: valueName,
-                            ancestors: childAncestors,
-                            type: resp.status === 'loaded' ? 'page' : 'match',
-                            children: respAry,
-                            tags: {}
-                        };
-                    if (resp.status === 'found') {
-                        if (children.length === 1) {
-                            // one-to-one relations keep the tag in the parent
-                            resp.tags[resp.name] = valueName;
-                            node.set('tags', resp.tags);
-                        } else {
-                            // otherwise, the tag is in the child.
-                            value.tags[resp.name] = valueName;
-                        }
-                    }
-
-                    childIds.push(this.addRaw(value).id);
-                }, this);
-            } else {
-                // is a value
-                _.each(resp.children, function (child) {
-                    child.ancestors = childAncestors;
-                    childIds.push(this.addRaw(child).id);
-                }, this);
-            }
-            node.save();
-
-            return node;
+            return _.map(ids, function (id) { return this.get(id); }, this);
         }
     });
 });

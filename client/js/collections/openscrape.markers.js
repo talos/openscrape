@@ -42,6 +42,10 @@ define([
 
         collapseAll: function () {
             this.invoke('collapse');
+        },
+
+        rescale: function (scale) {
+            this.invoke('rescale', scale);
         }
     });
 });

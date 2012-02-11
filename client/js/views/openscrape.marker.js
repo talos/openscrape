@@ -27,16 +27,14 @@ define([
     'lib/google.rich-marker',
     'lib/underscore',
     'lib/backbone',
-    'lib/requirejs.mustache',
-    'text!../../templates/marker.mustache',
-    'text!../../templates/marker.stub.mustache',
     '../openscrape.geocoder',
+    'models/openscrape.node',
     'collections/openscrape.nodes',
     'views/openscrape.visual',
     'lib/jquery'
-], function (require, google, rich_marker, _, backbone, mustache,
-             markerTemplate, stubTemplate, geocoder, NodesCollection,
-             VisualView) {
+], function (require, google, rich_marker, _, backbone,
+             geocoder, NodeModel,
+             NodesCollection, VisualView) {
     "use strict";
 
     var $ = require('jquery');
@@ -46,11 +44,6 @@ define([
         tagName: 'div',
         className: 'marker',
 
-        events: {
-            'click': 'click',
-            'click .toggle': 'toggle'
-        },
-
         /**
          * Must be called with a google map (options.gMap)
          */
@@ -58,56 +51,57 @@ define([
             var lat = this.model.get('lat'),
                 lng = this.model.get('lng');
 
-            this.$el.html(mustache.render(markerTemplate));
             this.visual = new VisualView({
                 collection: this.model.nodes,
-                el: this.$el.find('.visual')
+                el: this.$el
             });
 
-            this.marker = new rich_marker.RichMarker({
+            this.marker = new google.maps.Marker({
+                map: options.gMap,
+                position: new google.maps.LatLng(lat, lng),
+                zIndex: 1
+            });
+
+            this.richMarker = new rich_marker.RichMarker({
                 map: options.gMap, // TODO binds us to google maps!! :/
-                visible: true,
                 flat: true,
                 position: new google.maps.LatLng(lat, lng),
                 anchor: rich_marker.RichMarkerPosition.MIDDLE,
-                content: this.el
+                clickable: false,
+                content: this.el,
+                zIndex: 0
             });
 
-            this.mapModel = options.mapModel;
-            this.rescale();
-            this.render();
+            if (this.model.has('address')) {
+                this.render();
+            } else {
+                this.marker.setTitle('Looking up address...');
+                geocoder.reverseGeocode(lat, lng)
+                    .done(_.bind(function (address) {
+                        this.model.save('address', address);
 
-            this.model.set('geocoding', true);
-            // immediately look for address
-            geocoder.reverseGeocode(lat, lng)
-                .done(_.bind(function (address) {
-                    this.model.save('address', address);
-                    this.model.nodes.addRaw({
-                        tags: address,
-                        instruction: '/instructions/nyc/property.json',
-                        uri: '',
-                        status: 'wait'
-                    });
-                }, this))
-                .fail(_.bind(function (reason) {
-                    this.model.destroy();
-                }, this))
-                .always(_.bind(function () {
-                    this.model.unset('geocoding');
-                }, this));
+                        // TODO
+                        address.apt = '';
+                        address.borough = '3';
+                        address.Borough = '3';
 
-            // always keep an eye on zoom changes
-            this.mapModel.on('change:scale', this.rescale, this);
+                        var rootNode = this.model.nodes.create({
+                            tags: address,
+                            instruction: 'instructions/nyc/property.json',
+                            uri: document.URL,
+                            name: 'Property Info',
+                            type: 'wait'
+                        });
+                    }, this))
+                    .fail(_.bind(function (reason) {
+                        this.model.destroy();
+                    }, this));
+            }
 
             this.model.on('change', this.render, this);
             this.model.on('destroy', this.destroy, this);
-        },
 
-        /**
-         * Stop propagation of clicks on the element proper.
-         */
-        click: function (evt) {
-            evt.stopPropagation();
+            google.maps.event.addListener(this.marker, 'click', _.bind(this.toggle, this));
         },
 
         /**
@@ -118,24 +112,18 @@ define([
         },
 
         render: function () {
-            if (this.model.isCollapsed()) {
-                this.visual.$el.hide();
-                this.marker.setZIndex(0);
-            } else {
-                this.visual.$el.show();
-                this.marker.setZIndex(1);
-            }
-            this.$el.find('.stub').html(
-                mustache.render(stubTemplate, this.model.toJSON())
-            );
-            this.marker.draw();
-        },
+            this.richMarker.draw();
 
-        /**
-         * Rescale the content.
-         */
-        rescale: function () {
-            var scale = this.mapModel.get('scale'),
+            this.marker.setTitle(this.model.get('address').number + ' ' + this.model.get('address').street);
+
+            if (this.model.isCollapsed()) {
+                this.visual.collapse();
+            } else {
+
+                this.visual.render();
+            }
+
+            var scale = this.model.get('scale'),
                 cssScale = 'scale(' + scale + ',' + scale + ')',
                 cssOrigin = '(50, 50)',
                 properties = [
@@ -155,6 +143,7 @@ define([
 
         destroy: function () {
             this.marker.setMap(null);
+            this.richMarker.setMap(null);
         }
     });
 });

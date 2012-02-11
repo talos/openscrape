@@ -10,7 +10,7 @@
 	},
 	"then" : [{
 		"description" : "The names of the owners",
-		"name" : "Owner",
+		"name" : "Name",
 		"find" : "<input\\s+type=\"hidden\"\\s+name=\"ownerName\\d?\"\\s+value=\"\\s*(\\w[^\"]*?)\\s*\"",
 		"replace" : "$1",
 		"then"    : "../nys/dos-corpsearch.json"

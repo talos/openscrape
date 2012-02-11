@@ -27,9 +27,8 @@
  */
 define([
     'lib/underscore',
-    'lib/backbone',
-    '../openscrape.caustic'
-], function (_, backbone, caustic) {
+    'lib/backbone'
+], function (_, backbone) {
     "use strict";
 
     /**
@@ -54,15 +53,19 @@ define([
                 childIds: [],
                 cookies: {},
                 tags: {},
-                force: false
+                force: false,
+                hidden: false,
+                maxWidth: 100,
+                maxHeight: 100,
+                width: 0,
+                height: 0,
+                rawWidth: 0,
+                rawHeight: 0
             };
         },
 
         initialize: function () {
             this.normalize();
-
-            // console.log('initialize');
-            // console.log(JSON.stringify(this));
         },
 
         /**
@@ -115,40 +118,27 @@ define([
             }
 
             if (_.include(childIds, this.id)) {
-                throw "Self referential child";
+                throw "BAD Self referential child";
             }
 
-            this.set('childIds', childIds);
+            this.set({
+                childIds: childIds,
+                hidden: childIds.length > 1 // auto-hide if childIds greater than 1
+            });
 
             this.save();
-
-            // the collection is added to BEFORE the childIds are saved,
-            // so this special event is necessary.
-            this.trigger('normalized');
         },
 
-        loading: function () {
-            this.set('loading', true);
+        show: function () {
+            this.save('hidden', false);
         },
 
-        finished: function () {
-            this.unset('loading');
+        hide: function () {
+            this.save('hidden', true);
         },
 
-        scrape: function (resp) {
-            this.save('force', true);
-            this.loading();
-
-            caustic.scrape(this.asRequest())
-                .done(_.bind(function (resp) {
-                    // todo handle this in store?
-                    delete resp.id;
-                    this.set(resp, {silent: true});
-                    this.normalize();
-                }, this))
-                .always(_.bind(function () {
-                    this.finished();
-                }, this));
+        toggle: function () {
+            this.save('hidden', !this.get('hidden'));
         },
 
         /**
@@ -173,6 +163,7 @@ define([
                 childIds = _.without(this.get('childIds'), excludeId);
 
             if (!isBranch) {
+                Array.prototype.push.apply(descendents, childIds);
                 _.each(this.collection.getAll(childIds), function (child) {
                     Array.prototype.push.apply(descendents, child.oneToOneDescendents(excludeId));
                 });
@@ -222,7 +213,6 @@ define([
          * @return {Object} of tags.
          */
         tags: function () {
-            console.log('tags array: ' + JSON.stringify(_.invoke(this.collection.getAll(this.related()), 'get', 'tags')));
             return _.reduce(
                 _.invoke(this.collection.getAll(this.related()), 'get', 'tags'),
                 function (memo, tags) { return _.extend(memo, tags); },

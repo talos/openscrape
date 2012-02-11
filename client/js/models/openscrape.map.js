@@ -33,8 +33,8 @@ define([
 
         defaults: function () {
             return {
-                loaded: false,
-                scale: 1
+                scale: 1,
+                hideMap: false
             };
         },
 

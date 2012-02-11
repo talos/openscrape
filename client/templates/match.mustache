@@ -1,5 +1,8 @@
+{{#nameIsHTML}}
+  <iframe class="match value" width="{{iframeWidth}}" height="{{iframeHeight}}" sandbox src="{{nameAsDataURI}}"></iframe>
+{{/nameIsHTML}}
+{{^nameIsHTML}}
 <div class="match value">
-  <div title="Match" class="match tab">
-    {{name}}
-  </div>
+  {{name}}
 </div>
+{{/nameIsHTML}}

@@ -33,9 +33,21 @@ define([
 
     return backbone.Model.extend({
 
+        defaults: function () {
+            return {
+                scale: 1
+            };
+        },
+
         initialize: function () {
+            // create nodes collection once we have an ID
             this.on('add', function () {
                 this.nodes = new NodesCollection([], { id: this.id });
+
+                // watch for nodenaughtiness
+                this.nodes.on('forceStopDrag', function () {
+                    this.trigger('forceStopDrag');
+                }, this);
             }, this);
 
             this.on('destroy', function () {
@@ -43,13 +55,18 @@ define([
             }, this);
         },
 
+        rescale: function (scale) {
+            this.save('scale', scale);
+        },
+
         expand: function () {
             this.collection.collapseAll();
             this.unset('collapsed');
+            this.save();
         },
 
         collapse: function () {
-            this.set('collapsed', true);
+            this.save('collapsed', true);
         },
 
         isCollapsed: function () {
