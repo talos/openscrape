@@ -29,7 +29,7 @@ require({
 
 // location of google library
 define([
-    "async!http://maps.googleapis.com/maps/api/js?key=AIzaSyCAJzeEfyIp7bjCpduPtkkZ67b-bZC3P4s&sensor=false"
+    "async!http://maps.googleapis.com/maps/api/js?key=AIzaSyCAJzeEfyIp7bjCpduPtkkZ67b-bZC3P4s&sensor=false&libraries=places"
 ], function () {
     "use strict";
     return google; // chillin globally

@@ -34,8 +34,12 @@ define([
         defaults: function () {
             return {
                 scale: 1,
-                hideMap: false
+                hidden: false
             };
+        },
+
+        toggle: function () {
+            this.save('hidden', !this.get('hidden'));
         },
 
         saveBounds: function (centerLat, centerLng, northEastLat, northEastLng) {

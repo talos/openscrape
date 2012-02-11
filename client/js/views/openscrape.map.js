@@ -104,6 +104,20 @@ define([
                 }, this), dblClickWaitTime);
             }, this));
 
+            google.maps.event.addListener(this.lookup, 'place_changed', _.bind(function () {
+                this.markers.collapseAll();
+                var place = this.lookup.getPlace();
+                if (place.geometry) {
+                    if (place.geometry.viewport) {
+                        this.gMap.fitBounds(place.geometry.viewport);
+                    } else {
+                        this.gMap.setCenter(place.geometry.location);
+                        this.gMap.setZoom(17);  // Why 17? Because it looks good. <== hehe
+                        this.click(place.geometry.location.lat(), place.geometry.location.lng());
+                    }
+                }
+            }, this));
+
             // TODO bind modification of model back to gmaps display
             this.markers.on('forceStopDrag', function () {
                 google.maps.event.trigger(this.gMap, 'dragend');

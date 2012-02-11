@@ -40,7 +40,7 @@ div#mouse {
 input#lookup {
     position: absolute;
     width: 20em;
-    height: 1.5em;
+    height: 1.8em;
     border: 1px solid black;
     border-radius: .5em;
     right: 1em;
