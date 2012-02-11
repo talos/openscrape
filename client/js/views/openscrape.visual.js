@@ -204,8 +204,8 @@ define([
                 .select('.foreign')
                 .attr('transform', function (d) {
                     var model = collection.get(d.id),
-                        x = d.x < 180 ? 0 : -model.get('width'),
-                        y = -model.get('height') / 2,
+                        x = d.x < 180 ? 0 : -model.get('rawWidth'),
+                        y = -model.get('rawHeight') / 2,
                         rotate = d.x < 180 ? 0 : 180;
 
                     return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
