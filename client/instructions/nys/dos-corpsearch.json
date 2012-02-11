@@ -7,13 +7,7 @@
 		"p_name_type"   : "%25",
 		"p_search_type" : "PARTIAL"
     },
-    "then" : [{
-		"description" : "Keep track of how many entities were found in the search.",
-		"name"        : "Number of matching entities",
-		"find"        : "<p\\s+title\\s*=\\s*\"messages\">([^<]*)</p>",
-		"match"       : 0,
-		"replace"     : "$1"
-    },{
+    {
 		"description" : "Split by each entity on the search results page.",
 		"find"        : "<a\\s+title\\s*=\\s*\"Link to entity information.*?</a>",
 		"name"        : "entity",
