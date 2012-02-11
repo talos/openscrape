@@ -189,7 +189,7 @@ define([
          */
         oneToOneDescendents: function (excludeId) {
             var descendents = [],
-                isBranch = this.get('type') === 'found' && this.get('childIds').length > 1,
+                isBranch = (this.get('type') === 'found' && this.get('childIds').length > 1),
                 childIds = _.without(this.get('childIds'), excludeId);
 
             if (!isBranch) {
