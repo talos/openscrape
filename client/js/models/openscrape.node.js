@@ -66,6 +66,34 @@ define([
 
         initialize: function () {
             this.normalize();
+            this.collection.on('change:tags', this.checkTags, this);
+            this.collection.on('normalized', this.checkTags, this); // nts: add is unsafe
+        },
+
+        checkTags: function () {
+            // console.log('checkTags');
+            // if (this.get('type') === 'missing') {
+            //     var missingTags = this.get('missing'),
+            //         tagNames = _.keys(this.tags());
+
+            //     console.log(missingTags);
+            //     console.log(tagNames);
+            //     console.log(_.all(missingTags,
+            //               function (mTag) {
+            //                   console.log(tagNames);
+            //                   console.log(mTag);
+            //                   console.log( _.include(tagNames, mTag));
+            //                   return _.include(tagNames, mTag); }));
+            //     if (_.all(missingTags,
+            //               function (mTag) {
+            //                   console.log(tagNames);
+            //                   console.log(mTag);
+            //                   console.log( _.include(tagNames, mTag));
+            //                   return _.include(tagNames, mTag); })) {
+            //         console.log('newTags');
+            //         this.trigger('newTags');
+            //     }
+            // }
         },
 
         /**
@@ -127,6 +155,8 @@ define([
             });
 
             this.save();
+
+            this.trigger('normalized');
         },
 
         show: function () {
@@ -177,7 +207,6 @@ define([
          */
         related: function () {
             var related = this.oneToOneDescendents();
-            related.push(this.id);
 
             _.each(this.get('ancestors'), function (ancestor) {
                 if (!_.include(related, ancestor)) {
@@ -187,6 +216,7 @@ define([
                 }
             }, this);
 
+            related.push(this.id);
             return related;
         },
 

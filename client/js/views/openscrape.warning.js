@@ -45,7 +45,7 @@ define([
         initialize: function () {
             this.$el
                 .hide()
-                .html(mustache.render(template), this.model.toJSON())
+                .html(mustache.render(template, this.model.toJSON()))
                 .prependTo('body')
                 .slideDown();
             this.model.on('dismiss', this.dismiss, this);

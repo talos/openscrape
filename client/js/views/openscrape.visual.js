@@ -181,6 +181,11 @@ define([
                         el: this
                     });
                     view.render();
+
+                    // TODO somewhere less spaghetti to scrape if first addition
+                    if (collection.length === 1) {
+                        view.scrape();
+                    }
                 });
 
             node.transition()

@@ -28,37 +28,41 @@ define([
     'lib/underscore',
     'lib/google',
     'lib/backbone',
+    'lib/requirejs.mustache',
+    'text!../../templates/map.mustache',
     'views/openscrape.marker',
     'collections/openscrape.markers'
-], function (_, google, backbone, MarkerView, MarkersCollection) {
+], function (_, google, backbone, mustache, template,
+             MarkerView, MarkersCollection) {
     "use strict";
 
     return backbone.View.extend({
 
-        tagName: 'div',
-        id: 'map',
+        events: {
+            'keydown #lookup': 'keydownLookup',
+            'blur #lookup': 'blurLookup',
+            'click #toggle': 'toggle',
+            'click #clear' : 'clear'
+        },
 
         initialize: function () {
-            this.gMap = new google.maps.Map(this.el, {
-                center: new google.maps.LatLng(this.model.get('lat'),
-                                               this.model.get('lng')),
-                zoom: 11,
-                mapTypeControl: false,
-                streetViewControl: false,
-                mapTypeId: google.maps.MapTypeId.TERRAIN
-            });
-
             var dblClickWaitTime = 500,
-                dblClickWait = null,
-                lookupElem = this.make('input', {type: 'text', id: 'lookup'}),
-                saveBounds = _.bind(function () {
-                    var bounds = this.gMap.getBounds(),
-                        center = bounds.getCenter(),
-                        northEast = bounds.getNorthEast();
-                    this.model.saveBounds(center.lat(), center.lng(),
-                                          northEast.lat(), northEast.lng());
-                    this.lookup.setBounds(bounds);
-                }, this);
+                dblClickWait = null;
+
+            this.$el.html(mustache.render(template, this.model.toJSON()));
+            this.$el.addClass('loading');
+
+            this.gMap = new google.maps.Map(
+                this.$el.find('#gMap')[0],
+                {
+                    center: new google.maps.LatLng(this.model.get('lat'),
+                                                   this.model.get('lng')),
+                    zoom: 11,
+                    mapTypeControl: false,
+                    streetViewControl: false,
+                    mapTypeId: google.maps.MapTypeId.TERRAIN
+                }
+            );
 
             this.solidOverlay = new google.maps.Rectangle({
                 map: this.gMap,
@@ -72,9 +76,8 @@ define([
                 clickable: false
             });
 
-            this.$el.append(lookupElem);
             this.lookup = new google.maps.places.Autocomplete(
-                lookupElem,
+                this.$el.find('#lookup')[0],
                 {
                     bounds: this.gMap.getBounds(),
                     types: ['geocode']
@@ -82,16 +85,15 @@ define([
             );
 
             this.markers = new MarkersCollection();
-            this.$el.addClass('loading');
 
             // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
             google.maps.event.addListenerOnce(this.gMap, 'idle', _.bind(function () {
-                saveBounds();
+                this.saveBounds();
                 this.loaded();
             }, this));
             google.maps.event.addListener(this.gMap, 'bounds_changed', _.bind(function () {
-                saveBounds();
+                this.saveBounds();
             }, this));
             google.maps.event.addListener(this.gMap, 'dblclick', function () {
                 clearTimeout(dblClickWait);
@@ -105,17 +107,7 @@ define([
             }, this));
 
             google.maps.event.addListener(this.lookup, 'place_changed', _.bind(function () {
-                this.markers.collapseAll();
-                var place = this.lookup.getPlace();
-                if (place.geometry) {
-                    if (place.geometry.viewport) {
-                        this.gMap.fitBounds(place.geometry.viewport);
-                    } else {
-                        this.gMap.setCenter(place.geometry.location);
-                        this.gMap.setZoom(17);  // Why 17? Because it looks good. <== hehe
-                        this.click(place.geometry.location.lat(), place.geometry.location.lng());
-                    }
-                }
+                this.placeChanged();
             }, this));
 
             // TODO bind modification of model back to gmaps display
@@ -126,8 +118,53 @@ define([
             this.model.on('change:scale', function (model, scale) {
                 this.markers.rescale(scale);
             }, this);
+        },
 
-            this.model.on('change:hidden', this.toggle, this);
+        keydownLookup: function (evt) {
+            switch (evt.keyCode) {
+            case 13: // enter
+                this.placeChanged();
+                break;
+            case 27: // escape
+                this.clearLookup();
+                break;
+            }
+        },
+
+        clearLookup: function (evt) {
+            this.$el.find('#lookup').val('');
+            this.$el.find('#lookup').blur();
+        },
+
+        blurLookup: function (evt) {
+            //console.log('blur lookup');
+        },
+
+        placeChanged: _.debounce(function () {
+            var place = this.lookup.getPlace();
+            if (place) {
+                if (place.geometry) {
+                    this.clearLookup();
+                    this.markers.collapseAll();
+                    if (place.geometry.viewport) {
+                        this.gMap.fitBounds(place.geometry.viewport);
+                    } else {
+                        this.gMap.setCenter(place.geometry.location);
+                        this.gMap.setZoom(11);
+                        this.saveBounds(); // not called automatically from above
+                        this.click(place.geometry.location.lat(), place.geometry.location.lng());
+                    }
+                }
+            }
+        }, 1000),
+
+        saveBounds: function () {
+            var bounds = this.gMap.getBounds(),
+                center = bounds.getCenter(),
+                northEast = bounds.getNorthEast();
+            this.model.saveBounds(center.lat(), center.lng(),
+                                  northEast.lat(), northEast.lng());
+            this.lookup.setBounds(bounds);
         },
 
         loaded: function () {
@@ -135,10 +172,14 @@ define([
         },
 
         toggle: function () {
-            if (this.model.get('hidden') === true) {
-                this.solidOverlay.setVisible(true);
-            } else {
-                this.solidOverlay.setVisible(false);
+            this.model.save('hidden', !this.model.get('hidden'));
+            this.solidOverlay.setVisible(this.model.get('hidden'));
+        },
+
+        clear: function () {
+            // I have no idea why this needs to be wrapped in a loop to work.
+            while (this.markers.length > 0) {
+                this.markers.invoke('destroy');
             }
         },
 

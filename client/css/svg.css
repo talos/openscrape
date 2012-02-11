@@ -20,3 +20,40 @@ path {
 .foreign div.node div {
     max-width: 100px;
 }
+
+.foreign div.node.wait {
+    cursor: pointer;
+    border: 2px solid blue;
+}
+
+.foreign div.node.missing {
+    cursor: pointer;
+    border: 2px solid blue;
+}
+
+.foreign div.node.hidden {
+    cursor: pointer;
+    border: 2px solid blue;
+}
+
+.foreign div.node.page.hidden {
+    cursor: pointer;
+    border: 20px solid blue;
+}
+
+
+.foreign div.node.wait:hover {
+    border: 2px solid red;
+}
+
+.foreign div.node.missing:hover {
+    border: 2px solid red;
+}
+
+.foreign div.node.hidden:hover {
+    border: 2px solid red;
+}
+
+.foreign div.node.page.hidden:hover {
+    border: 20px solid red;
+}

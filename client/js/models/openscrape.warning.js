@@ -18,11 +18,13 @@
  *
  ***/
 
+/*jslint nomen: true*/
 /*global define*/
 
 define([
+    'lib/underscore',
     'lib/backbone'
-], function (backbone) {
+], function (_, backbone) {
     "use strict";
 
     return backbone.Model.extend({
@@ -38,7 +40,7 @@ define([
         initialize: function () {
             var timeout = this.get('timeout');
             if (timeout > 0) {
-                setTimeout(this.dismiss, timeout);
+                setTimeout(_.bind(this.dismiss, this), timeout);
             }
         },
 

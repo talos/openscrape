@@ -19,6 +19,13 @@ div#map {
     z-index: 0;
 }
 
+div#gMap {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+}
+
 div.marker .visual {
     position: absolute;
     width: 10000px;
@@ -35,6 +42,20 @@ div#mouse {
     padding: .5em;
     border-radius: .5em;
     box-shadow: 3px 3px 5px black;
+}
+
+input#toggle {
+    position: absolute;
+    right: 1em;
+    top: 4em;
+    z-index: 100;
+}
+
+input#clear {
+    position: absolute;
+    right: 1em;
+    top: 6em;
+    z-index: 100;
 }
 
 input#lookup {
@@ -62,4 +83,18 @@ input#reset {
 
 .loading {
     background: url('images/loading.gif') center no-repeat !important;
+}
+
+div.warning {
+    padding: 1em;
+    text-align: center;
+    border: solid black;
+    border-width: 0px 0px 1px 0px;
+}
+
+div.prompt {
+    padding: 1em;
+    text-align: center;
+    border: solid black;
+    border-width: 0px 0px 1px 0px;
 }

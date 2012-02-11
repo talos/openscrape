@@ -32,10 +32,12 @@ define([
     'models/openscrape.node',
     'collections/openscrape.nodes',
     'views/openscrape.visual',
+    'models/openscrape.warning',
+    'views/openscrape.warning',
     'lib/jquery'
 ], function (require, google, rich_marker, _, backbone,
              geocoder, zip2borough, NodeModel,
-             NodesCollection, VisualView) {
+             NodesCollection, VisualView, WarningModel, WarningView) {
     "use strict";
 
     var $ = require('jquery');
@@ -86,15 +88,29 @@ define([
                         address.borough = zip2borough(address.zip);
                         address.Borough = address.borough;
 
-                        var rootNode = this.model.nodes.create({
-                            tags: address,
-                            instruction: 'instructions/nyc/property.json',
-                            uri: document.URL,
-                            name: 'Property Info',
-                            type: 'wait'
-                        });
+                        if (!address.borough) {
+                            new WarningView({
+                                model: new WarningModel({
+                                    text: "Sorry, that selection is not in the five boroughs."
+                                })
+                            }).render();
+                            this.model.destroy();
+                        } else {
+                            var rootNode = this.model.nodes.create({
+                                tags: address,
+                                instruction: 'instructions/nyc/property.json',
+                                uri: document.URL,
+                                name: 'Property Info',
+                                type: 'wait'
+                            });
+                        }
                     }, this))
                     .fail(_.bind(function (reason) {
+                        new WarningView({
+                            model: new WarningModel({
+                                text: "Sorry, couldn't find an address for that selection."
+                            })
+                        }).render();
                         this.model.destroy();
                     }, this));
             }

@@ -36,10 +36,11 @@ define([
     'lib/requirejs.mustache',
     'lib/underscore',
     'lib/backbone',
+    'lib/json2',
     '../openscrape.caustic',
     'lib/jquery'
 ], function (require, ready, match, page, wait, reference, missing, failed,
-             mustache, _, backbone, caustic) {
+             mustache, _, backbone, json, caustic) {
     "use strict";
 
     var $ = require('jquery');
@@ -59,8 +60,10 @@ define([
 
         events: {
             'click': 'click',
+            'click a': 'click',
             'mouseenter iframe': 'iframeEnter',
-            'mouseleave iframe': 'iframeLeave'
+            'mouseleave iframe': 'iframeLeave',
+            'mouseout iframe': 'iframeLeave'
         },
 
         // imaginary screen dimensions for iframe rendering
@@ -78,6 +81,7 @@ define([
         windowBlur: function () {
             if (this.inIframe) {
                 this.$el.trigger('click');
+                this.iframeLeave();
             }
         },
 
@@ -88,15 +92,20 @@ define([
         initialize: function () {
             this.model.on('change:type', this.render, this);
             this.model.on('change:hidden', this.render, this);
-            this.model.on('add', function () {
-                this.collection.on('change:tags', this.newTags, this);
-            }, this);
+            this.model.on('newTags', this.scrape, this);
             $(window).blur(_.bind(this.windowBlur, this));
         },
 
         click: function (evt) {
+            //console.log(json.stringify(this.model, undefined, 2));
+            //console.log(this.model.asRequest());
             if (this.model.get('type') === 'wait') {
                 this.scrape();
+            } if (this.model.get('type') === 'missing') {
+                this.scrape();
+            } else if (this.model.get('type') === 'failed') {
+                // temp debug
+                console.log(json.stringify(this.model, undefined, 2));
             } else if (this.model.get('childIds').length > 1) {
                 this.model.toggle();
             }
@@ -111,24 +120,8 @@ define([
             this.$('div').removeClass('loading');
         },
 
-        /**
-         * Auto-scrape if all missing tags are found
-         */
-        newTags: function () {
-            if (this.model.get('type') === 'missing') {
-                var missingTags = this.model.get('missing'),
-                    tags = this.model.tags();
-
-                console.log(missingTags);
-                console.log(tags);
-                if (_.all(missingTags,
-                          function (mTag) { return _.include(tags, mTag); })) {
-                    this.scrape();
-                }
-            }
-        },
-
         scrape: function (resp) {
+
             this.model.save('force', true);
             this.loading();
 
@@ -149,10 +142,23 @@ define([
         },
 
         name: function () {
-            if (this.model.has('name')) {
-                return this.model.get('name').substr(0, 100);
+            if (this.model.has('description') && this.model.get('description') !== '') {
+                return this.model.get('description');
+            } else if (this.model.has('name')) {
+                //return this.model.get('name').substr(0, 100);
+                return this.model.get('name');
             } else {
-                return 'no name';
+                return 'No name';
+            }
+        },
+
+        safeName: function () {
+            if (this.model.has('name')) {
+                var $parsable = $('<div />').html(this.model.get('name'));
+                $parsable.find('a').attr('href', '#');
+                return $parsable.html();
+            } else {
+                return 'No name';
             }
         },
 
@@ -177,6 +183,8 @@ define([
             } else {
                 this.$el.removeClass('hidden');
             }
+
+            this.$el.addClass(this.model.get('type'));
 
             // the mustache render produces raw dimensions that must be scaled
             // down.

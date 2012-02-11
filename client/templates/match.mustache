@@ -1,8 +1,8 @@
-{{#nameIsHTML}}
-  <iframe class="match value" width="{{iframeWidth}}" height="{{iframeHeight}}" sandbox src="{{nameAsDataURI}}"></iframe>
-{{/nameIsHTML}}
-{{^nameIsHTML}}
 <div class="match value">
+  {{#nameIsHTML}}
+    {{{safeName}}}
+  {{/nameIsHTML}}
+  {{^nameIsHTML}}
   {{name}}
+  {{/nameIsHTML}}
 </div>
-{{/nameIsHTML}}

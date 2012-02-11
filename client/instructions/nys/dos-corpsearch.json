@@ -1,6 +1,6 @@
 {
     "name": "Search NYS Corporate Entities Database",
-    "description": "Search the NYS DOS corporate entities listing using a partial search.  Requires 'searchname', returns a search results page with 0 to many pages of matching entities.",
+    "description": "NYS DOS Corporate Entitites Database",
     "load" : "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.SELECT_ENTITY",
     "posts": {
 		"p_entity_name" : "{{Name}}",
@@ -13,19 +13,19 @@
 		"name"        : "entity",
         "description" : "Corporate Entity Name",
 		"then" : [{
-			"description" : "Finds the p_nameid",
+			"description" : "Name ID",
 			"find"        : "p_nameid=(\\d+)",
 			"name"        : "p_nameid",
 			"replace"     : "$1",
 			"match"       : 0
 		},{
-			"description" : "Finds the p_corpid",
+			"description" : "Corporate ID",
 			"find"        : "p_corpid=(\\d+)",
 			"name"        : "p_corpid",
 			"replace"     : "$1",
 			"match"       : 0
 		},{
-			"description" : "Resolve the href link for each entity against the site, load the page.",
+			"description" : "Corporate entity info.",
 			"load"        : "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.ENTITY_INFORMATION?p_nameid={{p_nameid}}&p_corpid={{p_corpid}}&p_entity_name={{Name}}&p_name_type=%25&p_search_type=PARTIAL",
 			"then" : [{
 				"name"        : "Current Entity Name",

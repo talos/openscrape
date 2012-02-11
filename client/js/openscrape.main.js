@@ -38,22 +38,17 @@
 
             el: $('#openscrape'),
 
-            events: {
-                'click .toggle': 'toggle'
-            },
-
             initialize: function () {
                 this.mapModel = new MapModel({
                     lat: 40.77,
                     lng: -73.98
                 });
-                this.$el.append(new MapView({
-                    model: this.mapModel
-                }).$el);
-            },
-
-            toggle: function () {
-                this.mapModel.toggle();
+                var mapEl = this.make('div', {id: 'map'});
+                this.$el.append(mapEl);
+                var mapView = new MapView({
+                    model: this.mapModel,
+                    el: mapEl
+                });
             }
         }))());
     });
