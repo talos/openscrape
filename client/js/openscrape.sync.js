@@ -28,11 +28,13 @@
 /*jslint nomen: true*/
 /*global define, localStorage*/
 
-
 define([
     'lib/backbone'
 ], function (backbone) {
     "use strict";
+
+    // TEMPORARY
+    localStorage.clear();
 
     // Maps CRUD to the 'store' property of models or collections.
     // Store should return a promise that will be resolved with the
