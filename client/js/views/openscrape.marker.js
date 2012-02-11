@@ -28,12 +28,13 @@ define([
     'lib/underscore',
     'lib/backbone',
     '../openscrape.geocoder',
+    '../openscrape.zip2borough',
     'models/openscrape.node',
     'collections/openscrape.nodes',
     'views/openscrape.visual',
     'lib/jquery'
 ], function (require, google, rich_marker, _, backbone,
-             geocoder, NodeModel,
+             geocoder, zip2borough, NodeModel,
              NodesCollection, VisualView) {
     "use strict";
 
@@ -82,8 +83,8 @@ define([
 
                         // TODO
                         address.apt = '';
-                        address.borough = '3';
-                        address.Borough = '3';
+                        address.borough = zip2borough(address.zip);
+                        address.Borough = address.borough;
 
                         var rootNode = this.model.nodes.create({
                             tags: address,
