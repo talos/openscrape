@@ -95,18 +95,36 @@ define([
                     return (a.parent === b.parent ? 1 : 2) / a.depth;
                 })
                 .children(_.bind(function (d) {
-                    return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
+                    if (!d.hidden) {
+                        return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
+                    } else {
+                        return [];
+                    }
                 }, this));
 
-            this.collection.on('normalized', this.render, this);
+            this.collection.on('change:hidden', this.render, this);
+            this.collection.on('scrape', this.render, this);
             this.collection.on('remove', this.render, this);
         },
 
-        render: function () {
+        /**
+         * Redraw this bad boy.  Debounced so that mr. clickety can't
+         * sink processors.
+         */
+        render: _.debounce(function () {
             // The .nodes function generates nested JSON.
             // When we need access to the model itself, use
             var collection = this.collection,
-                nodes = this.tree.nodes(collection.first().toJSON()),
+                nodes = _.map(
+                    this.tree.nodes(collection.first().toJSON()),
+                    // bug in d3? make NaN x values 0.
+                    function (node) {
+                        if (_.isNaN(node.x)) {
+                            node.x = 0;
+                        }
+                        return node;
+                    }
+                ),
                 link = this.vis.selectAll("path.link")
                     .data(this.tree.links(nodes), function (d) {
                         return d.source.id + '_' + d.target.id;
@@ -114,7 +132,8 @@ define([
                 node = this.vis.selectAll(".node")
                     .data(nodes, function (d) {
                         return d.id;
-                    });
+                    }),
+                foreign = this.vis.selectAll('.foreign');
 
             node.enter()
                 .append('g')
@@ -126,8 +145,14 @@ define([
                 })
                 .append('svg:foreignObject')
                 .classed('foreign', true)
-                .attr('height', '1000')
-                .attr('width', '1000')
+                .attr('width', function (d) {
+                    //return collection.get(d.id).get('maxWidth');
+                    return 800;
+                })
+                .attr('height', function (d) {
+                    //return collection.get(d.id).get('maxHeight');
+                    return 600;
+                })
                 .append('xhtml:body')
                 .append('div')
                 .each(function (d) {
@@ -142,9 +167,16 @@ define([
             node.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    var translate = collection.get(d.id).distance(),
-                        rotate = d.parent ? d.x - 90 : d.x, // perpendicular root
-                        scale = 1;
+                    var model = collection.get(d.id),
+                        maxWidth = model.get('maxWidth'),
+                        rawWidth = model.get('rawWidth'),
+                        translate = model.distance(),
+
+                        // perpendicular root
+                        rotate = d.parent ? d.x - 90 : d.x,
+
+                        // scale down to maxWidth
+                        scale = rawWidth > maxWidth ? maxWidth / rawWidth : 1;
 
                     return "rotate(" + rotate + ")" +
                         "translate(" + translate + ")" +
@@ -164,7 +196,8 @@ define([
                 .transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    return "rotate(0)translate(0)";
+                    return 'translate(0)scale(0)';
+                    //return "rotate(0)translate(0)";
                 })
                 .remove();
 
@@ -175,7 +208,7 @@ define([
 
             link.transition()
                 .duration(1000)
-                .attr("d", function (d, i) {
+                .attr('d', function (d, i) {
                     return diagonal({
                         source: { x: d.source.x,
                                   y: collection.get(d.source.id).distance() },
@@ -198,6 +231,6 @@ define([
                 });
 
             return this;
-        }
+        }, 500)
     });
 });
