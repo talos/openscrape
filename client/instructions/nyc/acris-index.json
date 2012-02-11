@@ -28,7 +28,7 @@
     },
     "then" : {
         "find" : "<!--Table Begin!-->(.*?)<!--Table End-->",
-        "name" : "ACRIS table"
+        "name" : "ACRIS table",
         "match" : 0,
         "then" : {
             "extends" : "../shared/html-row.json",
