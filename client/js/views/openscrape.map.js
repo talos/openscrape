@@ -39,41 +39,64 @@ define([
         id: 'map',
 
         initialize: function () {
-            var gMap = new google.maps.Map(this.el, {
-                    center: new google.maps.LatLng(this.model.get('lat'),
-                                                   this.model.get('lng')),
-                    zoom: 11,
-                    mapTypeControl: false,
-                    streetViewControl: false,
-                    mapTypeId: google.maps.MapTypeId.TERRAIN
-                }),
-                dblClickWaitTime = 500,
+            this.gMap = new google.maps.Map(this.el, {
+                center: new google.maps.LatLng(this.model.get('lat'),
+                                               this.model.get('lng')),
+                zoom: 11,
+                mapTypeControl: false,
+                streetViewControl: false,
+                mapTypeId: google.maps.MapTypeId.TERRAIN
+            });
+
+            var dblClickWaitTime = 500,
                 dblClickWait = null,
+                lookupElem = this.make('input', {type: 'text', id: 'lookup'}),
                 saveBounds = _.bind(function () {
-                    var bounds = gMap.getBounds(),
+                    var bounds = this.gMap.getBounds(),
                         center = bounds.getCenter(),
                         northEast = bounds.getNorthEast();
-
                     this.model.saveBounds(center.lat(), center.lng(),
                                           northEast.lat(), northEast.lng());
+                    this.lookup.setBounds(bounds);
                 }, this);
+
+            this.solidOverlay = new google.maps.Rectangle({
+                map: this.gMap,
+                bounds: new google.maps.LatLngBounds(
+                    new google.maps.LatLng(30, -100),
+                    new google.maps.LatLng(50, -50)
+                ),
+                visible: false,
+                fillColor: 'white',
+                fillOpacity: 1,
+                clickable: false
+            });
+
+            this.$el.append(lookupElem);
+            this.lookup = new google.maps.places.Autocomplete(
+                lookupElem,
+                {
+                    bounds: this.gMap.getBounds(),
+                    types: ['geocode']
+                }
+            );
 
             this.markers = new MarkersCollection();
             this.$el.addClass('loading');
 
             // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
-            google.maps.event.addListenerOnce(gMap, 'idle', _.bind(function () {
+            google.maps.event.addListenerOnce(this.gMap, 'idle', _.bind(function () {
                 saveBounds();
                 this.loaded();
             }, this));
-            google.maps.event.addListener(gMap, 'bounds_changed', _.bind(function () {
+            google.maps.event.addListener(this.gMap, 'bounds_changed', _.bind(function () {
                 saveBounds();
             }, this));
-            google.maps.event.addListener(gMap, 'dblclick', function () {
+            google.maps.event.addListener(this.gMap, 'dblclick', function () {
                 clearTimeout(dblClickWait);
             });
-            google.maps.event.addListener(gMap, 'click', _.bind(function (evt) {
+            google.maps.event.addListener(this.gMap, 'click', _.bind(function (evt) {
                 var latLng = evt.latLng;
 
                 dblClickWait = setTimeout(_.bind(function () {
@@ -83,17 +106,26 @@ define([
 
             // TODO bind modification of model back to gmaps display
             this.markers.on('forceStopDrag', function () {
-                google.maps.event.trigger(gMap, 'dragend');
+                google.maps.event.trigger(this.gMap, 'dragend');
             });
 
             this.model.on('change:scale', function (model, scale) {
                 this.markers.rescale(scale);
             }, this);
-            this.gMap = gMap; // needed to create markers
+
+            this.model.on('change:hidden', this.toggle, this);
         },
 
         loaded: function () {
             this.$el.removeClass('loading');
+        },
+
+        toggle: function () {
+            if (this.model.get('hidden') === true) {
+                this.solidOverlay.setVisible(true);
+            } else {
+                this.solidOverlay.setVisible(false);
+            }
         },
 
         click: function (lat, lng) {
