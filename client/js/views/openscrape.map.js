@@ -121,7 +121,7 @@ define([
             // TODO bind modification of model back to gmaps display
             this.markers.on('forceStopDrag', function () {
                 google.maps.event.trigger(this.gMap, 'dragend');
-            });
+            }, this);
 
             this.model.on('change:scale', function (model, scale) {
                 this.markers.rescale(scale);
