@@ -37,6 +37,17 @@ div#mouse {
     box-shadow: 3px 3px 5px black;
 }
 
+input#lookup {
+    position: absolute;
+    width: 20em;
+    height: 1.5em;
+    border: 1px solid black;
+    border-radius: .5em;
+    right: 1em;
+    top: 1em;
+    z-index: 100;
+}
+
 input#download {
     position: absolute;
     right: 0px;
