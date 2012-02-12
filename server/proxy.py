@@ -21,7 +21,7 @@ if len(sys.argv) != 2:
 Openscrape proxy must be invoked with a single argument, telling it
 which mode from `config.ini` to use:
 
-python proxy.py <MODE>
+python server/proxy.py <MODE>
 
 Look at `config.ini` for defined modes. Defaults are `production`,
 `staging`, and `test`."""
@@ -62,7 +62,7 @@ CONTEXT = zmq.Context.instance()
 class RequestHandler(WebMessageHandler):
     """
     RequestHandler takes a single POSTed request as JSON, passes it on
-    the wire to the ZMQ caustic server, then returns the response when
+    the wire to the ZMQ caustic backend, then returns the response when
     it is ready.
     """
 
@@ -76,12 +76,12 @@ class RequestHandler(WebMessageHandler):
             #sock.send_json(request_obj)
             sock.send(json_request)
 
-            resp = sock.recv()  # asynchronicity++
+            resp = sock.recv()
 
             self.set_body(resp)
         except Exception as e:
             self.set_status(400,
-                            status_msg="Invalid JSON Request from message: '%s', error '%s'"
+                            status_msg="Invalid JSON Request: '%s', error '%s'"
                             % (json_request, e))
 
         return self.render()
