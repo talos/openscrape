@@ -44,41 +44,33 @@ div#mouse {
     box-shadow: 3px 3px 5px black;
 }
 
-input#toggle {
-    position: absolute;
-    right: 1em;
-    top: 4em;
-    z-index: 100;
-}
-
-input#clear {
-    position: absolute;
-    right: 1em;
-    top: 6em;
-    z-index: 100;
-}
-
 input#lookup {
     position: absolute;
-    width: 20em;
+    width: 200px;
     height: 1.8em;
     border: 1px solid black;
     border-radius: .5em;
-    right: 1em;
+    left: 80px;
     top: 1em;
     z-index: 100;
 }
 
-input#download {
+input#toggle {
     position: absolute;
-    right: 0px;
-    top: 0px;
+    top: 1em;
+    left: 290px;
+    width: 90px;
+    z-index: 100;
+    border: 1px solid black;
 }
 
-input#reset {
+input#clear {
     position: absolute;
-    right: 0px;
-    top: 0px;
+    top: 1em;
+    left: 390px;
+    width: 90px;
+    z-index: 100;
+    border: 1px solid black;
 }
 
 .loading {
