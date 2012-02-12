@@ -45,7 +45,8 @@ define(['require', 'lib/jquery'], function (require) {
 
             $.ajax({
                 url: request_path,
-                method: 'post',
+                type: 'POST',
+                contentType: 'application/json',
                 dataType: 'json',
                 data: jsonRequest
             }).done(function (resp, status, doc) {
