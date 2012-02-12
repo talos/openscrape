@@ -4,5 +4,7 @@
 *.pid
 *.sqlite
 *.db
+*.ini
+*.conf
 log/*
 todos.txt
