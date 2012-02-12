@@ -77,6 +77,7 @@ class RequestHandler(WebMessageHandler):
             sock.send(json_request)
 
             resp = sock.recv()
+            self.headers['Content-Type'] = 'application/json'
 
             self.set_body(resp)
         except Exception as e:
