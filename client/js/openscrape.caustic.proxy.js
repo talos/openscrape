@@ -43,12 +43,16 @@ define(['require', 'lib/jquery'], function (require) {
         request: function (jsonRequest) {
             var dfd = $.Deferred();
 
-            $.post(request_path, jsonRequest)
-                .done(function (resp, status, doc) {
-                    dfd.resolve(doc.responseText);
-                }).fail(function (resp) {
-                    dfd.reject(resp.statusText);
-                });
+            $.ajax({
+                url: request_path,
+                method: 'post',
+                dataType: 'json',
+                data: jsonRequest
+            }).done(function (resp, status, doc) {
+                dfd.resolve(doc.responseText);
+            }).fail(function (resp) {
+                dfd.reject(resp.statusText);
+            });
 
             return dfd.promise();
         }
