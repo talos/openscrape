@@ -78,15 +78,17 @@ input#clear {
 }
 
 div.warning {
-    padding: 1em;
     text-align: center;
+    padding: 1em 150px 1em 150px;
     border: solid black;
     border-width: 0px 0px 1px 0px;
+    z-index: 200;
 }
 
 div.prompt {
-    padding: 1em;
+    padding: 1em 150px 1em 150px;
     text-align: center;
     border: solid black;
     border-width: 0px 0px 1px 0px;
+    z-index: 200;
 }
