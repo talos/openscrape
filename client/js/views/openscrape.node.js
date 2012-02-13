@@ -33,6 +33,7 @@ define([
     'text!../../templates/reference.mustache',
     'text!../../templates/missing.mustache',
     'text!../../templates/failed.mustache',
+    'lib/d3',
     'lib/requirejs.mustache',
     'lib/underscore',
     'lib/backbone',
@@ -40,7 +41,7 @@ define([
     '../openscrape.caustic',
     'lib/jquery'
 ], function (require, ready, match, page, wait, reference, missing, failed,
-             mustache, _, backbone, json, caustic) {
+             d3, mustache, _, backbone, json, caustic) {
     "use strict";
 
     var $ = require('jquery');
@@ -94,6 +95,8 @@ define([
             this.model.on('change:hidden', this.render, this);
             this.model.on('newTags', this.scrape, this);
             $(window).blur(_.bind(this.windowBlur, this));
+
+
         },
 
         click: function (evt) {
@@ -173,23 +176,31 @@ define([
         },
 
         render: function () {
-            this.$el.html(mustache.render(
-                this.templates[this.model.get('type')],
-                _.extend(this.model.toJSON(), this)
-            ));
+            d3.select(this.el)
+                .selectAll()
+                .remove();
 
-            if (this.model.get('hidden') === true) {
-                this.$el.addClass('hidden');
-            } else {
-                this.$el.removeClass('hidden');
-            }
+            var foreign = d3.select(this.el)
+                    .append('svg:foreignObject')
+                    .classed('foreign', true)
+                    .attr('width', this.iframeWidth)
+                    .attr('height', this.iframeHeight),
+                $div = $(foreign
+                         .append('xhtml:body')
+                         .append('div')
+                         .classed('node', true)
+                         .classed(this.model.get('type'), true)
+                         .classed('hidden', this.model.get('hidden')
+                                 )[0])
+                    .html(mustache.render(
+                        this.templates[this.model.get('type')],
+                        _.extend(this.model.toJSON(), this)
+                    )),
 
-            this.$el.addClass(this.model.get('type'));
-
-            // the mustache render produces raw dimensions that must be scaled
-            // down.
-            var rawWidth = this.$el.width(),
-                rawHeight = this.$el.height(),
+                // the mustache render produces raw dimensions that must be scaled
+                // down.
+                rawWidth = $div.width(),
+                rawHeight = $div.height(),
                 maxWidth = this.model.get('maxWidth'),
                 maxHeight = this.model.get('maxHeight');
 
@@ -201,6 +212,13 @@ define([
             }, {
                 silent: true
             });
+
+            foreign.attr('transform', _.bind(function (d) {
+                var x = d.x < 180 ? 0 : -rawWidth,
+                    y = -rawHeight / 2,
+                    rotate = d.x < 180 ? 0 : 180;
+                return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
+            }, this));
 
             return this;
         }
