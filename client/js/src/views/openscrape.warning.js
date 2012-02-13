@@ -18,7 +18,7 @@
  *
  ***/
 
-/*jslint nomen: true, browser: true*/
+/*jslint browser: true, nomen: true*/
 /*global define*/
 
 define([
@@ -26,9 +26,9 @@ define([
     'lib/underscore',
     'lib/backbone',
     'lib/requirejs.mustache',
-    'text!../../templates/prompt.mustache',
+    'text!templates/warning.mustache',
     'lib/jquery'
-], function (require, _, backbone, mustache, template) {
+], function (require, _,  backbone, mustache, template) {
     "use strict";
 
     var $ = require('jquery');
@@ -36,11 +36,10 @@ define([
     return backbone.View.extend({
         tagName: 'div',
 
-        className: 'prompt',
+        className: 'warning',
 
         events: {
-            'click .resolve' : 'resolve',
-            'click .reject'  : 'reject'
+            'click .ok': 'dismiss'
         },
 
         initialize: function () {
@@ -49,10 +48,9 @@ define([
                 .html(mustache.render(template, this.model.toJSON()))
                 .prependTo('body')
                 .slideDown();
-            this.model.on('resolved', this.resolve, this);
-            this.model.on('rejected', this.reject, this);
-            this.keyEvt = 'keydown.prompt' + this.model.cid;
-            $(document).bind(this.keyEvt, _.bind(this.resolveOrRejectOnKey, this));
+            this.model.on('dismiss', this.dismiss, this);
+            this.keyEvt = 'keydown.warning' + this.model.cid;
+            $(document).bind(this.keyEvt, _.bind(this.dismissOnKey, this));
         },
 
         remove: function () {
@@ -61,28 +59,17 @@ define([
         },
 
         dismiss: function () {
+            this.model.dismiss();
             this.$el.slideUp('fast', _.bind(this.remove, this));
         },
 
-        resolve: function () {
-            this.model.resolve();
-            this.dismiss();
-        },
-
-        reject: function () {
-            this.model.reject();
-            this.dismiss();
-        },
-
-        resolveOrRejectOnKey: function (evt) {
+        dismissOnKey: function (evt) {
             switch (evt.keyCode) {
-            case 13: // enter
-                this.resolve();
-                break;
             case 8: // backspace
+            case 13: // enter
             case 27: // escape
             case 48: // delete
-                this.reject();
+                this.dismiss();
                 break;
             }
         }

@@ -26,7 +26,7 @@ define([
     'lib/google',
     'lib/backbone',
     'lib/requirejs.mustache',
-    'text!../../templates/map.mustache',
+    'text!templates/map.mustache',
     'views/openscrape.marker',
     'collections/openscrape.markers'
 ], function (_, google, backbone, mustache, template,

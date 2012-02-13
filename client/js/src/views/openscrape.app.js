@@ -26,7 +26,7 @@ define([
     'views/openscrape.map',
     'lib/backbone',
     'lib/requirejs.mustache',
-    'text!../../templates/main.mustache'
+    'text!templates/main.mustache'
 ], function (MapModel, MapView, backbone, mustache,
              mainTemplate) {
     "use strict";
