@@ -43,11 +43,6 @@ define([
             // create nodes collection once we have an ID
             this.on('add', function () {
                 this.nodes = new NodesCollection([], { id: this.id });
-
-                // watch for nodenaughtiness
-                this.nodes.on('forceStopDrag', function () {
-                    this.trigger('forceStopDrag');
-                }, this);
             }, this);
 
             this.on('destroy', function () {
