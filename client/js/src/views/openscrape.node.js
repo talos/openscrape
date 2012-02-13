@@ -46,6 +46,13 @@ define([
 
     var $ = require('jquery'),
 
+        padding = 20,
+
+        /**
+         * @return How much a width should be lead by.
+         */
+        lead = function (x) { return x / 4; },
+
         /**
          * Static function to generate an SVG container for a node
          * based off of width and height.
@@ -56,20 +63,19 @@ define([
          * @return {String} an SVG path description
          */
         containerPath = function (contentWidth, contentHeight) {
-            var padding = 20,
-                height = contentHeight + padding,
+            var height = contentHeight + padding,
                 width = contentWidth + padding,
                 top = height / 2,
                 bottom = -height / 2;
-            return 'M-' + (width / 4) + ' 0' +
-                'a' + (width / 4) + ' ' + top + ' 0 0 1 ' + (width / 4) + ' ' + top +
+            return 'M0 0' +
+                'a' + lead(width) + ' ' + top + ' 0 0 1 ' + lead(width) + ' ' + top +
                 'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (width / 2) + ' ' + (top / 2) +
                 'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (width / 2) + ' -' + (top / 2) +
-                'a' + (width / 4) + ' ' + top + ' 0 0 1 ' + (width / 4) + ' -' + top +
-                'a' + (width / 4) + ' ' + top + ' 0 0 1 -' + (width / 4) + ' -' + top +
+                'a' + lead(width) + ' ' + top + ' 0 0 1 ' + lead(width) + ' -' + top +
+                'a' + lead(width) + ' ' + top + ' 0 0 1 -' + lead(width) + ' -' + top +
                 'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (width / 2) + ' -' + (top / 2) +
                 'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (width / 2) + ' ' + (top / 2) +
-                'a' + (width / 4) + ' ' + top + ' 0 0 1 -' + (width / 4) + ' ' + top +
+                'a' + lead(width) + ' ' + top + ' 0 0 1 -' + lead(width) + ' ' + top +
                 'Z';
         };
 
@@ -87,7 +93,9 @@ define([
         },
 
         events: {
-            'click': 'click'
+            'click .mask ': 'click',
+            'mouseenter .mask': 'mouseEnter',
+            'mouseleave .mask': 'mouseLeave'
         },
 
         // imaginary screen dimensions for iframe rendering
@@ -98,10 +106,31 @@ define([
         maxHeight: 320,
 
         initialize: function () {
+            this.model.on('change:highlight', this.highlight, this);
             this.model.on('change:type', this.render, this);
             this.model.on('change:hidden', this.render, this);
             this.model.on('newTags', this.scrape, this);
             this.d3el = d3.select(this.el);
+        },
+
+
+        /**
+         * Highlight ancestors
+         */
+        mouseEnter: function (evt) {
+            _.invoke(this.model.ancestors(), 'set', 'highlight', true);
+        },
+
+        /**
+         * Unhighlight ancestors
+         */
+        mouseLeave: function (evt) {
+            _.invoke(this.model.ancestors(), 'set', 'highlight', false);
+        },
+
+        highlight: function () {
+            this.d3el.select('.background')
+                .classed('highlight', this.model.get('highlight') === true);
         },
 
         click: function (evt) {
@@ -160,20 +189,17 @@ define([
             }
         },
 
-        safeName: function () {
-            if (this.model.has('name')) {
-                var $parsable = $('<div />').html(this.model.get('name'));
-                $parsable.find('a').attr('href', '#');
-                return $parsable.html();
-            } else {
-                return 'No name';
-            }
-        },
-
         nameAsDataURI: function () {
-            var asURI;
+            var asURI,
+                preparse;
             if (this.model.has('name')) {
-                asURI = encodeURIComponent(this.model.get('name'));
+                preparse = this.model.get('name')
+                    .replace(/<script.*?>[\s\S]*?<\/.*?script>/ig, '')
+                    .replace(/<img.*?>/ig, '')
+                    //.replace(/<style.*?>[\s\S]*?<\/.*?style>/ig, '')
+                    .replace(/<link.*?>[\s\S]*?<\/.*?link>/ig, '');
+
+                asURI = encodeURIComponent(preparse);
             } else {
                 asURI = 'no name';
             }
@@ -190,20 +216,12 @@ define([
                 .selectAll('path')
                 .remove();
 
-            // this.d3el
-            //     .selectAll('defs')
-            //     .remove();
-
-            //var clipId = _.uniqueId('clip'),
             var foreign = this.d3el.append('svg:foreignObject')
                     .classed('node', true)
                     .attr('width', this.iframeWidth)
                     .attr('height', this.iframeHeight),
                 $div = $(foreign.append('xhtml:body')
-                         .append('div')
-                         .classed(this.model.get('type'), true)
-                         .classed('hidden', this.model.get('hidden')
-                                 )[0])
+                         .append('div')[0])
                     .html(mustache.render(
                         this.templates[this.model.get('type')],
                         _.extend(this.model.toJSON(), this)
@@ -213,22 +231,22 @@ define([
                 // down.
                 rawWidth = $div.width(),
                 rawHeight = $div.height(),
-                width = rawWidth > this.maxWidth ? this.maxWidth : rawWidth,
-                height = rawHeight > this.maxHeight ? this.maxHeight : rawHeight,
-                path = containerPath(width, height);
-
-                // clipPath = this.d3el.append('defs')
-                //     .append('svg:clipPath')
-                //     .attr('id', clipId)
-                //     .append('path')
-                //     .attr('d', path);
+                contentWidth = rawWidth > this.maxWidth ? this.maxWidth : rawWidth,
+                contentHeight = rawHeight > this.maxHeight ? this.maxHeight : rawHeight,
+                width = contentWidth + (padding * 2) + (lead(contentWidth) * 2),
+                height = contentHeight + (padding * 2),
+                path = containerPath(contentWidth, contentHeight);
 
             this.d3el.insert('path', '.node')
                 .classed('background', true)
+                .classed(this.model.get('type'), true)
+                .classed('hidden', this.model.get('hidden'))
                 .attr('d', path);
 
             this.d3el.append('path')
                 .classed('mask', true)
+                .classed(this.model.get('type'), true)
+                .classed('hidden', this.model.get('hidden'))
                 .attr('d', path);
 
             this.model.set({
@@ -238,24 +256,16 @@ define([
                 silent: true
             });
 
-            // clipPath.attr('transform', function (d) {
-            //     var x = d.x < 180 ? 0 : -width,
-            //     //var x = 0,
-            //         y = height / 2,
-            //         rotate = d.x < 180 ? 0 : 180;
-            //     return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
-            // });
-
             foreign.attr('transform', function (d) {
-                var x = d.x < 180 ? 0 : -width,
-                    y = -height / 2,
+                var x = d.x < 180 ? lead(contentWidth) + padding : -(padding + contentWidth + lead(contentWidth)),
+                    y = -contentHeight / 2,
                     rotate = d.x < 180 ? 0 : 180,
-                    scaleX = width / rawWidth,
-                    scaleY = height / rawHeight;
+                    scaleX = contentWidth / rawWidth,
+                    scaleY = contentHeight / rawHeight;
                 return 'rotate(' + rotate + ')' +
                     'translate(' + x + ',' + y + ')' +
                     'scale(' + scaleX + ',' + scaleY + ')';
-            }); //.attr('clip-path', 'url(#' + clipId + ')');
+            });
 
             return this;
         }
