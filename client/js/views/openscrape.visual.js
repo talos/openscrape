@@ -40,36 +40,36 @@ define([
      *
      * @return A filter definition.
      */
-    var newDropShadow = function (defs) {
-            var filter = defs.append('filter')
-                    .attr('height', '130%'),
+    // var newDropShadow = function (defs) {
+    //         var filter = defs.append('filter')
+    //                 .attr('height', '130%'),
 
-                blur = filter.append('feGaussianBlur')
-                    .attr('in', 'SourceAlpha')
-                    .attr('stdDeviation', '3'),
+    //             blur = filter.append('feGaussianBlur')
+    //                 .attr('in', 'SourceAlpha')
+    //                 .attr('stdDeviation', '3'),
 
-                offset = filter.append('feOffset')
-                    .attr('dx', '2')
-                    .attr('dy', '2')
-                    .attr('result', 'offsetblur'),
+    //             offset = filter.append('feOffset')
+    //                 .attr('dx', '2')
+    //                 .attr('dy', '2')
+    //                 .attr('result', 'offsetblur'),
 
-                merge = filter.append('feMerge'),
-                node1 = merge.append('feMergeNode'),
-                node2 = merge.append('feMergeNode')
-                    .attr('in', 'SourceGraphic');
+    //             merge = filter.append('feMerge'),
+    //             node1 = merge.append('feMergeNode'),
+    //             node2 = merge.append('feMergeNode')
+    //                 .attr('in', 'SourceGraphic');
 
-            return filter;
-        },
+    //         return filter;
+    //     },
 
-        diagonal = d3.svg.diagonal.radial().projection(function (d) {
-            return [d.y, d.x / 180 * Math.PI];
-        }),
+    //     diagonal = d3.svg.diagonal.radial().projection(function (d) {
+    //         return [d.y, d.x / 180 * Math.PI];
+    //     }),
 
-        origin = d3.svg.diagonal.radial().projection(function (d) {
-            return [0, 0];
-        }),
+    //     origin = d3.svg.diagonal.radial().projection(function (d) {
+    //         return [0, 0];
+    //     }),
 
-        r = 5000; // size of initial visual
+    var r = 5000; // size of initial visual
 
     return backbone.View.extend({
 
@@ -79,11 +79,11 @@ define([
                     .append('svg')
                     .attr('xmlns', 'http://www.w3.org/2000/svg')
                     .attr("width", r * 2)
-                    .attr("height", r * 2),
+                    .attr("height", r * 2);
 
-                defs = svg.append('defs'),
-                dropShadow = newDropShadow(defs)
-                    .attr('id', 'dropshadow');
+                // defs = svg.append('defs'),
+                // dropShadow = newDropShadow(defs)
+                //     .attr('id', 'dropshadow');
 
             this.vis = svg.append("g")
                 .attr('id', 'viewport')
