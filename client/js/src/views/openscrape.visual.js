@@ -61,15 +61,15 @@ define([
     //         return filter;
     //     },
 
-    //     diagonal = d3.svg.diagonal.radial().projection(function (d) {
-    //         return [d.y, d.x / 180 * Math.PI];
-    //     }),
+    var diagonal = d3.svg.diagonal.radial().projection(function (d) {
+            return [d.y, d.x / 180 * Math.PI];
+        }),
 
-    //     origin = d3.svg.diagonal.radial().projection(function (d) {
-    //         return [0, 0];
-    //     }),
+        origin = d3.svg.diagonal.radial().projection(function (d) {
+            return [0, 0];
+        }),
 
-    var r = 5000; // size of initial visual
+        r = 5000; // size of initial visual
 
     return backbone.View.extend({
 
