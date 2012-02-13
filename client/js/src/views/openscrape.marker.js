@@ -96,6 +96,7 @@ define([
                             }).render();
                             this.model.destroy();
                         } else {
+                            //this.model.setAddress(address);
                             var rootNode = this.model.nodes.create({
                                 tags: address,
                                 instruction: 'instructions/nyc/property.json',
