@@ -3,7 +3,7 @@ path {
     fill: none;
     stroke: black;
     stroke-width: 1.5px;
-    filter: url(#dropshadow);
+/*    filter: url(#dropshadow);*/
 }
 
 .mask {
@@ -15,7 +15,7 @@ path {
     fill: white;
     stroke: black;
     stroke-width: 1.5px;
-    filter: url(#dropshadow);
+/*    filter: url(#dropshadow);*/
 }
 
 .node div {
