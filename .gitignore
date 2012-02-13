@@ -9,5 +9,7 @@
 log/*
 todos.txt
 bin/*
-client/js/build/*
 client/index.dev.html
+client/js/build/*
+!client/js/build/openscrape.main.js
+!client/js/build/require.js
