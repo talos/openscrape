@@ -50,22 +50,25 @@ define([
          * Static function to generate an SVG container for a node
          * based off of width and height.
          *
-         * @param {Number} width
-         * @param {Number} height
+         * @param {Number} contentWidth
+         * @param {Number} contentHeight
          *
          * @return {String} an SVG path description
          */
-        containerPath = function (width, height) {
-            var top = height / 2,
+        containerPath = function (contentWidth, contentHeight) {
+            var padding = 20,
+                height = contentHeight + padding,
+                width = contentWidth + padding,
+                top = height / 2,
                 bottom = -height / 2;
             return 'M-' + (width / 4) + ' 0' +
                 'a' + (width / 4) + ' ' + top + ' 0 0 1 ' + (width / 4) + ' ' + top +
-                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 ' + (width / 2) + ' ' + (top / 4) +
-                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 ' + (width / 2) + ' -' + (top / 4) +
+                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (width / 2) + ' ' + (top / 2) +
+                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (width / 2) + ' -' + (top / 2) +
                 'a' + (width / 4) + ' ' + top + ' 0 0 1 ' + (width / 4) + ' -' + top +
                 'a' + (width / 4) + ' ' + top + ' 0 0 1 -' + (width / 4) + ' -' + top +
-                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 -' + (width / 2) + ' -' + (top / 4) +
-                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 -' + (width / 2) + ' ' + (top / 4) +
+                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (width / 2) + ' -' + (top / 2) +
+                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (width / 2) + ' ' + (top / 2) +
                 'a' + (width / 4) + ' ' + top + ' 0 0 1 -' + (width / 4) + ' ' + top +
                 'Z';
         };
