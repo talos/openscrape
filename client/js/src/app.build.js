@@ -6,13 +6,14 @@
     //the code minified by UglifyJS.
     //optimize: "none",
 
-    // paths: {
-    //     "jquery": "require-jquery"
-    // },
+    paths: {
+        //"jquery": "require-jquery"
+        "async": './lib/require-async'
+    },
 
     modules: [
         {
-            name: "main"
+            name: "openscrape.main"
         }
     ]
 })

@@ -9,4 +9,4 @@
 log/*
 todos.txt
 bin/*
-
+client/js/build/*
