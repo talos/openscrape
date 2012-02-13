@@ -186,9 +186,9 @@ define([
                 .selectAll('path')
                 .remove();
 
-            this.d3el
-                .selectAll('defs')
-                .remove();
+            // this.d3el
+            //     .selectAll('defs')
+            //     .remove();
 
             //var clipId = _.uniqueId('clip'),
             var foreign = this.d3el.append('svg:foreignObject')
