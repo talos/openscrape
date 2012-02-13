@@ -142,7 +142,7 @@ define([
 
             var scale = this.model.get('scale'),
                 cssScale = 'scale(' + scale + ',' + scale + ')',
-                cssOrigin = '(50, 50)',
+                //cssOrigin = '(50, 50)',
                 properties = [
                     [ 'transform', 'transform-origin' ],
                     [ '-ms-transform', '-ms-transform-origin'], /* IE 9 */
@@ -151,9 +151,11 @@ define([
                     [ '-moz-transform', '-moz-transform-origin' ] /* Firefox */
                 ];
 
+            console.log('boo');
+
             this.$el.css(_.reduce(properties, function (memo, prop) {
                 memo[prop[0]] = cssScale;
-                memo[prop[1]] = cssOrigin;
+                //memo[prop[1]] = cssOrigin;
                 return memo;
             }, {}));
         },
