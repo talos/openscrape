@@ -6,54 +6,50 @@ path {
     filter: url(#dropshadow);
 }
 
-.foreign div.node {
-    background: rgba(255,255,255,.75);
-    border: 1px solid black;
-    padding: .5em;
-    border-radius: 3px;
+.mask {
+    fill: white;
+    fill-opacity: 0;
+}
+
+.background {
+    fill: white;
+    stroke: black;
+    stroke-width: 1.5px;
+    filter: url(#dropshadow);
+}
+
+.node div {
     display: inline-block;
-    box-shadow: 3px 3px 6px black;
-    -moz-box-shadow: 3px 3px 6px black;
-    -webkit-box-shadow: 3px 3px 6px black;
+    max-width: 640px;
+}
+.node div iframe {
+    border: 0px;
 }
 
-.foreign div.node div {
-    max-width: 100px;
-}
-
-.foreign div.node.wait {
+.node div.wait {
     cursor: pointer;
-    border: 2px solid blue;
 }
 
-.foreign div.node.missing {
+.node div.missing {
     cursor: pointer;
-    border: 2px solid blue;
 }
 
-.foreign div.node.hidden {
+.node div.hidden {
     cursor: pointer;
-    border: 2px solid blue;
 }
 
-.foreign div.node.page.hidden {
+.node div.page.hidden {
     cursor: pointer;
-    border: 20px solid blue;
 }
 
-
-.foreign div.node.wait:hover {
-    border: 2px solid red;
+.node div.wait:hover {
 }
 
-.foreign div.node.missing:hover {
-    border: 2px solid red;
+.node div.missing:hover {
 }
 
-.foreign div.node.hidden:hover {
-    border: 2px solid red;
+.node div.hidden:hover {
 }
 
-.foreign div.node.page.hidden:hover {
-    border: 20px solid red;
+.node div.page.hidden:hover {
 }

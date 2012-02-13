@@ -8,3 +8,5 @@
 *.conf
 log/*
 todos.txt
+bin/*
+

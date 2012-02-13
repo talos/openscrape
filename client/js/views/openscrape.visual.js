@@ -109,7 +109,7 @@ define([
         },
 
         collapse: function () {
-            var node = this.vis.selectAll('.gNode').data([]),
+            var node = this.vis.selectAll('.visual').data([]),
                 link = this.vis.selectAll('path.link').data([]);
 
             node.exit()
@@ -149,31 +149,19 @@ define([
                     .data(this.tree.links(nodes), function (d) {
                         return d.source.id + '_' + d.target.id;
                     }),
-                node = this.vis.selectAll(".gNode")
+                node = this.vis.selectAll(".visual")
                     .data(nodes, function (d) {
                         return d.id;
-                    }),
-                foreign = this.vis.selectAll('.foreign');
+                    });
 
             node.enter()
                 .append('g')
-                .classed('gNode', true)
+                .classed('visual', true)
                 .attr('transform', function (d) {
                     // correct orientation upon entry
-                    var rotate = d.parent ? d.x - 90 : d.x;
+                    var rotate = d.x - 90;
                     return "rotate(" + rotate + ")scale(0)";
                 })
-                .append('svg:foreignObject')
-                .classed('foreign', true)
-                .attr('width', function (d) {
-                    return NodeView.prototype.iframeWidth;
-                })
-                .attr('height', function (d) {
-                    return NodeView.prototype.iframeHeight;
-                })
-                .append('xhtml:body')
-                .append('div')
-                .classed('node', true)
                 .each(function (d) {
                     // create view for node
                     var view = new NodeView({
@@ -192,28 +180,11 @@ define([
                 .duration(1000)
                 .attr("transform", function (d) {
                     var model = collection.get(d.id),
-                        maxWidth = model.get('maxWidth'),
-                        rawWidth = model.get('rawWidth'),
                         translate = model.distance(),
-
-                        // perpendicular root
-                        rotate = d.parent ? d.x - 90 : d.x,
-
-                        // scale down to maxWidth
-                        scale = rawWidth > maxWidth ? maxWidth / rawWidth : 1;
+                        rotate = d.x - 90;
 
                     return "rotate(" + rotate + ")" +
-                        "translate(" + translate + ")" +
-                        "scale(" + scale + ")";
-                })
-                .select('.foreign')
-                .attr('transform', function (d) {
-                    var model = collection.get(d.id),
-                        x = d.x < 180 ? 0 : -model.get('rawWidth'),
-                        y = -model.get('rawHeight') / 2,
-                        rotate = d.x < 180 ? 0 : 180;
-
-                    return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
+                        "translate(" + translate + ")";
                 });
 
             node.exit()
@@ -247,7 +218,7 @@ define([
                 .remove();
 
             // ensure that paths are drawn below nodes through reordering
-            this.vis.selectAll('g.gNode,path.link')
+            this.vis.selectAll('g.visual,path.link')
                 .sort(function (a, b) {
                     // if b has a target, it is a link
                     return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;
