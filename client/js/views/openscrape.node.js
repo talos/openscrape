@@ -60,43 +60,17 @@ define([
         },
 
         events: {
-            'click': 'click',
-            'click a': 'click',
-            'mouseenter iframe': 'iframeEnter',
-            'mouseleave iframe': 'iframeLeave',
-            'mouseout iframe': 'iframeLeave'
+            'click': 'click'
         },
 
         // imaginary screen dimensions for iframe rendering
         iframeWidth: 640,
         iframeHeight: 480,
 
-        // evah-so-clevah simulation of clicks inside iframe, which
-        // can't be captured because data URI is not considered
-        // same-origin.
-        iframeEnter: function () {
-            this.inIframe = true;
-            this.model.trigger('forceStopDrag'); // prevent naughty naughty things
-        },
-
-        windowBlur: function () {
-            if (this.inIframe) {
-                this.$el.trigger('click');
-                this.iframeLeave();
-            }
-        },
-
-        iframeLeave: function () {
-            this.inIframe = false;
-        },
-
         initialize: function () {
             this.model.on('change:type', this.render, this);
             this.model.on('change:hidden', this.render, this);
             this.model.on('newTags', this.scrape, this);
-            $(window).blur(_.bind(this.windowBlur, this));
-
-
         },
 
         click: function (evt) {
@@ -177,18 +151,16 @@ define([
 
         render: function () {
             d3.select(this.el)
-                .selectAll()
+                .selectAll('.node')
                 .remove();
 
-            var foreign = d3.select(this.el)
-                    .append('svg:foreignObject')
-                    .classed('foreign', true)
+            var el = d3.select(this.el),
+                foreign = el.append('svg:foreignObject')
+                    .classed('node', true)
                     .attr('width', this.iframeWidth)
                     .attr('height', this.iframeHeight),
-                $div = $(foreign
-                         .append('xhtml:body')
+                $div = $(foreign.append('xhtml:body')
                          .append('div')
-                         .classed('node', true)
                          .classed(this.model.get('type'), true)
                          .classed('hidden', this.model.get('hidden')
                                  )[0])
@@ -199,23 +171,24 @@ define([
 
                 // the mustache render produces raw dimensions that must be scaled
                 // down.
-                rawWidth = $div.width(),
-                rawHeight = $div.height(),
-                maxWidth = this.model.get('maxWidth'),
-                maxHeight = this.model.get('maxHeight');
+                width = $div.width(),
+                height = $div.height(),
+
+                rect = el.append('rect')
+                    .classed('mask', true)
+                    .attr('width', width)
+                    .attr('height', height);
 
             this.model.set({
-                rawWidth: rawWidth,
-                rawHeight: rawHeight,
-                width: rawWidth > maxWidth ? maxWidth : rawWidth,
-                height: rawHeight > maxHeight ? maxHeight : rawHeight
+                width: width,
+                height: height
             }, {
                 silent: true
             });
 
             foreign.attr('transform', _.bind(function (d) {
-                var x = d.x < 180 ? 0 : -rawWidth,
-                    y = -rawHeight / 2,
+                var x = d.x < 180 ? 0 : -width,
+                    y = -height / 2,
                     rotate = d.x < 180 ? 0 : 180;
                 return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
             }, this));
