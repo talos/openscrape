@@ -33,34 +33,6 @@ define([
 ], function (d3, _, backbone, NodeView) {
     "use strict";
 
-    /**
-     * Generate a drop shadow filter definition.
-     *
-     * @param defs The definitions to which the filter should be attached.
-     *
-     * @return A filter definition.
-     */
-    // var newDropShadow = function (defs) {
-    //         var filter = defs.append('filter')
-    //                 .attr('height', '130%'),
-
-    //             blur = filter.append('feGaussianBlur')
-    //                 .attr('in', 'SourceAlpha')
-    //                 .attr('stdDeviation', '3'),
-
-    //             offset = filter.append('feOffset')
-    //                 .attr('dx', '2')
-    //                 .attr('dy', '2')
-    //                 .attr('result', 'offsetblur'),
-
-    //             merge = filter.append('feMerge'),
-    //             node1 = merge.append('feMergeNode'),
-    //             node2 = merge.append('feMergeNode')
-    //                 .attr('in', 'SourceGraphic');
-
-    //         return filter;
-    //     },
-
     var diagonal = d3.svg.diagonal.radial().projection(function (d) {
             return [d.y, d.x / 180 * Math.PI];
         }),
@@ -80,10 +52,6 @@ define([
                     .attr('xmlns', 'http://www.w3.org/2000/svg')
                     .attr("width", r * 2)
                     .attr("height", r * 2);
-
-                // defs = svg.append('defs'),
-                // dropShadow = newDropShadow(defs)
-                //     .attr('id', 'dropshadow');
 
             this.vis = svg.append("g")
                 .attr('id', 'viewport')
