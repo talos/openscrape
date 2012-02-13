@@ -60,7 +60,7 @@ define([
             this.tree = d3.layout.tree()
                 .size([360, r])
                 .separation(function (a, b) {
-                    return (a.parent === b.parent ? 1 : 2) / a.depth;
+                    return (a.parent === b.parent ? 1 : 2) / (a.depth * 5);
                 })
                 .children(_.bind(function (d) {
                     if (!d.hidden) {
@@ -171,11 +171,22 @@ define([
             link.transition()
                 .duration(1000)
                 .attr('d', function (d, i) {
+                    var target = collection.get(d.target.id),
+                        source = collection.get(d.source.id),
+                        targetStart = target.start(),
+                        sourceStart = source.start();
+
+                    if (targetStart < sourceStart) {
+                        targetStart = targetStart + target.get('width');
+                    } else {
+                        sourceStart = sourceStart + source.get('width');
+                    }
+
                     return diagonal({
                         source: { x: d.source.x,
-                                  y: collection.get(d.source.id).distance() },
+                                  y: sourceStart },
                         target: { x: d.target.x,
-                                  y: collection.get(d.target.id).distance() }
+                                  y: targetStart }
                     }, i);
                 });
 
