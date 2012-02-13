@@ -44,7 +44,31 @@ define([
              d3, mustache, _, backbone, json, caustic) {
     "use strict";
 
-    var $ = require('jquery');
+    var $ = require('jquery'),
+
+        /**
+         * Static function to generate an SVG container for a node
+         * based off of width and height.
+         *
+         * @param {Number} width
+         * @param {Number} height
+         *
+         * @return {String} an SVG path description
+         */
+        containerPath = function (width, height) {
+            var top = height / 2,
+                bottom = -height / 2;
+            return 'M-' + (width / 4) + ' 0' +
+                'a' + (width / 4) + ' ' + top + ' 0 0 1 ' + (width / 4) + ' ' + top +
+                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 ' + (width / 2) + ' ' + (top / 4) +
+                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 ' + (width / 2) + ' -' + (top / 4) +
+                'a' + (width / 4) + ' ' + top + ' 0 0 1 ' + (width / 4) + ' -' + top +
+                'a' + (width / 4) + ' ' + top + ' 0 0 1 -' + (width / 4) + ' -' + top +
+                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 -' + (width / 2) + ' -' + (top / 4) +
+                'a' + (width / 2) + ' ' + (top / 4) + ' 0 0 0 -' + (width / 2) + ' ' + (top / 4) +
+                'a' + (width / 4) + ' ' + top + ' 0 0 1 -' + (width / 4) + ' ' + top +
+                'Z';
+        };
 
     return backbone.View.extend({
 
@@ -67,10 +91,14 @@ define([
         iframeWidth: 640,
         iframeHeight: 480,
 
+        maxWidth: 320,
+        maxHeight: 320,
+
         initialize: function () {
             this.model.on('change:type', this.render, this);
             this.model.on('change:hidden', this.render, this);
             this.model.on('newTags', this.scrape, this);
+            this.d3el = d3.select(this.el);
         },
 
         click: function (evt) {
@@ -150,12 +178,20 @@ define([
         },
 
         render: function () {
-            d3.select(this.el)
+            this.d3el
                 .selectAll('.node')
                 .remove();
 
-            var el = d3.select(this.el),
-                foreign = el.append('svg:foreignObject')
+            this.d3el
+                .selectAll('path')
+                .remove();
+
+            this.d3el
+                .selectAll('defs')
+                .remove();
+
+            //var clipId = _.uniqueId('clip'),
+            var foreign = this.d3el.append('svg:foreignObject')
                     .classed('node', true)
                     .attr('width', this.iframeWidth)
                     .attr('height', this.iframeHeight),
@@ -171,13 +207,25 @@ define([
 
                 // the mustache render produces raw dimensions that must be scaled
                 // down.
-                width = $div.width(),
-                height = $div.height(),
+                rawWidth = $div.width(),
+                rawHeight = $div.height(),
+                width = rawWidth > this.maxWidth ? this.maxWidth : rawWidth,
+                height = rawHeight > this.maxHeight ? this.maxHeight : rawHeight,
+                path = containerPath(width, height);
 
-                rect = el.append('rect')
-                    .classed('mask', true)
-                    .attr('width', width)
-                    .attr('height', height);
+                // clipPath = this.d3el.append('defs')
+                //     .append('svg:clipPath')
+                //     .attr('id', clipId)
+                //     .append('path')
+                //     .attr('d', path);
+
+            this.d3el.insert('path', '.node')
+                .classed('background', true)
+                .attr('d', path);
+
+            this.d3el.append('path')
+                .classed('mask', true)
+                .attr('d', path);
 
             this.model.set({
                 width: width,
@@ -186,12 +234,24 @@ define([
                 silent: true
             });
 
-            foreign.attr('transform', _.bind(function (d) {
+            // clipPath.attr('transform', function (d) {
+            //     var x = d.x < 180 ? 0 : -width,
+            //     //var x = 0,
+            //         y = height / 2,
+            //         rotate = d.x < 180 ? 0 : 180;
+            //     return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
+            // });
+
+            foreign.attr('transform', function (d) {
                 var x = d.x < 180 ? 0 : -width,
                     y = -height / 2,
-                    rotate = d.x < 180 ? 0 : 180;
-                return 'rotate(' + rotate + ')translate(' + x + ',' + y + ')';
-            }, this));
+                    rotate = d.x < 180 ? 0 : 180,
+                    scaleX = width / rawWidth,
+                    scaleY = height / rawHeight;
+                return 'rotate(' + rotate + ')' +
+                    'translate(' + x + ',' + y + ')' +
+                    'scale(' + scaleX + ',' + scaleY + ')';
+            }); //.attr('clip-path', 'url(#' + clipId + ')');
 
             return this;
         }
