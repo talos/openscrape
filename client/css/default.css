@@ -77,6 +77,18 @@ input#clear {
     background: url('images/loading.gif') center no-repeat !important;
 }
 
+#header {
+    padding: .5em;
+    border: solid black;
+    border-width: 0px 0px 1px 0px;
+}
+
+#help {
+    padding: .5em;
+    border: solid black;
+    border-width: 0px 0px 1px 0px;
+}
+
 div.warning {
     text-align: center;
     padding: 1em 150px 1em 150px;

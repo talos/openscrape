@@ -21,9 +21,6 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
-/**
- * This view renders the map.  It also instantiates the Visual view.
- */
 define([
     'lib/underscore',
     'lib/google',

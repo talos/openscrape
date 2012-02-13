@@ -26,31 +26,42 @@
 
     require([
         'require',
-        'models/openscrape.map',
-        'views/openscrape.map',
         'lib/backbone',
+        'models/openscrape.app',
+        'views/openscrape.app',
         './openscrape.sync',
         'lib/jquery'
-    ], function (require, MapModel, MapView, backbone) {
-        var $ = require('jquery');
+    ], function (require, backbone, AppModel, AppView) {
+        var $ = require('jquery'),
+            openscrape = new AppModel({
+                version: '0.0.1',
+                location: 'help'
+            }),
+            view = new AppView({
+                model: openscrape,
+                el: $('#openscrape')
+            }),
+            router = new (backbone.Router.extend({
+                routes: {
+                    '': 'index',
+                    'help': 'help'
+                    //'/address/:address': 'address'
+                },
 
-        return (new (backbone.View.extend({
+                index: function () {
+                    openscrape.go('index');
+                },
 
-            el: $('#openscrape'),
+                help: function () {
+                    openscrape.go('help');
+                }
 
-            initialize: function () {
-                this.mapModel = new MapModel({
-                    lat: 40.77,
-                    lng: -73.98
-                });
-                var mapEl = this.make('div', {id: 'map'});
-                this.$el.append(mapEl);
-                var mapView = new MapView({
-                    model: this.mapModel,
-                    el: mapEl
-                });
-            }
-        }))());
+                // address: function (address) {
+                //     console.log(address);
+                // }
+            }))();
+
+        backbone.history.start();
     });
 }());
 
