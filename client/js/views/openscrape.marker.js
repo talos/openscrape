@@ -151,8 +151,6 @@ define([
                     [ '-moz-transform', '-moz-transform-origin' ] /* Firefox */
                 ];
 
-            console.log('boo');
-
             this.$el.css(_.reduce(properties, function (memo, prop) {
                 memo[prop[0]] = cssScale;
                 //memo[prop[1]] = cssOrigin;
