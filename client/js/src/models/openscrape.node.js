@@ -44,7 +44,7 @@ define([
         });
         return memo;
     },
-        gap = 60; // cap between nodes.  TODO make this part of model.
+        padding = 50;
 
     return backbone.Model.extend({
         defaults: function () {
@@ -202,6 +202,13 @@ define([
         },
 
         /**
+         * @return {Array} of {openscrape.NodeModel} ancestors of this node.
+         */
+        ancestors: function () {
+            return this.collection.getAll(this.get('ancestors'));
+        },
+
+        /**
          * @return {Array} of IDs that are one-to-one found relations
          * both below this node, above, and around it.
          */
@@ -251,16 +258,30 @@ define([
         },
 
         /**
-         * Add up all the widths to the first parent.
+         * Adds up the width of this node with all its ancestors.
          *
-         * @return {Number} pixels of width from first parent onwards.
+         * @return {Number}
          */
         distance: function () {
             return _.reduce(
                 _.invoke(this.collection.getAll(this.get('ancestors')), 'get', 'width'),
-                function (memo, width) { return memo + width + gap; },
+                function (memo, width) { return memo + width + padding; },
                 0
             );
+        },
+
+        /**
+         * @return {Number} the pixel offset of the start of this node.
+         */
+        // start: function () {
+        //     return this.distance() - this.get('width');
+        // },
+
+        /**
+         * @return {Number} the pixel offset of the end of this node.
+         */
+        start: function () {
+            return this.distance();
         }
     });
 });

@@ -22,16 +22,20 @@
 /*global define*/
 
 define([
+    'require',
     'lib/underscore',
     'lib/google',
     'lib/backbone',
     'lib/requirejs.mustache',
     'text!templates/map.mustache',
     'views/openscrape.marker',
-    'collections/openscrape.markers'
-], function (_, google, backbone, mustache, template,
+    'collections/openscrape.markers',
+    'lib/jquery'
+], function (require, _, google, backbone, mustache, template,
              MarkerView, MarkersCollection) {
     "use strict";
+
+    var $ = require('jquery');
 
     return backbone.View.extend({
 

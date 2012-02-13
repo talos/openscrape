@@ -1,55 +1,56 @@
 /* Illustrator doesn't support class names to style paths?  This works instead. */
-path {
+path.link {
     fill: none;
     stroke: black;
     stroke-width: 1.5px;
-/*    filter: url(#dropshadow);*/
-}
-
-.mask {
-    fill: white;
-    fill-opacity: 0;
-}
-
-.background {
-    fill: white;
-    stroke: black;
-    stroke-width: 1.5px;
-/*    filter: url(#dropshadow);*/
 }
 
 .node div {
     display: inline-block;
     max-width: 640px;
 }
+
 .node div iframe {
     border: 0px;
 }
 
-.node div.wait {
+.background {
+    fill: white;
+    stroke: black;
+    stroke-width: 1.5px;
+}
+
+.background.highlight {
+    stroke-width: 3px;
+}
+
+.mask {
+    fill-opacity: 0;
+}
+
+.mask.wait {
     cursor: pointer;
 }
 
-.node div.missing {
+.mask.missing {
     cursor: pointer;
 }
 
-.node div.hidden {
+.mask.hidden {
     cursor: pointer;
 }
 
-.node div.page.hidden {
-    cursor: pointer;
+.mask.wait:hover {
+    stroke: blue;
+    stroke-width: 1.5px;
 }
 
-.node div.wait:hover {
+.mask.missing:hover {
+    stroke: blue;
+    stroke-width: 1.5px;
 }
 
-.node div.missing:hover {
-}
-
-.node div.hidden:hover {
-}
-
-.node div.page.hidden:hover {
+.mask.hidden:hover {
+    stroke: blue;
+    stroke-width: 1.5px;
 }

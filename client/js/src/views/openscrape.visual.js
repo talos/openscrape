@@ -54,13 +54,13 @@ define([
                     .attr("height", r * 2);
 
             this.vis = svg.append("g")
-                .attr('id', 'viewport')
+                .classed('viewport', true)
                 .attr("transform", "translate(" + r + "," + r + ")");
 
             this.tree = d3.layout.tree()
                 .size([360, r])
                 .separation(function (a, b) {
-                    return (a.parent === b.parent ? 1 : 2) / (a.depth * 5);
+                    return (a.parent === b.parent ? 1 : 2) / (a.depth * 3);
                 })
                 .children(_.bind(function (d) {
                     if (!d.hidden) {

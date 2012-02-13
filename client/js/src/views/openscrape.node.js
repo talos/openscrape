@@ -77,6 +77,18 @@ define([
                 'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (width / 2) + ' ' + (top / 2) +
                 'a' + lead(width) + ' ' + top + ' 0 0 1 -' + lead(width) + ' ' + top +
                 'Z';
+        },
+
+        /**
+         * Do some very basic cleaning of the most problematic elements.
+         * Not a security feature.
+         */
+        cleanHTML = function (html) {
+            return html.replace(/<script.*?>[\s\S]*?<\/.*?script>/ig, '')
+                .replace(/<img.*?>/ig, '')
+            //.replace(/<style.*?>[\s\S]*?<\/.*?style>/ig, '')
+                .replace(/<link.*?>[\s\S]*?<\/.*?link>/ig, '');
+
         };
 
     return backbone.View.extend({
@@ -183,7 +195,7 @@ define([
                 return this.model.get('description');
             } else if (this.model.has('name')) {
                 //return this.model.get('name').substr(0, 100);
-                return this.model.get('name');
+                return cleanHTML(this.model.get('name'));
             } else {
                 return 'No name';
             }
@@ -193,11 +205,7 @@ define([
             var asURI,
                 preparse;
             if (this.model.has('name')) {
-                preparse = this.model.get('name')
-                    .replace(/<script.*?>[\s\S]*?<\/.*?script>/ig, '')
-                    .replace(/<img.*?>/ig, '')
-                    //.replace(/<style.*?>[\s\S]*?<\/.*?style>/ig, '')
-                    .replace(/<link.*?>[\s\S]*?<\/.*?link>/ig, '');
+                preparse = cleanHTML(this.model.get('name'));
 
                 asURI = encodeURIComponent(preparse);
             } else {
@@ -248,6 +256,14 @@ define([
                 .classed(this.model.get('type'), true)
                 .classed('hidden', this.model.get('hidden'))
                 .attr('d', path);
+                // .append('svg:animate')
+                // .attr('svg:attributeType', 'CSS')
+                // .attr('svg:attributeName', 'opacity')
+                // .attr('svg:begin', '0s')
+                // .attr('svg:dur', '1s')
+                // .attr('svg:from', '0')
+                // .attr('svg:to', '1')
+                // .attr('svg:repeatCount', 'indefinite');
 
             this.model.set({
                 width: width,
