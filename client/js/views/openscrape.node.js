@@ -177,7 +177,8 @@ define([
             } else {
                 asURI = 'no name';
             }
-            return 'data:text/html;charset=utf-8,' + asURI;
+            //return 'data:text/html;charset=utf-8,' + asURI;
+            return 'data:text/html,' + asURI;
         },
 
         render: function () {
