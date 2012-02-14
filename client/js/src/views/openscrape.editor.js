@@ -22,37 +22,27 @@
 /*global define*/
 
 define([
-    'models/openscrape.map',
-    'views/openscrape.map',
-    'views/openscrape.editor',
-    'lib/backbone',
+    'require',
+    'text!templates/editor.mustache',
     'lib/requirejs.mustache',
-    'text!templates/main.mustache'
-], function (MapModel, MapView, EditorView, backbone, mustache,
-             mainTemplate) {
+    'lib/backbone',
+    'lib/jquery'
+], function (require, editorTemplate, mustache, backbone) {
     "use strict";
 
+    var $ = require('jquery');
+
     return backbone.View.extend({
+        //el: $('#editor'),
+
         initialize: function () {
-            this.$el.html(mustache.render(mainTemplate, this.model.toJSON()));
-            var mapModel = new MapModel({
-                lat: 40.77,
-                lng: -73.98
-            }),
-                mapView = new MapView({
-                    model: mapModel,
-                    el: this.$el.find('#map')
-                });
-            this.$help = this.$el.find('#help').hide();
+            this.$el = $('#editor');
+            this.el = this.$el[0];
             this.model.on('change', this.render, this);
         },
 
         render: function () {
-            if (this.model.location() === 'help') {
-                this.$help.slideDown();
-            } else {
-                this.$help.slideUp();
-            }
+            this.$el.html(mustache.render(editorTemplate, this.model.toJSON()));
         }
     });
 });

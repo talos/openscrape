@@ -46,7 +46,7 @@ define([
             'click #clear' : 'clear'
         },
 
-        initialize: function () {
+        initialize: function (options) {
             var dblClickWaitTime = 500,
                 dblClickWait = null;
 
@@ -110,11 +110,6 @@ define([
             google.maps.event.addListener(this.lookup, 'place_changed', _.bind(function () {
                 this.placeChanged();
             }, this));
-
-            // TODO bind modification of model back to gmaps display
-            this.markers.on('forceStopDrag', function () {
-                google.maps.event.trigger(this.gMap, 'dragend');
-            }, this);
 
             this.model.on('change:scale', function (model, scale) {
                 this.markers.rescale(scale);

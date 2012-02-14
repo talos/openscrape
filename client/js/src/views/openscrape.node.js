@@ -33,6 +33,7 @@ define([
     'text!templates/reference.mustache',
     'text!templates/missing.mustache',
     'text!templates/failed.mustache',
+    'views/openscrape.editor',
     'lib/d3',
     'lib/requirejs.mustache',
     'lib/underscore',
@@ -41,7 +42,7 @@ define([
     '../openscrape.caustic',
     'lib/jquery'
 ], function (require, ready, match, page, wait, reference, missing, failed,
-             d3, mustache, _, backbone, json, caustic) {
+             EditorView, d3, mustache, _, backbone, json, caustic) {
     "use strict";
 
     var $ = require('jquery'),
@@ -146,6 +147,10 @@ define([
         },
 
         click: function (evt) {
+            var editor = new EditorView({
+                model: this.model
+            }).render();
+
             //console.log(json.stringify(this.model, undefined, 2));
             //console.log(this.model.asRequest());
             if (this.model.get('type') === 'wait') {
