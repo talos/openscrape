@@ -28,11 +28,12 @@ define([
     'lib/backbone',
     'lib/requirejs.mustache',
     'text!templates/map.mustache',
-    'views/openscrape.marker',
+    'models/openscrape.app',
     'collections/openscrape.markers',
+    'views/openscrape.marker',
     'lib/jquery'
 ], function (require, _, google, backbone, mustache, template,
-             MarkerView, MarkersCollection) {
+             app, markers, MarkerView) {
     "use strict";
 
     var $ = require('jquery');
@@ -41,41 +42,27 @@ define([
 
         events: {
             'keydown #lookup': 'keydownLookup',
-            'blur #lookup': 'blurLookup',
-            'click #toggle': 'toggle',
-            'click #clear' : 'clear'
+            'blur #lookup': 'blurLookup'
         },
 
         initialize: function (options) {
             var dblClickWaitTime = 500,
                 dblClickWait = null;
 
-            this.$el.html(mustache.render(template, this.model.toJSON()));
+            this.$el.html(mustache.render(template));
             this.$el.addClass('loading');
 
             this.gMap = new google.maps.Map(
                 this.$el.find('#gMap')[0],
                 {
-                    center: new google.maps.LatLng(this.model.get('lat'),
-                                                   this.model.get('lng')),
-                    zoom: 11,
+                    center: new google.maps.LatLng(app.get('lat'),
+                                                   app.get('lng')),
+                    zoom: app.get('zoom'),
                     mapTypeControl: false,
                     streetViewControl: false,
                     mapTypeId: google.maps.MapTypeId.TERRAIN
                 }
             );
-
-            this.solidOverlay = new google.maps.Rectangle({
-                map: this.gMap,
-                bounds: new google.maps.LatLngBounds(
-                    new google.maps.LatLng(30, -100),
-                    new google.maps.LatLng(50, -50)
-                ),
-                visible: false,
-                fillColor: 'white',
-                fillOpacity: 1,
-                clickable: false
-            });
 
             this.lookup = new google.maps.places.Autocomplete(
                 this.$el.find('#lookup')[0],
@@ -85,20 +72,27 @@ define([
                 }
             );
 
-            this.markers = new MarkersCollection();
+            // add existing markers
+            markers.each(this.addMarker);
+            markers.on('add', this.addMarker, this);
 
             // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
             google.maps.event.addListenerOnce(this.gMap, 'idle', _.bind(function () {
-                this.saveBounds();
-                this.loaded();
+                this.$el.removeClass('loading');
             }, this));
-            google.maps.event.addListener(this.gMap, 'bounds_changed', _.bind(function () {
-                this.saveBounds();
-            }, this));
+
+            google.maps.event.addListener(this.gMap, 'bounds_changed', _.debounce(_.bind(function () {
+                var center = this.gMap.getCenter();
+                app.save({lat: center.lat(),
+                          lng: center.lng(),
+                          zoom: this.gMap.getZoom()});
+            }, this), 500));
+
             google.maps.event.addListener(this.gMap, 'dblclick', function () {
                 clearTimeout(dblClickWait);
             });
+
             google.maps.event.addListener(this.gMap, 'click', _.bind(function (evt) {
                 var latLng = evt.latLng;
 
@@ -110,15 +104,12 @@ define([
             google.maps.event.addListener(this.lookup, 'place_changed', _.bind(function () {
                 this.placeChanged();
             }, this));
-
-            this.model.on('change:scale', function (model, scale) {
-                this.markers.rescale(scale);
-            }, this);
         },
 
         keydownLookup: function (evt) {
             switch (evt.keyCode) {
             case 13: // enter
+                // todo determine first menu item/autocomplete
                 this.placeChanged();
                 break;
             case 27: // escape
@@ -141,62 +132,29 @@ define([
             if (place) {
                 if (place.geometry) {
                     this.clearLookup();
-                    this.markers.collapseAll();
                     if (place.geometry.viewport) {
-                        this.gMap.fitBounds(place.geometry.viewport);
+                        this.gMap.panToBounds(place.geometry.viewport);
                     } else {
-                        this.gMap.setCenter(place.geometry.location);
+                        this.gMap.panTo(place.geometry.location);
                         this.gMap.setZoom(11);
-                        this.saveBounds(); // not called automatically from above
                         this.click(place.geometry.location.lat(), place.geometry.location.lng());
                     }
                 }
             }
         }, 1000),
 
-        saveBounds: function () {
-            var bounds = this.gMap.getBounds(),
-                center = bounds.getCenter(),
-                northEast = bounds.getNorthEast();
-            this.model.saveBounds(center.lat(), center.lng(),
-                                  northEast.lat(), northEast.lng());
-            this.lookup.setBounds(bounds);
-        },
-
-        loaded: function () {
-            this.$el.removeClass('loading');
-        },
-
-        toggle: function () {
-            this.model.save('hidden', !this.model.get('hidden'));
-            this.solidOverlay.setVisible(this.model.get('hidden'));
-        },
-
-        clear: function () {
-            // I have no idea why this needs to be wrapped in a loop to work.
-            while (this.markers.length > 0) {
-                this.markers.invoke('destroy');
-            }
-        },
-
         click: function (lat, lng) {
-            if (this.markers.allCollapsed()) {
-                // if everything is collapsed, create a new marker
-                var m = new MarkerView({
-                    model: this.markers.create({
-                        lat: lat,
-                        lng: lng,
-                        scale: this.model.get('scale')
-                    }, {
-                        wait: true
-                    }),
-                    gMap: this.gMap
-                    //mapModel: this.model
-                });
-            } else {
-                // a click should only collapse existing markers if any are open
-                this.markers.collapseAll();
-            }
+            this.addMarker(markers.create({
+                lat: lat,
+                lng: lng
+            }));
+        },
+
+        addMarker: function (marker) {
+            new MarkerView({
+                model: marker,
+                gMap: this.gMap
+            }).render();
         }
     });
 });

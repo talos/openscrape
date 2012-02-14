@@ -29,12 +29,16 @@ define([
 ], function (_, backbone, Store, MarkerModel) {
     "use strict";
 
-    return backbone.Collection.extend({
+    /**
+     * Global state for markers
+     */
 
-        store: new Store('markers'),
-
+    var MarkersCollection = backbone.Collection.extend({
         model: MarkerModel,
+        store: new Store('markers')
+    }),
+        collection = new MarkersCollection();
+    collection.fetch();
 
-        
-    });
+    return collection;
 });

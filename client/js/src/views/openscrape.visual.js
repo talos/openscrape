@@ -26,74 +26,67 @@
  * d3 tree..
  */
 define([
+    'require',
     'lib/d3',
     'lib/underscore',
     'lib/backbone',
-    'views/openscrape.node'
-], function (d3, _, backbone, NodeView) {
+    'views/openscrape.node',
+    'models/openscrape.app',
+    'collections/openscrape.nodes',
+    'lib/jquery',
+    'lib/jquery-svgpan'
+], function (require, d3, _, backbone, NodeView, app, nodes) {
     "use strict";
 
-    var diagonal = d3.svg.diagonal.radial().projection(function (d) {
+    var $ = require('jquery'),
+        diagonal = d3.svg.diagonal.radial().projection(function (d) {
             return [d.y, d.x / 180 * Math.PI];
         }),
-
         origin = d3.svg.diagonal.radial().projection(function (d) {
             return [0, 0];
-        }),
-
-        r = 5000; // size of initial visual
+        });
 
     return backbone.View.extend({
 
         initialize: function (options) {
-
             var svg = d3.select(this.el)
                     .append('svg')
                     .attr('xmlns', 'http://www.w3.org/2000/svg')
-                    .attr("width", r * 2)
-                    .attr("height", r * 2);
+                    .attr('width', this.$el.width())
+                    .attr('height', this.$el.width());
 
             this.vis = svg.append("g")
-                .classed('viewport', true)
-                .attr("transform", "translate(" + r + "," + r + ")");
+                .attr('id', 'viewport');
+
+            $(svg).svgPan('viewport');
 
             this.tree = d3.layout.tree()
-                .size([360, r])
+                .size([360, 100]) // translation is handled manually, second number doesn't matter
                 .separation(function (a, b) {
                     return (a.parent === b.parent ? 1 : 2) / (a.depth * 3);
                 })
                 .children(_.bind(function (d) {
                     if (!d.hidden) {
-                        return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
+                        return _.invoke(nodes.getAll(d.childIds), 'toJSON');
                     } else {
                         return [];
                     }
                 }, this));
 
-            this.collection.on('add', this.render, this);
-            this.collection.on('change:hidden', this.render, this);
-            this.collection.on('change:childIds', this.render, this);
-            this.collection.on('remove', this.render, this);
+            app.on('change:visualizing', this.render, this);
+            nodes.on('add change:hidden change:childIds remove', this.render, this);
+
+            $(window).resize(_.bind(this.resize, this));
         },
 
-        collapse: function () {
-            var node = this.vis.selectAll('.visual').data([]),
-                link = this.vis.selectAll('path.link').data([]);
-
-            node.exit()
-                .transition()
-                .duration(1000)
-                .attr("transform", function (d) {
-                    return 'translate(0)scale(0)';
-                })
-                .remove();
-
-            link.exit()
-                .transition()
-                .duration(1000)
-                .attr('d', origin)
-                .remove();
-        },
+        /**
+         * Make sure that the SVG takes up the entirety of its container.
+         */
+        resize: _.debounce(function () {
+            var width = this.$el.width(),
+                height = this.$el.height();
+            this.vis.attr('transform', "translate(" + (width / 2) + "," + (height / 2) + ")");
+        }, 100),
 
         /**
          * Redraw this bad boy.  Debounced so that mr. clickety can't
@@ -101,10 +94,10 @@ define([
          */
         render: _.debounce(function () {
             // The .nodes function generates nested JSON.
-            // When we need access to the model itself, use
-            var collection = this.collection,
-                nodes = _.map(
-                    this.tree.nodes(collection.first().toJSON()),
+            // When we need access to the model itself, use collection.get()
+            var visualizing = nodes.get(app.visualizing()),
+                processed = visualizing ? _.map(
+                    this.tree.nodes(visualizing.toJSON()),
                     // bug in d3? make NaN x values 0.
                     function (node) {
                         if (_.isNaN(node.x)) {
@@ -112,17 +105,17 @@ define([
                         }
                         return node;
                     }
-                ),
+                ) : [],
                 link = this.vis.selectAll("path.link")
-                    .data(this.tree.links(nodes), function (d) {
+                    .data(this.tree.links(processed), function (d) {
                         return d.source.id + '_' + d.target.id;
                     }),
-                node = this.vis.selectAll(".visual")
-                    .data(nodes, function (d) {
+                treeNode = this.vis.selectAll(".visual")
+                    .data(processed, function (d) {
                         return d.id;
                     });
 
-            node.enter()
+            treeNode.enter()
                 .append('g')
                 .classed('visual', true)
                 .attr('transform', function (d) {
@@ -132,22 +125,16 @@ define([
                 })
                 .each(function (d) {
                     // create view for node
-                    var view = new NodeView({
-                        model: collection.get(d.id),
+                    new NodeView({
+                        model: nodes.get(d.id),
                         el: this
-                    });
-                    view.render();
-
-                    // TODO somewhere less spaghetti to scrape if first addition
-                    if (collection.length === 1) {
-                        view.scrape();
-                    }
+                    }).render();
                 });
 
-            node.transition()
+            treeNode.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    var model = collection.get(d.id),
+                    var model = nodes.get(d.id),
                         translate = model.distance(),
                         rotate = d.x - 90;
 
@@ -155,7 +142,7 @@ define([
                         "translate(" + translate + ")";
                 });
 
-            node.exit()
+            treeNode.exit()
                 .transition()
                 .duration(1000)
                 .attr("transform", function (d) {
@@ -171,8 +158,8 @@ define([
             link.transition()
                 .duration(1000)
                 .attr('d', function (d, i) {
-                    var target = collection.get(d.target.id),
-                        source = collection.get(d.source.id),
+                    var target = nodes.get(d.target.id),
+                        source = nodes.get(d.source.id),
                         targetStart = target.start(),
                         sourceStart = source.start();
 

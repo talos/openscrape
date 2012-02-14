@@ -33,16 +33,15 @@ define([
     'text!templates/reference.mustache',
     'text!templates/missing.mustache',
     'text!templates/failed.mustache',
-    'views/openscrape.editor',
+    'models/openscrape.app',
     'lib/d3',
     'lib/requirejs.mustache',
     'lib/underscore',
     'lib/backbone',
-    'lib/json2',
     '../openscrape.caustic',
     'lib/jquery'
 ], function (require, ready, match, page, wait, reference, missing, failed,
-             EditorView, d3, mustache, _, backbone, json, caustic) {
+             app, d3, mustache, _, backbone, caustic) {
     "use strict";
 
     var $ = require('jquery'),
@@ -118,14 +117,13 @@ define([
         maxWidth: 320,
         maxHeight: 320,
 
-        initialize: function () {
+        initialize: function (options) {
             this.model.on('change:highlight', this.highlight, this);
             this.model.on('change:type', this.render, this);
             this.model.on('change:hidden', this.render, this);
             this.model.on('newTags', this.scrape, this);
             this.d3el = d3.select(this.el);
         },
-
 
         /**
          * Highlight ancestors
@@ -147,9 +145,7 @@ define([
         },
 
         click: function (evt) {
-            var editor = new EditorView({
-                model: this.model
-            }).render();
+            app.edit(this.model.id);
 
             //console.log(json.stringify(this.model, undefined, 2));
             //console.log(this.model.asRequest());
@@ -157,27 +153,16 @@ define([
                 this.scrape();
             } if (this.model.get('type') === 'missing') {
                 this.scrape();
-            } else if (this.model.get('type') === 'failed') {
-                // temp debug
-                console.log(json.stringify(this.model, undefined, 2));
             } else if (this.model.get('childIds').length > 1) {
                 this.model.toggle();
             }
             evt.stopPropagation();
         },
 
-        loading: function () {
-            this.$('div').addClass('loading');
-        },
-
-        finished: function () {
-            this.$('div').removeClass('loading');
-        },
-
         scrape: function (resp) {
 
             this.model.save('force', true);
-            this.loading();
+            this.$('div').addClass('loading');
 
             caustic.scrape(this.model.asRequest())
                 .done(_.bind(function (resp) {
@@ -187,7 +172,7 @@ define([
                     this.model.normalize();
                 }, this))
                 .always(_.bind(function () {
-                    this.finished();
+                    this.$('div').removeClass('loading');
                 }, this));
         },
 

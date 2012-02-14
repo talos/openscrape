@@ -29,19 +29,13 @@ define([
 ], function (_, backbone, Store, NodeModel) {
     "use strict";
 
-    return backbone.Collection.extend({
-        model: NodeModel,
+    /**
+     * Global state for nodes.
+     */
 
-        /**
-         * Initialize a new collection of nodes.  Must have an ID.
-         */
-        initialize: function (models, options) {
-            if (_.has(options, 'id')) {
-                this.store = new Store('nodes' + options.id);
-            } else {
-                throw "Must initialize nodes collection with an id.";
-            }
-        },
+    var NodesCollection = backbone.Collection.extend({
+        model: NodeModel,
+        store: new Store('nodes'),
 
         /**
          * Get an array of nodes from an array of IDs.
@@ -54,5 +48,10 @@ define([
         getAll: function (ids) {
             return _.map(ids, function (id) { return this.get(id); }, this);
         }
-    });
+    }),
+        collection = new NodesCollection();
+
+    collection.fetch();
+
+    return collection;
 });

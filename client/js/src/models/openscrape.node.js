@@ -55,8 +55,7 @@ define([
                 tags: {},
                 force: false,
                 hidden: false,
-                maxWidth: 100,
-                maxHeight: 100,
+                selected: false,
                 width: 0,
                 height: 0,
                 rawWidth: 0,
@@ -258,30 +257,16 @@ define([
         },
 
         /**
-         * Adds up the width of this node with all its ancestors.
+         * Adds up the width of this node's ancestors.
          *
          * @return {Number}
          */
-        distance: function () {
+        start: function () {
             return _.reduce(
                 _.invoke(this.collection.getAll(this.get('ancestors')), 'get', 'width'),
                 function (memo, width) { return memo + width + padding; },
                 0
             );
-        },
-
-        /**
-         * @return {Number} the pixel offset of the start of this node.
-         */
-        // start: function () {
-        //     return this.distance() - this.get('width');
-        // },
-
-        /**
-         * @return {Number} the pixel offset of the end of this node.
-         */
-        start: function () {
-            return this.distance();
         }
     });
 });

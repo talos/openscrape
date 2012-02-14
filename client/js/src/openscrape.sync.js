@@ -53,7 +53,7 @@ define([
 
         return promise
             .done(function (resp) {
-                options.success(resp.toJSON());
+                options.success(resp);
             })
             .fail(function (msg) {
                 options.error(msg);

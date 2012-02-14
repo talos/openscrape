@@ -21,59 +21,60 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
-/**
- * A marker is a single point on the map.  It should have a lng/lat.
- */
 define([
     'lib/underscore',
     'lib/backbone',
-    'collections/openscrape.nodes'
-], function (_, backbone, NodesCollection) {
+    '../openscrape.geocoder',
+    '../openscrape.zip2borough',
+    '../openscrape.store',
+    'models/openscrape.marker'
+], function (_, backbone, geocoder, zip2borough, Store, MarkerModel) {
     "use strict";
 
     return backbone.Model.extend({
 
-        defaults: function () {
-            return {
-                scale: 1
-            };
-        },
-
         initialize: function () {
-            // create nodes collection once we have an ID
-            this.on('add', function () {
-                this.nodes = new NodesCollection([], { id: this.id });
-            }, this);
-
-            this.on('destroy', function () {
-                this.nodes.reset();
-            }, this);
-        },
-
-        rescale: function (scale) {
-            this.save('scale', scale);
-        },
-
-        expand: function () {
-            this.collection.collapseAll();
-            this.unset('collapsed');
-            this.save();
-        },
-
-        collapse: function () {
-            this.save('collapsed', true);
-        },
-
-        isCollapsed: function () {
-            return this.has('collapsed');
-        },
-
-        toggle: function () {
-            if (this.isCollapsed()) {
-                this.expand();
-            } else {
-                this.collapse();
+            if (!this.has('lat') || !this.has('lng')) {
+                throw "Missing lng/lat for marker";
             }
+
+            if (!this.get('address')) {
+                this.lookupAddress(this.lat(), this.lng());
+            }
+        },
+
+        address: function () {
+            return this.get('address');
+        },
+
+        lookupAddress: function (lat, lng) {
+            geocoder.reverseGeocode(lat, lng)
+                .done(_.bind(function (address) {
+                    // TODO
+                    address.apt = '';
+                    address.borough = zip2borough(address.zip);
+                    address.Borough = address.borough;
+
+                    if (!address.borough) {
+                        this.trigger('error',
+                                     "Sorry, that selection is not in the five boroughs.");
+                        this.destroy();
+                    } else {
+                        this.save(address);
+                    }
+                }, this))
+                .fail(_.bind(function (reason) {
+                    this.trigger('error', reason);
+                    this.destroy();
+                }, this));
+        },
+
+        lat: function () {
+            return this.get('lat');
+        },
+
+        lng: function () {
+            return this.get('lng');
         }
     });
 });

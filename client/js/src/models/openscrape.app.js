@@ -28,11 +28,17 @@ define([
 ], function (_, backbone, Store) {
     "use strict";
 
-    return backbone.Model.extend({
+    /**
+     * Global state for the app.
+     */
+    var AppModel = backbone.Model.extend({
         store: new Store('app'),
 
         defaults: function () {
             return {
+                lat: 40.77,
+                lng: -73.98,
+                zoom: 11,
                 location: 'index'
             };
         },
@@ -43,6 +49,27 @@ define([
 
         location: function () {
             return this.get('location');
+        },
+
+        visualize: function (id) {
+            this.save('visualizing', id);
+        },
+
+        visualizing: function () {
+            return this.get('visualizing');
+        },
+
+        edit: function (id) {
+            this.save('editing', id);
+        },
+
+        editing: function () {
+            return this.get('editing');
         }
-    });
+    }),
+        model = new AppModel({id: 0});
+
+    model.fetch();
+
+    return model;
 });

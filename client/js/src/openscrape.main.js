@@ -31,14 +31,12 @@
         'views/openscrape.app',
         './openscrape.sync',
         'lib/jquery'
-    ], function (require, backbone, AppModel, AppView) {
+    ], function (require, backbone, appModel, AppView) {
+        appModel.save('version', '0.0.2');
+
         var $ = require('jquery'),
-            openscrape = new AppModel({
-                version: '0.0.1',
-                location: 'help'
-            }),
             view = new AppView({
-                model: openscrape,
+                model: appModel,
                 el: $('#openscrape')
             }),
             router = new (backbone.Router.extend({
@@ -49,11 +47,11 @@
                 },
 
                 index: function () {
-                    openscrape.go('index');
+                    appModel.go('index');
                 },
 
                 help: function () {
-                    openscrape.go('help');
+                    appModel.go('help');
                 }
 
                 // address: function (address) {
