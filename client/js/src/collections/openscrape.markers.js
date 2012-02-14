@@ -35,17 +35,6 @@ define([
 
         model: MarkerModel,
 
-        allCollapsed: function () {
-            // short-circuit if one is not collapsed, return opposite
-            return !this.any(function (m) { return !m.isCollapsed(); });
-        },
-
-        collapseAll: function () {
-            this.invoke('collapse');
-        },
-
-        rescale: function (scale) {
-            this.invoke('rescale', scale);
-        }
+        
     });
 });
