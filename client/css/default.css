@@ -10,7 +10,9 @@ body {
 }
 
 #openscrape .loading {
-    background: url('images/loading.gif') center no-repeat !important;
+    background-image: url('images/loading.gif') !important;
+    background-position: center;
+    background-repeat: no-repeat;
 }
 
 #openscrape .prompt {
@@ -70,17 +72,17 @@ body {
 }
 
 #openscrape #map #lookup {
-    width: 200px;
+    width: 260px;
     left: 80px;
 }
 
 #openscrape #map #toggle {
-    left: 290px;
+    left: 350px;
     width: 90px;
 }
 
 #openscrape #map #clear {
-    left: 390px;
+    left: 450px;
     width: 90px;
 }
 
