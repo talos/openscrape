@@ -26,26 +26,41 @@ define([
     './openscrape.caustic.proxy',
     './openscrape.caustic.applet',
     './openscrape.queue',
+    'models/openscrape.prompt',
     'lib/jquery'
-], function (require, json, Queue) {
+], function (require, json, proxy, applet, Queue, PromptModel) {
     "use strict";
 
     var $ = require('jquery');
 
-    function Caustic() {
+    function Caustic(prompts) {
         this.queue = new Queue('caustic');
         this.started = false;
+        this.prompt = new PromptModel({
+            text: 'Scraping hits external servers. You can'
+                + ' either proxy through my server (which is slower'
+                + ' and costs me!) or you can use the applet.  If'
+                + ' you use the applet, you may have to confirm'
+                + ' its permissions with an annoying pop-up dialog box.',
+            resolve: 'Applet',
+            reject: 'Proxy'
+        });
+
+        this.prompt.on('resolved', function () {
+            applet.enable().done(function () {
+                this.requester = applet.request;
+            }).fail(function () {
+                this.requester = proxy.request;
+            }).always(function () {
+                this.queue.start();
+            });
+        });
+
+        this.prompt.on('rejected', function () {
+            this.requester = proxy.request;
+            this.queue.start();
+        });
     }
-
-    Caustic.prototype.start = function (requester) {
-        this.requester = requester;
-        this.queue.start();
-        this.started = true;
-    };
-
-    Caustic.prototype.started = function () {
-        return this.started;
-    };
 
     /**
      * Scrape a request.
@@ -57,6 +72,10 @@ define([
      * reason for why it failed.
      **/
     Caustic.prototype.scrape = function (request) {
+        if (this.prompt.isNew()) {
+            this.prompts.add(this.prompt);
+        }
+
         var dfd = new $.Deferred(),
             requestStr = json.stringify(request);
 
@@ -77,19 +96,4 @@ define([
     };
 
     return Caustic;
-
-    // prompt.on('resolved', function () {
-    //     applet.enable().done(function () {
-    //         requester = applet.request;
-    //     }).fail(function () {
-    //         requester = proxy.request;
-    //     }).always(function () {
-    //         queue.start();
-    //     });
-    // });
-
-    // prompt.on('rejected', function () {
-    //     requester = proxy.request;
-    //     queue.start();
-    // });
 });

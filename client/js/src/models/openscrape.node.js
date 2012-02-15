@@ -56,6 +56,7 @@ define([
                 force: false,
                 hidden: false,
                 selected: false,
+                scraping: false,
                 width: 0,
                 height: 0,
                 rawWidth: 0,
@@ -65,11 +66,20 @@ define([
 
         initialize: function () {
             this.normalize();
-            this.collection.on('change:tags', this.checkTags, this);
-            this.collection.on('normalized', this.checkTags, this); // nts: add is unsafe
+            //this.collection.on('change:tags', this.checkTags, this);
+            //this.collection.on('normalized', this.checkTags, this); // nts: add is unsafe
         },
 
-        checkTags: function () {
+        scrape: function () {
+            this.save('scraping', true);
+            this.trigger('scrape', this.asRequest());
+        },
+
+        doneScraping: function () {
+            this.save('scraping', false);
+        },
+
+        //checkTags: function () {
             // console.log('checkTags');
             // if (this.get('type') === 'missing') {
             //     var missingTags = this.get('missing'),
@@ -93,7 +103,7 @@ define([
             //         this.trigger('newTags');
             //     }
             // }
-        },
+        //},
 
         /**
          * Flatten all children into separate childIDs.

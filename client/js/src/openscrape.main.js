@@ -44,26 +44,21 @@
         './openscrape.sync',
         'lib/jquery'
     ], function (require, NodesCollection, MarkersCollection,
-             WarningsCollection, PromptsCollection, mapModel,
+             WarningsCollection, PromptsCollection, MapModel,
              WarningView, PromptView, MapView, EditorView, VisualView,
              backbone, _, mustache, appTemplate, Caustic) {
 
         var $ = require('jquery'),
 
+            mapModel = new MapModel({
+                lat: 40.77,
+                lng: -73.98,
+                zoom: 11
+            }),
             nodes = new NodesCollection(),
             markers = new MarkersCollection(),
             warnings = new WarningsCollection(),
             prompts = new PromptsCollection(),
-
-            causticPrompt = new PromptModel({
-                text: 'Scraping hits external servers. You can'
-                    + ' either proxy through my server (which is slower'
-                    + ' and costs me!) or you can use the applet.  If'
-                    + ' you use the applet, you may have to confirm'
-                    + ' its permissions with an annoying pop-up dialog box.',
-                resolve: 'Applet',
-                reject: 'Proxy'
-            }),
 
             AppView = backbone.View.extend({
 
@@ -71,7 +66,7 @@
 
                     this.$el.html(mustache.render(appTemplate, options));
 
-                    this.caustic = new Caustic();
+                    this.caustic = new Caustic(prompts);
 
                     this.prompt = new PromptView({
                         el: this.$el.find('#prompt'),
@@ -113,15 +108,13 @@
                 scrape: function (node, request) {
                     this.caustic.scrape(request)
                         .done(_.bind(function (resp) {
-                            node.update(resp);
-
                             // todo handle this in store?
-                            // delete resp.id;
-                            // this.model.set(resp, {silent: true});
-                            // this.model.normalize();
+                            delete resp.id;
+                            node.set(resp, {silent: true});
+                            node.normalize();
                         }, this))
                         .always(_.bind(function () {
-                            //this.$('div').removeClass('loading');
+                            node.doneScraping();
                         }, this));
                 },
 
@@ -189,9 +182,9 @@
 
                 map: function (zoom, lat, lng) {
                     mapModel.save({
-                        zoom: zoom,
-                        lat: lat,
-                        lng: lng
+                        zoom: Number(zoom),
+                        lat: Number(lat),
+                        lng: Number(lng)
                     });
                 },
 
