@@ -58,6 +58,10 @@ define([
                 }
             );
 
+            this.projectionOverlay = new google.maps.OverlayView();
+            this.projectionOverlay.draw = function () {};
+            this.projectionOverlay.setMap(this.gMap);
+
             this.$lookup = this.$el.find('#lookup');
             this.lookup = new google.maps.places.Autocomplete(
                 this.$lookup[0],
@@ -71,7 +75,7 @@ define([
                 bounds: this.gMap.getBounds()
             });
 
-            // add existing markers
+            // add existing markers when map is idle
             this.collection.on('reset', function (collection) {
                 collection.each(_.bind(this.drawMarker, this));
             }, this);
@@ -178,7 +182,8 @@ define([
         drawMarker: function (marker) {
             new MarkerView({
                 model: marker,
-                gMap: this.gMap
+                gMap: this.gMap,
+                projectionOverlay: this.projectionOverlay
             }).render();
         }
     });
