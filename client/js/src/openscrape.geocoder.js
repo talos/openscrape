@@ -46,8 +46,9 @@ define([
      * @param northEastLat
      * @param northEastLng
      *
-     * @return {Promise} that will be resolved with a JS object with lat lng
-     * in the format {lat: <lat>, lng: <lng>} or rejected with an error message
+     * @return {Promise} that will be resolved with a JS object:
+     * in the format {name: <fullname>, lat: <lat>, lng: <lng>} or
+     * rejected with an error message
      * if there was a problem.
      */
     Geocoder.prototype.geocode = function (address, southWestLat, southWestLng,
@@ -64,13 +65,20 @@ define([
             },
             function (results, status) {
                 if (status === google.maps.GeocoderStatus.OK) {
-                    var result = _.find(results, function (result) {
-                        return result.location_type === google.maps.GeocoderLocationType.ROOFTOP;
-                    });
-                    if (result) {
-                        dfd.resolve({lat: result.location.lat(),
-                                     lng: result.location.lng()});
-                    }
+                    dfd.resolve({ name: results[0].formatted_address,
+                             lat: results[0].geometry.location.lat(),
+                             lng: results[0].geometry.location.lng() });
+
+                    // var result = _.find(results, function (result) {
+                    //     return result.geometry.location;
+                    // });
+                    // if (result) {
+                    //     dfd.resolve({lat: result.geometry.location.lat(),
+                    //                  lng: result.geometry.location.lng()});
+                    // } else {
+                    //     console.log(results);
+                    //     dfd.reject("Couldn't find precise location");
+                    // }
                 }
                 dfd.reject("Couldn't find address: " + status);
             }
