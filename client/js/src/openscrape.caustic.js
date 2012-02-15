@@ -26,75 +26,70 @@ define([
     './openscrape.caustic.proxy',
     './openscrape.caustic.applet',
     './openscrape.queue',
-    'models/openscrape.prompt',
-    'views/openscrape.prompt',
     'lib/jquery'
-], function (require, json, proxy, applet, Queue, PromptModel, PromptView) {
+], function (require, json, Queue) {
     "use strict";
 
-    var $ = require('jquery'),
-        queue = new Queue('caustic'),
-        promptModel = new PromptModel({
-            text: 'Scraping hits external servers. You can'
-                + ' either proxy through my server (which is slower'
-                + ' and costs me!) or you can use the applet.  If'
-                + ' you use the applet, you may have to confirm'
-                + ' its permissions with an annoying pop-up dialog box.',
-            resolve: 'Applet',
-            reject: 'Proxy'
-        }),
-        requester,
-        promptView;
+    var $ = require('jquery');
 
-    promptModel.on('resolved', function () {
-        applet.enable().done(function () {
-            requester = applet.request;
-        }).fail(function () {
-            requester = proxy.request;
-        }).always(function () {
-            queue.start();
-        });
-    });
+    function Caustic() {
+        this.queue = new Queue('caustic');
+        this.started = false;
+    }
 
-    promptModel.on('rejected', function () {
-        requester = proxy.request;
-        queue.start();
-    });
-
-    return {
-
-        /**
-         * Scrape a request.
-         *
-         * @param {Object} request a JS object to request.
-         *
-         * @return {Promise} that will be resolved with the raw JS object
-         * of the response when the request is done, or rejected with a
-         * reason for why it failed.
-         **/
-        scrape: function (request) {
-            // Prompt the user if they haven't been prompted.
-            if (!promptView) {
-                promptView = new PromptView({model: promptModel});
-            }
-
-            var dfd = new $.Deferred(),
-                requestStr = json.stringify(request);
-
-            queue.queue(function (next) {
-                requester(requestStr)
-                    .done(function (jsonResp) {
-                        dfd.resolve(json.parse(jsonResp));
-                    })
-                    .fail(function (msg) {
-                        dfd.reject(msg);
-                    })
-                    .always(function () {
-                        next(); // next on the line
-                    });
-            });
-
-            return dfd.promise();
-        }
+    Caustic.prototype.start = function (requester) {
+        this.requester = requester;
+        this.queue.start();
+        this.started = true;
     };
+
+    Caustic.prototype.started = function () {
+        return this.started;
+    };
+
+    /**
+     * Scrape a request.
+     *
+     * @param {Object} request a JS object to request.
+     *
+     * @return {Promise} that will be resolved with the raw JS object
+     * of the response when the request is done, or rejected with a
+     * reason for why it failed.
+     **/
+    Caustic.prototype.scrape = function (request) {
+        var dfd = new $.Deferred(),
+            requestStr = json.stringify(request);
+
+        this.queue.queue(function (next) {
+            this.requester(requestStr)
+                .done(function (jsonResp) {
+                    dfd.resolve(json.parse(jsonResp));
+                })
+                .fail(function (msg) {
+                    dfd.reject(msg);
+                })
+                .always(function () {
+                    next(); // next on the line
+                });
+        });
+
+        return dfd.promise();
+    };
+
+    return Caustic;
+
+    // prompt.on('resolved', function () {
+    //     applet.enable().done(function () {
+    //         requester = applet.request;
+    //     }).fail(function () {
+    //         requester = proxy.request;
+    //     }).always(function () {
+    //         queue.start();
+    //     });
+    // });
+
+    // prompt.on('rejected', function () {
+    //     requester = proxy.request;
+    //     queue.start();
+    // });
 });

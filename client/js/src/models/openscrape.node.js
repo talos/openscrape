@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint browser: true, nomen: true*/
+/*jslint nomen: true*/
 /*global define*/
 
 /**
@@ -267,6 +267,14 @@ define([
                 function (memo, width) { return memo + width + padding; },
                 0
             );
+        },
+
+        edit: function () {
+            this.trigger('edit');
+        },
+
+        visualize: function () {
+            this.trigger('visualize');
         }
     });
 });

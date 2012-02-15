@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint browser: true, nomen: true*/
+/*jslint nomen: true*/
 /*global define*/
 
 define([
@@ -26,10 +26,8 @@ define([
     'lib/backbone',
     '../openscrape.geocoder',
     '../openscrape.zip2borough',
-    '../openscrape.store',
-    'collections/openscrape.nodes',
-    'models/openscrape.marker'
-], function (_, backbone, geocoder, zip2borough, Store, nodes, MarkerModel) {
+    '../openscrape.store'
+], function (_, backbone, geocoder, zip2borough, Store) {
     "use strict";
 
     return backbone.Model.extend({
@@ -62,18 +60,7 @@ define([
                                      "Sorry, that selection is not in the five boroughs.");
                         this.destroy();
                     } else {
-                        this.save({
-                            address: address,
-                            node: nodes.create({
-                                instruction: 'instructions/nyc/property.json',
-                                uri: document.URL,
-                                name: 'Property Info',
-                                type: 'wait',
-                                tags: address
-                            }, {
-                                wait: true
-                            }).id
-                        });
+                        this.save({ address: address });
                     }
                 }, this))
                 .fail(_.bind(function (reason) {
@@ -90,8 +77,18 @@ define([
             return this.get('lng');
         },
 
-        node: function () {
-            return this.get('node');
+        nodeId: function () {
+            return this.get('nodeId');
+        },
+
+        saveNodeId: function (nodeId) {
+            this.save('nodeId', nodeId);
+        },
+
+        visualize: function () {
+            if (this.has('address')) {
+                this.trigger('visualize', this.get('address'));
+            }
         }
     });
 });

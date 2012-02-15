@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint browser: true, nomen: true*/
+/*jslint nomen: true*/
 /*global define*/
 
 /**
@@ -33,7 +33,6 @@ define([
     'text!templates/reference.mustache',
     'text!templates/missing.mustache',
     'text!templates/failed.mustache',
-    '../openscrape.app',
     'lib/d3',
     'lib/requirejs.mustache',
     'lib/underscore',
@@ -41,7 +40,7 @@ define([
     '../openscrape.caustic',
     'lib/jquery'
 ], function (require, ready, match, page, wait, reference, missing, failed,
-             app, d3, mustache, _, backbone, caustic) {
+             d3, mustache, _, backbone, caustic) {
     "use strict";
 
     var $ = require('jquery'),
@@ -119,9 +118,7 @@ define([
 
         initialize: function (options) {
             this.model.on('change:highlight', this.highlight, this);
-            this.model.on('change:type', this.render, this);
-            this.model.on('change:hidden', this.render, this);
-            this.model.on('newTags', this.scrape, this);
+            this.model.on('change:scraping change:hidden', this.render, this);
             this.d3el = d3.select(this.el);
         },
 
@@ -145,11 +142,10 @@ define([
         },
 
         click: function (evt) {
-            app.edit(this.model.id);
+            this.model.edit();
 
-            //console.log(json.stringify(this.model, undefined, 2));
-            //console.log(this.model.asRequest());
             if (this.model.get('type') === 'wait') {
+                this.model.save('force', true);
                 this.scrape();
             } if (this.model.get('type') === 'missing') {
                 this.scrape();
@@ -157,23 +153,6 @@ define([
                 this.model.toggle();
             }
             evt.stopPropagation();
-        },
-
-        scrape: function (resp) {
-
-            this.model.save('force', true);
-            this.$('div').addClass('loading');
-
-            caustic.scrape(this.model.asRequest())
-                .done(_.bind(function (resp) {
-                    // todo handle this in store?
-                    delete resp.id;
-                    this.model.set(resp, {silent: true});
-                    this.model.normalize();
-                }, this))
-                .always(_.bind(function () {
-                    this.$('div').removeClass('loading');
-                }, this));
         },
 
         nameIsHTML: function () {
@@ -234,6 +213,10 @@ define([
                 width = contentWidth + (padding * 2) + (lead(contentWidth) * 2),
                 height = contentHeight + (padding * 2),
                 path = containerPath(contentWidth, contentHeight);
+
+            if (this.model.scraping()) {
+                $div.addClass('loading');
+            }
 
             this.d3el.insert('path', '.node')
                 .classed('background', true)

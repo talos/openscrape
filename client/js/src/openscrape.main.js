@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint nomen: true*/
+/*jslint browser: true, nomen: true*/
 /*globals require*/
 
 (function () {
@@ -26,12 +26,190 @@
 
     require([
         'require',
+        'collections/openscrape.nodes',
+        'collections/openscrape.markers',
+        'collections/openscrape.warnings',
+        'collections/openscrape.prompts',
+        'models/openscrape.map',
+        'views/openscrape.warning',
+        'views/openscrape.prompt',
+        'views/openscrape.map',
+        'views/openscrape.editor',
+        'views/openscrape.visual',
         'lib/backbone',
-        './openscrape.app',
+        'lib/underscore',
+        'lib/requirejs.mustache',
+        'text!templates/app.mustache',
+        './openscrape.caustic',
         './openscrape.sync',
         'lib/jquery'
-    ], function (require, backbone, app) {
+    ], function (require, NodesCollection, MarkersCollection,
+             WarningsCollection, PromptsCollection, mapModel,
+             WarningView, PromptView, MapView, EditorView, VisualView,
+             backbone, _, mustache, appTemplate, Caustic) {
 
+        var $ = require('jquery'),
+
+            nodes = new NodesCollection(),
+            markers = new MarkersCollection(),
+            warnings = new WarningsCollection(),
+            prompts = new PromptsCollection(),
+
+            causticPrompt = new PromptModel({
+                text: 'Scraping hits external servers. You can'
+                    + ' either proxy through my server (which is slower'
+                    + ' and costs me!) or you can use the applet.  If'
+                    + ' you use the applet, you may have to confirm'
+                    + ' its permissions with an annoying pop-up dialog box.',
+                resolve: 'Applet',
+                reject: 'Proxy'
+            }),
+
+            AppView = backbone.View.extend({
+
+                initialize: function (options) {
+
+                    this.$el.html(mustache.render(appTemplate, options));
+
+                    this.caustic = new Caustic();
+
+                    this.prompt = new PromptView({
+                        el: this.$el.find('#prompt'),
+                        collection: prompts
+                    });
+
+                    this.warning = new WarningView({
+                        el: this.$el.find('#warning'),
+                        collection: warnings
+                    });
+
+                    this.visual = new VisualView({
+                        el: this.$el.find('#visual'),
+                        collection: nodes
+                    });
+
+                    this.editor = new EditorView({
+                        el: this.$el.find('#editor'),
+                        collection: nodes
+                    });
+
+                    this.map = new MapView({
+                        el: this.$el.find('#map'),
+                        model: mapModel,
+                        collection: markers
+                    });
+
+                    markers.on('visualize', this.visualize, this);
+                    nodes.on('scrape', this.scrape, this);
+
+                    mapModel.on('error', this.warn, this);
+                    nodes.on('error', this.warn, this);
+                    markers.on('error', this.warn, this);
+                },
+
+                /**
+                 * Handle caustic.
+                 */
+                scrape: function (node, request) {
+                    this.caustic.scrape(request)
+                        .done(_.bind(function (resp) {
+                            node.update(resp);
+
+                            // todo handle this in store?
+                            // delete resp.id;
+                            // this.model.set(resp, {silent: true});
+                            // this.model.normalize();
+                        }, this))
+                        .always(_.bind(function () {
+                            //this.$('div').removeClass('loading');
+                        }, this));
+                },
+
+                /**
+                 * Direct visualization from marker to node.
+                 */
+                visualize: function (marker, address) {
+                    var node;
+                    if (marker.nodeId()) {
+                        node = nodes.get(marker.nodeId());
+                    } else {
+                        node = nodes.create({
+                            instruction: 'instructions/nyc/property.json',
+                            uri: document.URL,
+                            name: 'Property Info',
+                            type: 'wait',
+                            tags: address
+                        }, {
+                            wait: true
+                        });
+                        marker.saveNodeId(node.id);
+                    }
+
+                    node.visualize();
+                },
+
+                warn: function (text) {
+                    warnings.create({
+                        text: text
+                    });
+                }
+            }),
+
+            AppRouter = backbone.Router.extend({
+
+                initialize: function () {
+                    mapModel.on('change', _.bind(function () {
+                        this.navigate('map/' + mapModel.zoom() +
+                                      '/' + mapModel.lat() +
+                                      '/' + mapModel.lng());
+                    }, this));
+                    nodes.on('edit', _.bind(function (node) {
+                        this.navigate('edit/' + node.id);
+                    }, this));
+                    markers.on('visualize', function (marker, address) {
+                        this.navigate('visualize/' + marker.id);
+                    });
+                },
+
+                routes: {
+                    '': 'index',
+                    'help': 'help',
+                    'visualize/:id': 'visualize',
+                    'map/:zoom/:lat/:lng': 'map',
+                    'edit/:id': 'edit'
+                },
+
+                edit: function (id) {
+                    nodes.get(id).edit();
+                },
+
+                help: function () {
+
+                },
+
+                map: function (zoom, lat, lng) {
+                    mapModel.save({
+                        zoom: zoom,
+                        lat: lat,
+                        lng: lng
+                    });
+                },
+
+                visualize: function (id) {
+                    nodes.get(id).visualize();
+                }
+
+            }),
+
+            appView = new AppView({ el: $('#openscrape') }),
+            appRouter = new AppRouter();
+
+        nodes.fetch();
+        markers.fetch();
+        warnings.fetch();
+        prompts.fetch();
+
+        appView.render();
         backbone.history.start();
     });
 }());

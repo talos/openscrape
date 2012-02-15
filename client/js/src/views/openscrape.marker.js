@@ -18,16 +18,14 @@
    *
    ***/
 
-/*jslint browser: true, nomen: true*/
+/*jslint nomen: true*/
 /*global define*/
 
 define([
     'lib/google',
     'lib/underscore',
-    'lib/backbone',
-    '../openscrape.app',
-    'collections/openscrape.warnings'
-], function (google, _, backbone, app, warnings) {
+    'lib/backbone'
+], function (google, _, backbone) {
     "use strict";
 
     return backbone.View.extend({
@@ -44,7 +42,6 @@ define([
             google.maps.event.addListener(this.marker, 'click', _.bind(this.click, this));
             this.model.on('change', this.render, this);
             this.model.on('destroy', this.destroy, this);
-            this.model.on('error', this.warn, this);
         },
 
         render: function () {
@@ -59,15 +56,9 @@ define([
                                  'Looking up address...');
         },
 
-        warn: function (reason) {
-            warnings.create({
-                text: reason
-            });
-        },
-
         click: function (evt) {
             if (this.model.address()) {
-                app.visualize(this.model.node());
+                this.model.visualize();
             }
         },
 

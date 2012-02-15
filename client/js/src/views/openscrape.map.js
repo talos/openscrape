@@ -29,12 +29,10 @@ define([
     'lib/requirejs.mustache',
     'text!templates/map.mustache',
     '../openscrape.geocoder',
-    'collections/openscrape.markers',
-    'collections/openscrape.warnings',
     'views/openscrape.marker',
     'lib/jquery'
 ], function (require, _, google, backbone, mustache, template, geocoder,
-             markers, warnings, MarkerView) {
+             MarkerView) {
     "use strict";
 
     var $ = require('jquery');
@@ -74,8 +72,8 @@ define([
             });
 
             // add existing markers
-            markers.each(_.bind(this.drawMarker, this));
-            markers.on('add', this.drawMarker, this);
+            this.collection.each(_.bind(this.drawMarker, this));
+            this.collection.on('add', this.drawMarker, this);
 
             // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
@@ -147,7 +145,7 @@ define([
                         }, this))
                         .fail(_.bind(function (reason) {
                             this.$lookup.val('');
-                            warnings.create({ text: reason });
+                            this.model.trigger('error', reason);
                         }, this))
                         .always(_.bind(function () {
                             this.$lookup.removeClass('loading');
@@ -168,8 +166,8 @@ define([
         },
 
         createMarker: function (lat, lng) {
-            return markers.findByLatLng(lat, lng) ||
-                markers.create({
+            return this.collection.findByLatLng(lat, lng) ||
+                this.collection.create({
                     lat: lat,
                     lng: lng
                 });

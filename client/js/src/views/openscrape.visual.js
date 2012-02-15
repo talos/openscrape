@@ -21,21 +21,15 @@
 /*jslint browser: true, nomen: true*/
 /*global define*/
 
-/**
- * A visual is a view that displays the entire tree of nodes inside a
- * d3 tree..
- */
 define([
     'require',
     'lib/d3',
     'lib/underscore',
     'lib/backbone',
     'views/openscrape.node',
-    '../openscrape.app',
-    'collections/openscrape.nodes',
     'lib/jquery',
     'lib/jquery-svgpan'
-], function (require, d3, _, backbone, NodeView, app, nodes) {
+], function (require, d3, _, backbone, NodeView) {
     "use strict";
 
     var $ = require('jquery'),
@@ -67,13 +61,14 @@ define([
                 })
                 .children(_.bind(function (d) {
                     if (!d.hidden) {
-                        return _.invoke(nodes.getAll(d.childIds), 'toJSON');
+                        return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
                     } else {
                         return [];
                     }
                 }, this));
 
-            nodes.on('add change:hidden change:childIds remove', this.render, this);
+            this.collection.on('visualize', this.visualize);
+            this.collection.on('add change:hidden change:childIds remove', this.render, this);
 
             $(window).resize(_.bind(this.resize, this));
         },
@@ -87,6 +82,11 @@ define([
             this.vis.attr('transform', "translate(" + (width / 2) + "," + (height / 2) + ")");
         }, 100),
 
+        visualize: function (newModel) {
+            this.visualizedModel = newModel;
+            this.render();
+        },
+
         /**
          * Redraw this bad boy.  Debounced so that mr. clickety can't
          * sink processors.
@@ -94,9 +94,9 @@ define([
         render: _.debounce(function () {
             // The .nodes function generates nested JSON.
             // When we need access to the model itself, use collection.get()
-            var visualizing = nodes.get(app.visualizing()),
-                processed = visualizing ? _.map(
-                    this.tree.nodes(visualizing.toJSON()),
+            var collection = this.collection,
+                processed = this.visualizedModel ? _.map(
+                    this.tree.nodes(this.visualizedModel.toJSON()),
                     // bug in d3? make NaN x values 0.
                     function (node) {
                         if (_.isNaN(node.x)) {
@@ -125,7 +125,7 @@ define([
                 .each(function (d) {
                     // create view for node
                     new NodeView({
-                        model: nodes.get(d.id),
+                        model: collection.get(d.id),
                         el: this
                     }).render();
                 });
@@ -133,7 +133,7 @@ define([
             treeNode.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
-                    var model = nodes.get(d.id),
+                    var model = collection.get(d.id),
                         translate = model.start(),
                         rotate = d.x - 90;
 
@@ -157,8 +157,8 @@ define([
             link.transition()
                 .duration(1000)
                 .attr('d', function (d, i) {
-                    var target = nodes.get(d.target.id),
-                        source = nodes.get(d.source.id),
+                    var target = collection.get(d.target.id),
+                        source = collection.get(d.source.id),
                         targetStart = target.start(),
                         sourceStart = source.start();
 
