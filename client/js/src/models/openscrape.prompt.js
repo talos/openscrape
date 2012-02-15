@@ -42,6 +42,7 @@ define([
             if (!this.isResolved()) {
                 this.set('resolved', true);
                 this.trigger('resolved');
+                this.destroy();
             }
         },
 
@@ -49,6 +50,7 @@ define([
             if (!this.isResolved()) {
                 this.set('resolved', false);
                 this.trigger('rejected');
+                this.destroy();
             }
         }
     });

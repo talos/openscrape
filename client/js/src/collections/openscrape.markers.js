@@ -29,16 +29,23 @@ define([
 ], function (_, backbone, Store, MarkerModel) {
     "use strict";
 
-    /**
-     * Global state for markers
-     */
-
-    var MarkersCollection = backbone.Collection.extend({
+    return backbone.Collection.extend({
         model: MarkerModel,
-        store: new Store('markers')
-    }),
-        collection = new MarkersCollection();
-    collection.fetch();
 
-    return collection;
+        store: new Store('markers'),
+
+        /**
+         * Find a marker by lat/lng.
+         *
+         * @param lat {Number} the latitude
+         * @param lng {Number} the longitude
+         *
+         * @return {openscrape.MarkerModel} a marker
+         */
+        findByLatLng: function (lat, lng) {
+            return this.find(function (marker) {
+                return marker.lat() === lat && marker.lng() === lng;
+            });
+        }
+    });
 });

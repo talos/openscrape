@@ -27,8 +27,9 @@ define([
     '../openscrape.geocoder',
     '../openscrape.zip2borough',
     '../openscrape.store',
+    'collections/openscrape.nodes',
     'models/openscrape.marker'
-], function (_, backbone, geocoder, zip2borough, Store, MarkerModel) {
+], function (_, backbone, geocoder, zip2borough, Store, nodes, MarkerModel) {
     "use strict";
 
     return backbone.Model.extend({
@@ -38,7 +39,7 @@ define([
                 throw "Missing lng/lat for marker";
             }
 
-            if (!this.get('address')) {
+            if (!this.has('address')) {
                 this.lookupAddress(this.lat(), this.lng());
             }
         },
@@ -50,6 +51,7 @@ define([
         lookupAddress: function (lat, lng) {
             geocoder.reverseGeocode(lat, lng)
                 .done(_.bind(function (address) {
+
                     // TODO
                     address.apt = '';
                     address.borough = zip2borough(address.zip);
@@ -60,7 +62,18 @@ define([
                                      "Sorry, that selection is not in the five boroughs.");
                         this.destroy();
                     } else {
-                        this.save(address);
+                        this.save({
+                            address: address,
+                            node: nodes.create({
+                                instruction: 'instructions/nyc/property.json',
+                                uri: document.URL,
+                                name: 'Property Info',
+                                type: 'wait',
+                                tags: address
+                            }, {
+                                wait: true
+                            }).id
+                        });
                     }
                 }, this))
                 .fail(_.bind(function (reason) {
@@ -75,6 +88,10 @@ define([
 
         lng: function () {
             return this.get('lng');
+        },
+
+        node: function () {
+            return this.get('node');
         }
     });
 });

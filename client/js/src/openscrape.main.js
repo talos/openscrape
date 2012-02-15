@@ -27,37 +27,10 @@
     require([
         'require',
         'lib/backbone',
-        'models/openscrape.app',
-        'views/openscrape.app',
+        './openscrape.app',
         './openscrape.sync',
         'lib/jquery'
-    ], function (require, backbone, appModel, AppView) {
-        appModel.save('version', '0.0.2');
-
-        var $ = require('jquery'),
-            view = new AppView({
-                model: appModel,
-                el: $('#openscrape')
-            }),
-            router = new (backbone.Router.extend({
-                routes: {
-                    '': 'index',
-                    'help': 'help'
-                    //'/address/:address': 'address'
-                },
-
-                index: function () {
-                    appModel.go('index');
-                },
-
-                help: function () {
-                    appModel.go('help');
-                }
-
-                // address: function (address) {
-                //     console.log(address);
-                // }
-            }))();
+    ], function (require, backbone, app) {
 
         backbone.history.start();
     });

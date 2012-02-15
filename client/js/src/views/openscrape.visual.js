@@ -31,7 +31,7 @@ define([
     'lib/underscore',
     'lib/backbone',
     'views/openscrape.node',
-    'models/openscrape.app',
+    '../openscrape.app',
     'collections/openscrape.nodes',
     'lib/jquery',
     'lib/jquery-svgpan'
@@ -73,7 +73,6 @@ define([
                     }
                 }, this));
 
-            app.on('change:visualizing', this.render, this);
             nodes.on('add change:hidden change:childIds remove', this.render, this);
 
             $(window).resize(_.bind(this.resize, this));
@@ -135,7 +134,7 @@ define([
                 .duration(1000)
                 .attr("transform", function (d) {
                     var model = nodes.get(d.id),
-                        translate = model.distance(),
+                        translate = model.start(),
                         rotate = d.x - 90;
 
                     return "rotate(" + rotate + ")" +

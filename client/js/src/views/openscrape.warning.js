@@ -43,14 +43,13 @@ define([
         },
 
         initialize: function () {
-            this.$el
-                .hide()
-                .html(mustache.render(template, this.model.toJSON()))
-                .prependTo('body')
-                .slideDown();
-            this.model.on('dismiss', this.dismiss, this);
-            this.keyEvt = 'keydown.warning' + this.model.cid;
-            $(document).bind(this.keyEvt, _.bind(this.dismissOnKey, this));
+            // this.$el
+            //     .hide()
+            //     .html(mustache.render(template, this.model.toJSON()))
+            //     .slideDown();
+            // this.model.on('destroy', this.dismiss, this);
+            // this.keyEvt = 'keydown.warning' + this.model.cid;
+            // $(document).bind(this.keyEvt, _.bind(this.dismissOnKey, this));
         },
 
         remove: function () {
@@ -59,7 +58,7 @@ define([
         },
 
         dismiss: function () {
-            this.model.dismiss();
+            this.model.destroy();
             this.$el.slideUp('fast', _.bind(this.remove, this));
         },
 

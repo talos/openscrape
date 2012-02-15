@@ -33,7 +33,7 @@ define([
     'text!templates/reference.mustache',
     'text!templates/missing.mustache',
     'text!templates/failed.mustache',
-    'models/openscrape.app',
+    '../openscrape.app',
     'lib/d3',
     'lib/requirejs.mustache',
     'lib/underscore',

@@ -40,14 +40,7 @@ define([
         initialize: function () {
             var timeout = this.get('timeout');
             if (timeout > 0) {
-                setTimeout(_.bind(this.dismiss, this), timeout);
-            }
-        },
-
-        dismiss: function () {
-            if (this.get('dismissed') === false) {
-                this.set('dismissed', true);
-                this.trigger('dismiss');
+                setTimeout(_.bind(this.destroy, this), timeout);
             }
         }
     });

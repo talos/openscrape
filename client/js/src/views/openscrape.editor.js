@@ -22,24 +22,18 @@
 /*global define*/
 
 define([
-    'require',
-    'models/openscrape.app',
     'collections/openscrape.nodes',
     'text!templates/editor.mustache',
+    '../openscrape.app',
     'lib/requirejs.mustache',
-    'lib/backbone',
-    'lib/jquery'
-], function (require, app, nodes, editorTemplate, mustache, backbone) {
+    'lib/backbone'
+], function (nodes, editorTemplate, app, mustache, backbone) {
     "use strict";
 
     /**
      * An editor for the currently selected node.
      */
     return backbone.View.extend({
-        initialize: function () {
-            app.on('change:editing', this.render, this);
-        },
-
         render: function () {
             var editing = nodes.get(app.editing());
 

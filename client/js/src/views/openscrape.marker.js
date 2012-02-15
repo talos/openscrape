@@ -25,12 +25,9 @@ define([
     'lib/google',
     'lib/underscore',
     'lib/backbone',
-    'models/openscrape.app',
-    'collections/openscrape.nodes',
-    'models/openscrape.warning',
-    'views/openscrape.warning'
-], function (google, _, backbone, app,
-             nodes, WarningModel, WarningView) {
+    '../openscrape.app',
+    'collections/openscrape.warnings'
+], function (google, _, backbone, app, warnings) {
     "use strict";
 
     return backbone.View.extend({
@@ -41,7 +38,7 @@ define([
         initialize: function (options) {
             this.marker = new google.maps.Marker({
                 map: options.gMap, // bound to google maps
-                animation: 'DROP'
+                animation: google.maps.Animation.DROP
             });
 
             google.maps.event.addListener(this.marker, 'click', _.bind(this.click, this));
@@ -56,35 +53,21 @@ define([
             this.marker.setPosition(new google.maps.LatLng(this.model.lat(),
                                                            this.model.lng()));
 
-            this.marker.setAnimation(address ? 'BOUNCE' : null);
+            this.marker.setAnimation(address ? null : google.maps.Animation.BOUNCE);
             this.marker.setTitle(address ?
                                  address.number + ' ' + address.street :
                                  'Looking up address...');
         },
 
-        warn: function (model, reason) {
-            new WarningView({
-                model: new WarningModel({
-                    text: reason
-                })
-            }).render();
+        warn: function (reason) {
+            warnings.create({
+                text: reason
+            });
         },
 
         click: function (evt) {
-            var address = this.model.address(),
-                node;
-
-            if (address) {
-                node = nodes.findByAddress(address) || nodes.create({
-                    instruction: 'instructions/nyc/property.json',
-                    uri: document.URL,
-                    name: 'Property Info',
-                    type: 'wait'
-                }, {
-                    wait: true
-                });
-
-                app.visualize(node.id);
+            if (this.model.address()) {
+                app.visualize(this.model.node());
             }
         },
 

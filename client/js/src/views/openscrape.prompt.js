@@ -44,15 +44,14 @@ define([
         },
 
         initialize: function () {
-            this.$el
-                .hide()
-                .html(mustache.render(template, this.model.toJSON()))
-                .prependTo('body')
-                .slideDown();
-            this.model.on('resolved', this.resolve, this);
-            this.model.on('rejected', this.reject, this);
-            this.keyEvt = 'keydown.prompt' + this.model.cid;
-            $(document).bind(this.keyEvt, _.bind(this.resolveOrRejectOnKey, this));
+            // this.$el
+            //     .hide()
+            //     .html(mustache.render(template, this.model.toJSON()))
+            //     .slideDown();
+            // this.model.on('resolved', this.resolve, this);
+            // this.model.on('rejected', this.reject, this);
+            // this.keyEvt = 'keydown.prompt' + this.model.cid;
+            // $(document).bind(this.keyEvt, _.bind(this.resolveOrRejectOnKey, this));
         },
 
         remove: function () {

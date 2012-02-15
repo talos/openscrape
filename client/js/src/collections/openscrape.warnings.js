@@ -25,24 +25,12 @@ define([
     'lib/underscore',
     'lib/backbone',
     '../openscrape.store',
-    'models/openscrape.node'
-], function (_, backbone, Store, NodeModel) {
+    'models/openscrape.warning'
+], function (_, backbone, Store, WarningModel) {
     "use strict";
 
     return backbone.Collection.extend({
-        model: NodeModel,
-        store: new Store('nodes'),
-
-        /**
-         * Get an array of nodes from an array of IDs.
-         *
-         * @param {Array} ids array of IDs.
-         *
-         * @return {Array} of nodes in the same order as the original ids.
-         * If an ID was not found, it will have a null entry.
-         */
-        getAll: function (ids) {
-            return _.map(ids, function (id) { return this.get(id); }, this);
-        }
+        model: WarningModel,
+        store: new Store('warnings')
     });
 });

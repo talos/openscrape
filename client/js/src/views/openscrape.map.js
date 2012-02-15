@@ -29,23 +29,17 @@ define([
     'lib/requirejs.mustache',
     'text!templates/map.mustache',
     '../openscrape.geocoder',
-    'models/openscrape.app',
     'collections/openscrape.markers',
     'collections/openscrape.warnings',
     'views/openscrape.marker',
     'lib/jquery'
 ], function (require, _, google, backbone, mustache, template, geocoder,
-             app, markers, warnings, MarkerView) {
+             markers, warnings, MarkerView) {
     "use strict";
 
     var $ = require('jquery');
 
     return backbone.View.extend({
-
-        events: {
-            'keydown #lookup': 'keydownLookup',
-            'blur #lookup': 'blurLookup'
-        },
 
         initialize: function (options) {
             var dblClickWaitTime = 500,
@@ -57,9 +51,9 @@ define([
             this.gMap = new google.maps.Map(
                 this.$el.find('#gMap')[0],
                 {
-                    center: new google.maps.LatLng(app.get('lat'),
-                                                   app.get('lng')),
-                    zoom: app.get('zoom'),
+                    center: new google.maps.LatLng(this.model.lat(),
+                                                   this.model.lng()),
+                    zoom: this.model.get('zoom'),
                     mapTypeControl: false,
                     streetViewControl: false,
                     mapTypeId: google.maps.MapTypeId.TERRAIN
@@ -80,8 +74,8 @@ define([
             });
 
             // add existing markers
-            markers.each(_.bind(this.addMarker, this));
-            markers.on('add', this.addMarker, this);
+            markers.each(_.bind(this.drawMarker, this));
+            markers.on('add', this.drawMarker, this);
 
             // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
@@ -91,9 +85,9 @@ define([
 
             google.maps.event.addListener(this.gMap, 'bounds_changed', _.debounce(_.bind(function () {
                 var center = this.gMap.getCenter();
-                app.save({lat: center.lat(),
-                          lng: center.lng(),
-                          zoom: this.gMap.getZoom()});
+                this.model.save({lat: center.lat(),
+                                 lng: center.lng(),
+                                 zoom: this.gMap.getZoom()});
                 this.lookup.setBounds(this.gMap.getBounds());
 
             }, this), 500));
@@ -113,22 +107,14 @@ define([
             google.maps.event.addListener(this.lookup, 'place_changed', _.bind(function () {
                 this.placeChanged();
             }, this));
+
+            this.model.on('change', this.render, this);
         },
 
-        keydownLookup: function (evt) {
-            // switch (evt.keyCode) {
-            // case 13: // enter
-            //     // todo determine first menu item/autocomplete
-            //     this.placeChanged();
-            //     break;
-            // case 27: // escape
-            //     this.clearLookup();
-            //     break;
-            // }
-        },
-
-        blurLookup: function (evt) {
-            //console.log('blur lookup');
+        render: function () {
+            this.gMap.setCenter(new google.maps.LatLng(this.model.lat(),
+                                                       this.model.lng()));
+            this.gMap.setZoom(this.model.get('zoom'));
         },
 
         placeChanged: _.debounce(function () {
@@ -172,22 +158,24 @@ define([
 
         gotoLatLng: function (lat, lng) {
             this.gMap.panTo(new google.maps.LatLng(lat, lng));
-            this.gMap.setZoom(11);
-            this.addMarker(markers.create({
-                lat: lat,
-                lng: lng
-            }));
+            this.gMap.setZoom(17);
+            this.createMarker(lat, lng);
         },
 
         click: function (lat, lng) {
             this.$lookup.val('');
-            this.addMarker(markers.create({
-                lat: lat,
-                lng: lng
-            }));
+            this.createMarker(lat, lng);
         },
 
-        addMarker: function (marker) {
+        createMarker: function (lat, lng) {
+            return markers.findByLatLng(lat, lng) ||
+                markers.create({
+                    lat: lat,
+                    lng: lng
+                });
+        },
+
+        drawMarker: function (marker) {
             new MarkerView({
                 model: marker,
                 gMap: this.gMap
