@@ -127,11 +127,6 @@ define([
             // }
         },
 
-        clearLookup: function (evt) {
-            this.$lookup.val('');
-            this.$lookup.blur();
-        },
-
         blurLookup: function (evt) {
             //console.log('blur lookup');
         },
@@ -144,7 +139,7 @@ define([
                 ne;
             if (place) {
                 if (place.geometry) {
-                    this.clearLookup();
+                    this.$lookup.blur();
                     if (place.geometry.viewport) {
                         this.gMap.panToBounds(place.geometry.viewport);
                     } else {
@@ -161,10 +156,14 @@ define([
                     geocoder.geocode(place.name, sw.lat(), sw.lng(), ne.lat(), ne.lng())
                         .done(_.bind(function (result) {
                             this.$lookup.val(result.name);
+                            this.$lookup.blur();
                             this.gotoLatLng(result.lat, result.lng);
-                        }, this)).fail(function (reason) {
+                        }, this))
+                        .fail(_.bind(function (reason) {
+                            this.$lookup.val('');
                             warnings.create({ text: reason });
-                        }).always(_.bind(function () {
+                        }, this))
+                        .always(_.bind(function () {
                             this.$lookup.removeClass('loading');
                         }, this));
                 }
@@ -174,10 +173,14 @@ define([
         gotoLatLng: function (lat, lng) {
             this.gMap.panTo(new google.maps.LatLng(lat, lng));
             this.gMap.setZoom(11);
-            this.click(lat, lng);
+            this.addMarker(markers.create({
+                lat: lat,
+                lng: lng
+            }));
         },
 
         click: function (lat, lng) {
+            this.$lookup.val('');
             this.addMarker(markers.create({
                 lat: lat,
                 lng: lng
