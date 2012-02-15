@@ -33,9 +33,6 @@ define([
 ], function (backbone) {
     "use strict";
 
-    // TEMPORARY
-    localStorage.clear();
-
     // Maps CRUD to the 'store' property of models or collections.
     // Store should return a promise that will be resolved with the
     // response, or rejected.
