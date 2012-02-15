@@ -71,12 +71,16 @@ define([
         },
 
         scrape: function () {
-            this.save('scraping', true);
-            this.trigger('scrape', this.asRequest());
+            this.set('scraping', true);
+            this.trigger('scrape', this, this.asRequest());
         },
 
         doneScraping: function () {
-            this.save('scraping', false);
+            this.set('scraping', false);
+        },
+
+        scraping: function () {
+            return this.get('scraping');
         },
 
         //checkTags: function () {
@@ -280,11 +284,11 @@ define([
         },
 
         edit: function () {
-            this.trigger('edit');
+            this.trigger('edit', this);
         },
 
         visualize: function () {
-            this.trigger('visualize');
+            this.trigger('visualize', this);
         }
     });
 });

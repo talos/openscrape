@@ -72,7 +72,9 @@ define([
             });
 
             // add existing markers
-            this.collection.each(_.bind(this.drawMarker, this));
+            this.collection.on('reset', function (collection) {
+                collection.each(_.bind(this.drawMarker, this));
+            }, this);
             this.collection.on('add', this.drawMarker, this);
 
             // Bind all google events to model.

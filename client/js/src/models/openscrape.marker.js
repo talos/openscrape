@@ -87,7 +87,7 @@ define([
 
         visualize: function () {
             if (this.has('address')) {
-                this.trigger('visualize', this.get('address'));
+                this.trigger('visualize', this, this.get('address'));
             }
         }
     });

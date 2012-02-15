@@ -62,9 +62,14 @@
 
             AppView = backbone.View.extend({
 
+                events: {
+                    'click .toggleHelp': 'toggleHelp'
+                },
+
                 initialize: function (options) {
 
                     this.$el.html(mustache.render(appTemplate, options));
+                    this.$help = this.$('#help').hide();
 
                     this.caustic = new Caustic(prompts);
 
@@ -138,7 +143,17 @@
                         marker.saveNodeId(node.id);
                     }
 
+                    this.map.$el.fadeOut();
+                    this.visual.resize();
                     node.visualize();
+                },
+
+                toggleHelp: function () {
+                    if (this.$help.is(':visible')) {
+                        this.$help.slideUp();
+                    } else {
+                        this.$help.slideDown();
+                    }
                 },
 
                 warn: function (text) {
@@ -151,33 +166,21 @@
             AppRouter = backbone.Router.extend({
 
                 initialize: function () {
-                    mapModel.on('change', _.bind(function () {
+                    mapModel.on('change', function () {
                         this.navigate('map/' + mapModel.zoom() +
                                       '/' + mapModel.lat() +
                                       '/' + mapModel.lng());
-                    }, this));
-                    nodes.on('edit', _.bind(function (node) {
-                        this.navigate('edit/' + node.id);
-                    }, this));
-                    markers.on('visualize', function (marker, address) {
-                        this.navigate('visualize/' + marker.id);
-                    });
+                    }, this);
+
+                    nodes.on('visualize', function (node) {
+                        this.navigate('visualize/' + node.id);
+                    }, this);
                 },
 
                 routes: {
                     '': 'index',
-                    'help': 'help',
                     'visualize/:id': 'visualize',
-                    'map/:zoom/:lat/:lng': 'map',
-                    'edit/:id': 'edit'
-                },
-
-                edit: function (id) {
-                    nodes.get(id).edit();
-                },
-
-                help: function () {
-
+                    'map/:zoom/:lat/:lng': 'map'
                 },
 
                 map: function (zoom, lat, lng) {
