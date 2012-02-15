@@ -32,7 +32,6 @@ define([
      * Global state for the app.
      */
     var AppModel = backbone.Model.extend({
-        store: new Store('app'),
 
         defaults: function () {
             return {
@@ -67,9 +66,12 @@ define([
             return this.get('editing');
         }
     }),
-        model = new AppModel({id: 0});
+        collection = new (backbone.Collection.extend({
+            store: new Store('app'),
+            model: AppModel
+        }))();
 
-    model.fetch();
+    collection.fetch();
 
-    return model;
+    return collection.first();
 });
