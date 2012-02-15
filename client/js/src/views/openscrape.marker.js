@@ -31,13 +31,17 @@ define([
     return backbone.View.extend({
 
         /**
-         * Must be constructed with a google map (options.gMap)
+         * Must be constructed with a google map (options.gMap) and a
+         * blank overlay (google.maps.OverlayView) from which a
+         * projection can be obtained.
          */
         initialize: function (options) {
             this.marker = new google.maps.Marker({
                 map: options.gMap, // bound to google maps
                 animation: google.maps.Animation.DROP
             });
+
+            this.projectionOverlay = options.projectionOverlay;
 
             google.maps.event.addListener(this.marker, 'click', _.bind(this.click, this));
             this.model.on('change', this.render, this);
@@ -58,7 +62,11 @@ define([
 
         click: function (evt) {
             if (this.model.address()) {
-                this.model.visualize();
+                var p = this.projectionOverlay
+                        .getProjection()
+                        .fromLatLngToContainerPixel(this.marker.getPosition());
+
+                this.model.visualize(p.x, p.y);
             }
         },
 
