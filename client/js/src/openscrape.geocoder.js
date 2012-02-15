@@ -18,6 +18,7 @@
    *
    ***/
 
+/*jslint nomen: true*/
 /*global define*/
 
 define([
@@ -26,15 +27,57 @@ define([
     'lib/google',
     'lib/json2',
     'lib/jquery'
-], function (require, underscore, google, json) {
+], function (require, _, google, json) {
     "use strict";
 
     var $ = require('jquery');
 
     function Geocoder() {
         this.geocoder = new google.maps.Geocoder();
-        underscore.bind(this.reverseGeocode, this);
+        _.bind(this.reverseGeocode, this);
     }
+
+    /**
+     * Geocode an address to obtain a longitude and latitude.
+     *
+     * @param address The address to geocode
+     * @param southWestLat
+     * @param southWestLng
+     * @param northEastLat
+     * @param northEastLng
+     *
+     * @return {Promise} that will be resolved with a JS object with lat lng
+     * in the format {lat: <lat>, lng: <lng>} or rejected with an error message
+     * if there was a problem.
+     */
+    Geocoder.prototype.geocode = function (address, southWestLat, southWestLng,
+                                           northEastLat, northEastLng) {
+        var dfd = new $.Deferred();
+
+        this.geocoder.geocode(
+            {
+                address: address,
+                bounds: new google.maps.LatLngBounds(
+                    new google.maps.LatLng(southWestLat, southWestLng),
+                    new google.maps.LatLng(northEastLat, northEastLng)
+                )
+            },
+            function (results, status) {
+                if (status === google.maps.GeocoderStatus.OK) {
+                    var result = _.find(results, function (result) {
+                        return result.location_type === google.maps.GeocoderLocationType.ROOFTOP;
+                    });
+                    if (result) {
+                        dfd.resolve({lat: result.location.lat(),
+                                     lng: result.location.lng()});
+                    }
+                }
+                dfd.reject("Couldn't find address: " + status);
+            }
+        );
+
+        return dfd.promise();
+    };
 
     /**
      * Reverse geocode a latitude/longitude, to obtain an address.
@@ -55,21 +98,21 @@ define([
 
             if (status === google.maps.GeocoderStatus.OK) {
                 addresses = [];
-                underscore.each(results, function (raw) {
+                _.each(results, function (raw) {
                     var number,
                         street,
                         zip;
 
                     // only return precise street addresses
-                    if (underscore.include(raw.types, 'street_address')) {
-                        underscore.each(raw.address_components, function (component) {
-                            if (underscore.include(component.types, 'street_number')) {
+                    if (_.include(raw.types, 'street_address')) {
+                        _.each(raw.address_components, function (component) {
+                            if (_.include(component.types, 'street_number')) {
                                 number = component.long_name;
                             }
-                            if (underscore.include(component.types, 'route')) {
+                            if (_.include(component.types, 'route')) {
                                 street = component.long_name;
                             }
-                            if (underscore.include(component.types, 'postal_code')) {
+                            if (_.include(component.types, 'postal_code')) {
                                 zip = component.long_name;
                             }
                         });
