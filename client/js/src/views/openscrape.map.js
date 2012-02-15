@@ -28,12 +28,14 @@ define([
     'lib/backbone',
     'lib/requirejs.mustache',
     'text!templates/map.mustache',
+    '../openscrape.geocoder',
     'models/openscrape.app',
     'collections/openscrape.markers',
+    'collections/openscrape.warnings',
     'views/openscrape.marker',
     'lib/jquery'
-], function (require, _, google, backbone, mustache, template,
-             app, markers, MarkerView) {
+], function (require, _, google, backbone, mustache, template, geocoder,
+             app, markers, warnings, MarkerView) {
     "use strict";
 
     var $ = require('jquery');
@@ -72,8 +74,12 @@ define([
                 }
             );
 
+            this.geocoder = new google.maps.Geocoder({
+                bounds: this.gMap.getBounds()
+            });
+
             // add existing markers
-            markers.each(this.addMarker);
+            markers.each(_.bind(this.addMarker, this));
             markers.on('add', this.addMarker, this);
 
             // Bind all google events to model.
@@ -87,6 +93,8 @@ define([
                 app.save({lat: center.lat(),
                           lng: center.lng(),
                           zoom: this.gMap.getZoom()});
+                this.lookup.setBounds(this.gMap.getBounds());
+
             }, this), 500));
 
             google.maps.event.addListener(this.gMap, 'dblclick', function () {
@@ -107,15 +115,15 @@ define([
         },
 
         keydownLookup: function (evt) {
-            switch (evt.keyCode) {
-            case 13: // enter
-                // todo determine first menu item/autocomplete
-                this.placeChanged();
-                break;
-            case 27: // escape
-                this.clearLookup();
-                break;
-            }
+            // switch (evt.keyCode) {
+            // case 13: // enter
+            //     // todo determine first menu item/autocomplete
+            //     this.placeChanged();
+            //     break;
+            // case 27: // escape
+            //     this.clearLookup();
+            //     break;
+            // }
         },
 
         clearLookup: function (evt) {
@@ -128,20 +136,39 @@ define([
         },
 
         placeChanged: _.debounce(function () {
-            var place = this.lookup.getPlace();
+
+            var place = this.lookup.getPlace(),
+                bounds,
+                sw,
+                ne;
             if (place) {
                 if (place.geometry) {
                     this.clearLookup();
                     if (place.geometry.viewport) {
                         this.gMap.panToBounds(place.geometry.viewport);
                     } else {
-                        this.gMap.panTo(place.geometry.location);
-                        this.gMap.setZoom(11);
-                        this.click(place.geometry.location.lat(), place.geometry.location.lng());
+                        this.gotoLatLng(place.geometry.location.lat(),
+                                        place.geometry.location.lng());
                     }
+                } else if (place.name) {
+                    bounds = this.gMap.getBounds();
+                    sw = bounds.getSouthWest();
+                    ne = bounds.getNorthEast();
+                    geocoder.geocode(place.name, sw.lat(), sw.lng(), ne.lat(), ne.lng())
+                        .done(function (result) {
+                            this.gotoLatLng(result.lat, result.lng);
+                        }).fail(function (reason) {
+                            warnings.create({ text: reason });
+                        });
                 }
             }
         }, 1000),
+
+        gotoLatLng: function (lat, lng) {
+            this.gMap.panTo(new google.maps.LatLng(lat, lng));
+            this.gMap.setZoom(11);
+            this.click(lat, lng);
+        },
 
         click: function (lat, lng) {
             this.addMarker(markers.create({
