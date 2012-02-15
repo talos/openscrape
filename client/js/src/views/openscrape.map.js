@@ -66,8 +66,9 @@ define([
                 }
             );
 
+            this.$lookup = this.$el.find('#lookup');
             this.lookup = new google.maps.places.Autocomplete(
-                this.$el.find('#lookup')[0],
+                this.$lookup[0],
                 {
                     bounds: this.gMap.getBounds(),
                     types: ['geocode']
@@ -127,8 +128,8 @@ define([
         },
 
         clearLookup: function (evt) {
-            this.$el.find('#lookup').val('');
-            this.$el.find('#lookup').blur();
+            this.$lookup.val('');
+            this.$lookup.blur();
         },
 
         blurLookup: function (evt) {
@@ -151,15 +152,21 @@ define([
                                         place.geometry.location.lng());
                     }
                 } else if (place.name) {
+
                     bounds = this.gMap.getBounds();
                     sw = bounds.getSouthWest();
                     ne = bounds.getNorthEast();
+
+                    this.$lookup.addClass('loading');
                     geocoder.geocode(place.name, sw.lat(), sw.lng(), ne.lat(), ne.lng())
-                        .done(function (result) {
+                        .done(_.bind(function (result) {
+                            this.$lookup.val(result.name);
                             this.gotoLatLng(result.lat, result.lng);
-                        }).fail(function (reason) {
+                        }, this)).fail(function (reason) {
                             warnings.create({ text: reason });
-                        });
+                        }).always(_.bind(function () {
+                            this.$lookup.removeClass('loading');
+                        }, this));
                 }
             }
         }, 1000),
