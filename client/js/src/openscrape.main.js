@@ -50,11 +50,7 @@
 
         var $ = require('jquery'),
 
-            mapModel = new MapModel({
-                lat: 40.77,
-                lng: -73.98,
-                zoom: 11
-            }),
+            mapModel = new MapModel(),
             nodes = new NodesCollection(),
             markers = new MarkersCollection(),
             warnings = new WarningsCollection(),
@@ -73,42 +69,35 @@
 
                     this.caustic = new Caustic(prompts);
 
-                    this.prompt = new PromptView({
-                        el: this.$el.find('#prompt'),
-                        collection: prompts
-                    });
-
-                    this.warning = new WarningView({
-                        el: this.$el.find('#warning'),
-                        collection: warnings
-                    });
-
-                    this.visual = new VisualView({
-                        el: this.$el.find('#visual'),
-                        collection: nodes
-                    });
-
                     this.editor = new EditorView({
-                        el: this.$el.find('#editor'),
                         collection: nodes
                     });
 
                     this.map = new MapView({
-                        el: this.$el.find('#map'),
                         model: mapModel,
                         collection: markers
                     });
 
-                    markers.on('visualize', this.visualize, this);
+                    this.map.$el.appendTo(this.$el);
+                    this.editor.$el.appendTo(this.$el);
+
+                    this.map.render();
+                    this.editor.render();
+
+                    prompts.on('add', this.prompt, this);
+                    warnings.on('add', this.warn, this);
+                    mapModel.on('focus', this.showMap, this);
+                    markers.on('visualize', this.visualizeMarker, this);
+                    nodes.on('visualize', this.visualizeNode, this);
                     nodes.on('scrape', this.scrape, this);
 
-                    mapModel.on('error', this.warn, this);
-                    nodes.on('error', this.warn, this);
-                    markers.on('error', this.warn, this);
+                    mapModel.on('error', this.createWarning, this);
+                    nodes.on('error', this.createWarning, this);
+                    markers.on('error', this.createWarning, this);
                 },
 
                 /**
-                 * Handle caustic.
+                 * Handle caustic service.
                  */
                 scrape: function (node, request) {
                     this.caustic.scrape(request)
@@ -123,10 +112,19 @@
                         }, this));
                 },
 
+                showMap: function () {
+                    this.map.$el.fadeIn();
+                    this.hideVisual();
+                },
+
+                hideMap: function () {
+                    this.map.$el.fadeOut();
+                },
+
                 /**
                  * Direct visualization from marker to node.
                  */
-                visualize: function (marker, address) {
+                visualizeMarker: function (marker, address, x, y) {
                     var node;
                     if (marker.nodeId()) {
                         node = nodes.get(marker.nodeId());
@@ -137,15 +135,33 @@
                             name: 'Property Info',
                             type: 'wait',
                             tags: address
-                        }, {
-                            wait: true
                         });
+
                         marker.saveNodeId(node.id);
                     }
+                    node.visualize(x, y);
+                },
 
-                    this.map.$el.fadeOut();
-                    this.visual.resize();
-                    node.visualize();
+                visualizeNode: function (node, x, y) {
+                    this.showVisual(node, x, y);
+                },
+
+                showVisual: function (node, x, y) {
+                    this.hideMap();
+                    this.visual = new VisualView({
+                        model: node,
+                        collection: nodes,
+                        x: x || this.$el.width() / 2,
+                        y: y || this.$el.height() / 2
+                    });
+                    this.visual.$el.appendTo(this.$el);
+                    this.visual.render();
+                },
+
+                hideVisual: function () {
+                    if (this.visual) {
+                        this.visual.remove();
+                    }
                 },
 
                 toggleHelp: function () {
@@ -156,10 +172,20 @@
                     }
                 },
 
-                warn: function (text) {
-                    warnings.create({
-                        text: text
-                    });
+                createWarning: function (text) {
+                    warnings.create({ text: text });
+                },
+
+                warn: function (warning) {
+                    var view = new WarningView({ model: warning });
+                    view.$el.appendTo(this.$el);
+                    view.render();
+                },
+
+                prompt: function (prompt) {
+                    var view = new PromptView({ model: prompt });
+                    view.$el.appendTo(this.$el);
+                    view.render();
                 }
             }),
 
@@ -183,7 +209,15 @@
                     'map/:zoom/:lat/:lng': 'map'
                 },
 
+                /**
+                 * Default to NYC
+                 */
+                index: function () {
+                    this.map(11, 40.77, -73.98);
+                },
+
                 map: function (zoom, lat, lng) {
+                    mapModel.focus();
                     mapModel.save({
                         zoom: Number(zoom),
                         lat: Number(lat),
