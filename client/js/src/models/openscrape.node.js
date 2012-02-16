@@ -49,7 +49,7 @@ define([
     return backbone.Model.extend({
         defaults: function () {
             return {
-                ancestors: [],
+                ancestors: [], // root is first, immediate parent last
                 childIds: [],
                 cookies: {},
                 tags: {},
@@ -222,6 +222,13 @@ define([
         },
 
         /**
+         * @return The immediate {openscrape.NodeModel} parent of this node.
+         */
+        parent: function () {
+            return this.collection.get(_.last(this.get('ancestors')));
+        },
+
+        /**
          * @return {Array} of IDs that are one-to-one found relations
          * both below this node, above, and around it.
          */
@@ -275,20 +282,61 @@ define([
          *
          * @return {Number}
          */
-        start: function () {
+        y: function () {
             return _.reduce(
-                _.invoke(this.collection.getAll(this.get('ancestors')), 'get', 'width'),
+                _.invoke(this.collection.getAll(this.get('ancestors')), 'width'),
                 function (memo, width) { return memo + width + padding; },
                 0
             );
+        },
+
+        /**
+         * Determine the radial x of this node, out of 360 degrees.
+         */
+        x: function () {
+            if (this.get('ancestors').length === 0) {
+                return 0;
+            }
+
+            var x = 0,
+                circumference =  this.y() * Math.PI,
+                totalHeight = 0,
+                foundThis = false,
+                parent = this.parent(),
+                parentX = parent.x(),
+                siblingsAndThis = this.collection.getAll(parent.get('childIds'));
+
+            _.each(siblingsAndThis, _.bind(function (node) {
+                var height = node.height();
+                foundThis = node.id === this.id;
+                totalHeight += height;
+                x += foundThis ? 0 : height;
+            }, this));
+
+            console.log(siblingsAndThis);
+            console.log('totalHeight: ' + totalHeight);
+            console.log('x: ' + x);
+            console.log('y: ' + this.y());
+            console.log('circumference: ' + circumference);
+            console.log('parentX: ' + parentX);
+            console.log('result: ' + (parentX + (360 * ((x - (totalHeight / 2)) / circumference))));
+            return parentX + (360 * ((x - (totalHeight / 2)) / circumference));
+        },
+
+        width: function () {
+            return this.get('width');
+        },
+
+        height: function () {
+            return this.get('height');
         },
 
         edit: function () {
             this.trigger('edit', this);
         },
 
-        visualize: function () {
-            this.trigger('visualize', this);
+        visualize: function (x, y) {
+            this.trigger('visualize', this, x, y);
         }
     });
 });

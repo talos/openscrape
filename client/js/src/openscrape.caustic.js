@@ -18,17 +18,19 @@
    *
    ***/
 
+/*jslint nomen: true*/
 /*global define*/
 
 define([
     'require',
+    'lib/underscore',
     'lib/json2',
     './openscrape.caustic.proxy',
     './openscrape.caustic.applet',
     './openscrape.queue',
     'models/openscrape.prompt',
     'lib/jquery'
-], function (require, json, proxy, applet, Queue, PromptModel) {
+], function (require, _, json, proxy, applet, Queue, PromptModel) {
     "use strict";
 
     var $ = require('jquery');
@@ -45,21 +47,25 @@ define([
             resolve: 'Applet',
             reject: 'Proxy'
         });
+        this.prompts = prompts;
 
-        this.prompt.on('resolved', function () {
-            applet.enable().done(function () {
+        this.prompt.on('resolved', _.bind(function () {
+            applet.enable().done(_.bind(function () {
                 this.requester = applet.request;
-            }).fail(function () {
+            }, this)).fail(_.bind(function () {
                 this.requester = proxy.request;
-            }).always(function () {
-                this.queue.start();
-            });
-        });
+            }, this)).always(_.bind(function () {
 
-        this.prompt.on('rejected', function () {
+                this.queue.start();
+            }, this));
+        }, this));
+
+        this.prompt.on('rejected', _.bind(function () {
             this.requester = proxy.request;
             this.queue.start();
-        });
+        }, this));
+
+        this.scrape = _.bind(this.scrape, this);
     }
 
     /**
@@ -74,12 +80,13 @@ define([
     Caustic.prototype.scrape = function (request) {
         if (this.prompt.isNew()) {
             this.prompts.add(this.prompt);
+            this.prompt.save();
         }
 
         var dfd = new $.Deferred(),
             requestStr = json.stringify(request);
 
-        this.queue.queue(function (next) {
+        this.queue.queue(_.bind(function (next) {
             this.requester(requestStr)
                 .done(function (jsonResp) {
                     dfd.resolve(json.parse(jsonResp));
@@ -90,7 +97,7 @@ define([
                 .always(function () {
                     next(); // next on the line
                 });
-        });
+        }, this));
 
         return dfd.promise();
     };

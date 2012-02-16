@@ -42,18 +42,24 @@ define([
 
     return backbone.View.extend({
 
+        tagName: 'div',
+        id: 'visual',
+
         initialize: function (options) {
+            var x = options.x,
+                y = options.y;
+
             this.svg = d3.select(this.el)
                 .append('svg')
-                .attr('xmlns', 'http://www.w3.org/2000/svg')
-                .attr('width', this.$el.width())
-                .attr('height', this.$el.width());
+                .attr('xmlns', 'http://www.w3.org/2000/svg');
 
             this.vis = this.svg.append("g")
                 .attr('id', 'viewport');
 
-            $(this.svg).svgPan('viewport');
+            this.resize();
 
+            $(this.svg).svgPan('viewport');
+            this.vis.attr('transform', "matrix(1, 0, 0, 1, " + x + "," + y + ")");
             this.tree = d3.layout.tree()
                 .size([360, 100]) // translation is handled manually, second number doesn't matter
                 .separation(function (a, b) {
@@ -67,42 +73,32 @@ define([
                     }
                 }, this));
 
-            this.collection.on('visualize', this.visualize, this);
-            this.collection.on('add change:hidden change:childIds remove', this.render, this);
+            this.collection.on('add change:hidden change:childIds remove',
+                               _.debounce(this.render, 500), this);
 
-            $(window).resize(_.bind(this.resize, this));
+            $(window).resize(_.debounce(_.bind(this.resize, this), 100));
         },
 
         /**
          * Make sure that the SVG takes up the entirety of its container.
          */
-        resize: _.debounce(function () {
+        resize: function () {
             var width = this.$el.width(),
                 height = this.$el.height();
             this.svg.attr('width', width)
                 .attr('height', height);
-
-            // only transform vis if it is not yet panned
-            if (!this.vis.attr('transform')) {
-                this.vis.attr('transform', "matrix(1, 0, 0, 1, " + (width / 2) + "," + (height / 2) + ")");
-            }
-        }, 100),
-
-        visualize: function (newModel) {
-            this.visualizedModel = newModel;
-            this.render();
         },
 
-        /**
-         * Redraw this bad boy.  Debounced so that mr. clickety can't
-         * sink processors.
-         */
-        render: _.debounce(function () {
+        i: 1,
+
+        render: function () {
+            this.resize();
+
             // The .nodes function generates nested JSON.
-            // When we need access to the model itself, use collection.get()
+            // When we need access to models, use collection.get()
             var collection = this.collection,
-                processed = this.visualizedModel ? _.map(
-                    this.tree.nodes(this.visualizedModel.toJSON()),
+                processed = this.model ? _.map(
+                    this.tree.nodes(this.model.toJSON()),
                     // bug in d3? make NaN x values 0.
                     function (node) {
                         if (_.isNaN(node.x)) {
@@ -123,11 +119,13 @@ define([
             treeNode.enter()
                 .append('g')
                 .classed('visual', true)
-                .attr('transform', function (d) {
-                    // correct orientation upon entry
-                    var rotate = d.x - 90;
-                    return "rotate(" + rotate + ")scale(0)";
-                })
+                // .attr('transform', function (d) {
+                //     // correct orientation upon entry
+                //     var model = collection.get(d.id),
+                //         rotate = model.x() - 90;
+                //     //var rotate = d.x - 90;
+                //     return "rotate(" + rotate + ")scale(0)";
+                // })
                 .each(function (d) {
                     // create view for node
                     new NodeView({
@@ -140,8 +138,9 @@ define([
                 .duration(1000)
                 .attr("transform", function (d) {
                     var model = collection.get(d.id),
-                        translate = model.start(),
-                        rotate = d.x - 90;
+                        translate = model.y(),
+                        rotate = model.x() - 90;
+                        //rotate = d.x - 90;
 
                     return "rotate(" + rotate + ")" +
                         "translate(" + translate + ")";
@@ -165,20 +164,24 @@ define([
                 .attr('d', function (d, i) {
                     var target = collection.get(d.target.id),
                         source = collection.get(d.source.id),
-                        targetStart = target.start(),
-                        sourceStart = source.start();
+                        targetX = target.x(),
+                        sourceX = source.x(),
+                        targetY = target.y(),
+                        sourceY = source.y();
 
-                    if (targetStart < sourceStart) {
-                        targetStart = targetStart + target.get('width');
+                    if (targetY < sourceY) {
+                        targetY = targetY + target.width();
                     } else {
-                        sourceStart = sourceStart + source.get('width');
+                        sourceY = sourceY + source.width();
                     }
 
                     return diagonal({
-                        source: { x: d.source.x,
-                                  y: sourceStart },
-                        target: { x: d.target.x,
-                                  y: targetStart }
+                        //source: { x: d.source.x,
+                        source: { x: sourceX,
+                                  y: sourceY },
+                        //target: { x: d.target.x,
+                        target: { x: targetX,
+                                  y: targetY }
                     }, i);
                 });
 
@@ -196,6 +199,18 @@ define([
                 });
 
             return this;
-        }, 500)
+        },
+
+        erase: function () {
+            this.model = null;
+            this.render();
+        },
+
+        remove: function () {
+            this.erase();
+            _.delay(_.bind(function () {
+                backbone.View.prototype.remove.call(this);
+            }, this), 1000);
+        }
     });
 });

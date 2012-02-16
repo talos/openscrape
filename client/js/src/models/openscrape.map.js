@@ -30,14 +30,6 @@ define([
     return backbone.Model.extend({
         store: new Store('map'),
 
-        defaults: function () {
-            return {
-                lat: 40.77,
-                lng: -73.98,
-                zoom: 11
-            };
-        },
-
         lng: function () {
             return this.get('lng');
         },
@@ -48,6 +40,10 @@ define([
 
         zoom: function () {
             return this.get('zoom');
+        },
+
+        focus: function () {
+            this.trigger('focus');
         }
     });
 });

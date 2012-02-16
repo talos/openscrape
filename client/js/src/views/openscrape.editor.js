@@ -48,6 +48,8 @@ define([
             } else {
                 this.$el.empty();
             }
+
+            return this;
         }
     });
 });

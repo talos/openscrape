@@ -145,10 +145,11 @@ define([
             this.model.edit();
 
             if (this.model.get('type') === 'wait') {
+                //console.log(this.model);
                 this.model.save('force', true);
-                this.scrape();
-            } if (this.model.get('type') === 'missing') {
-                this.scrape();
+                this.model.scrape();
+            } else if (this.model.get('type') === 'missing') {
+                this.model.scrape();
             } else if (this.model.get('childIds').length > 1) {
                 this.model.toggle();
             }
@@ -216,6 +217,8 @@ define([
 
             if (this.model.scraping()) {
                 $div.addClass('loading');
+            } else {
+                $div.removeClass('loading');
             }
 
             this.d3el.insert('path', '.node')

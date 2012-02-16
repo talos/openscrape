@@ -39,17 +39,20 @@ define([
         className: 'warning',
 
         events: {
-            'click .ok': 'dismiss'
+            'click .ok': 'destroy'
         },
 
         initialize: function () {
-            // this.$el
-            //     .hide()
-            //     .html(mustache.render(template, this.model.toJSON()))
-            //     .slideDown();
-            // this.model.on('destroy', this.dismiss, this);
-            // this.keyEvt = 'keydown.warning' + this.model.cid;
-            // $(document).bind(this.keyEvt, _.bind(this.dismissOnKey, this));
+            this.model.on('destroy', this.dismiss, this);
+            this.keyEvt = 'keydown.warning' + this.model.cid;
+            $(document).bind(this.keyEvt, _.bind(this.dismissOnKey, this));
+        },
+
+        render: function () {
+            this.$el
+                .hide()
+                .html(mustache.render(template, this.model.toJSON()))
+                .slideDown('fast');
         },
 
         remove: function () {
@@ -57,8 +60,11 @@ define([
             backbone.View.prototype.remove.call(this);
         },
 
-        dismiss: function () {
+        destroy: function () {
             this.model.destroy();
+        },
+
+        dismiss: function () {
             this.$el.slideUp('fast', _.bind(this.remove, this));
         },
 

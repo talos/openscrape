@@ -85,9 +85,15 @@ define([
             this.save('nodeId', nodeId);
         },
 
-        visualize: function () {
+        /**
+         * Trigger a visualization at x/y.
+         *
+         * @param x The x location to trigger the visual
+         * @param y The y location to trigger the visual
+         */
+        visualize: function (x, y) {
             if (this.has('address')) {
-                this.trigger('visualize', this, this.get('address'));
+                this.trigger('visualize', this, this.get('address'), x, y);
             }
         }
     });

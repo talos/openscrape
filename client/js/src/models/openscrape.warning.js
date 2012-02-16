@@ -32,7 +32,6 @@ define([
         defaults: function () {
             return {
                 ok: 'OK',
-                dismissed: false,
                 timeout: 5000
             };
         },

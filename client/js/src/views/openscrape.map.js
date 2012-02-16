@@ -39,6 +39,9 @@ define([
 
     return backbone.View.extend({
 
+        tagName: 'div',
+        id: 'map',
+
         initialize: function (options) {
             var dblClickWaitTime = 500,
                 dblClickWait = null;
@@ -119,6 +122,8 @@ define([
             this.gMap.setCenter(new google.maps.LatLng(this.model.lat(),
                                                        this.model.lng()));
             this.gMap.setZoom(this.model.get('zoom'));
+
+            return this;
         },
 
         placeChanged: _.debounce(function () {
