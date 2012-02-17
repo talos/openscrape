@@ -119,247 +119,292 @@
     }
 }(function ($) {
     "use strict";
-    var init = function (root, svgRoot, enablePan, enableZoom, enableDrag, zoomScale) {
-        var state = 'none',
-            stateTarget,
-            stateOrigin,
-            stateTf,
-            svgDoc = root,
 
-            $root = $(root),
-            isMouseOverElem = false,
-            undrawnDelta = 0, // we may take mouse input faster than it can be
-                              //drawn, so we save undrawn deltas here.
-            fps = 30, // maximum redraw speed.
-            drawing = false,
-            drawingTimer,
-
-            canDraw = function () {
-                if (!drawing) {
-                    clearTimeout(drawingTimer);
-                    drawingTimer = setTimeout(function () {
-                        drawing = false;
-                    }, 1000 / fps);
-                    drawing = true;
-                    return false;
-                } else {
-                    return true;
-                }
-            },
-
-            /**
-             * Instance an SVGPoint object with given event coordinates.
-             */
-            getEventPoint = function (evt) {
-                var p = root.createSVGPoint();
-
-                p.x = evt.clientX;
-                p.y = evt.clientY;
-
-                return p;
-            },
-
-            /**
-             * Sets the current transform matrix of an element.
-             */
-            setCTM = function (element, matrix) {
-                setTimeout(function () {
-                    var s = "matrix(" + matrix.a + "," + matrix.b + "," + matrix.c + "," + matrix.d + "," + matrix.e + "," + matrix.f + ")";
-
-                    element.setAttribute("transform", s);
-                }, 0);
-            },
-
-            /**
-             * Dumps a matrix to a string (useful for debug).
-             */
-            // dumpMatrix = function (matrix) {
-            //     var s = "[ " + matrix.a + ", " + matrix.c + ", " + matrix.e + "\n  " + matrix.b + ", " + matrix.d + ", " + matrix.f + "\n  0, 0, 1 ]";
-
-            //     return s;
-            // },
-
-            /**
-             * Handle mouseenter event.  This has been added to stop ignoring
-             * inputs when the mouse is over the element.
-             **/
-            handleMouseEnter = function (evt) {
-                isMouseOverElem = true;
-            },
-
-            /**
-             * Handle mouseleave event.  This has been added to ignore
-             * inputs when the mouse is not over the element.
-             **/
-            handleMouseLeave = function (evt) {
-                isMouseOverElem = false;
-            },
-
-            /**
-             * Handle mouse wheel event.
-             */
-            handleMouseWheel = function (evt) {
-                if (!enableZoom) {
-                    return;
-                }
-
-                // added, we only hit this if we're over this particular element
-                if (!isMouseOverElem) {
-                    return;
-                }
-
-                if (evt.preventDefault) {
-                    evt.preventDefault();
-                }
-
-                evt.returnValue = false;
-
-                var delta = (evt.wheelDelta ? evt.wheelDelta / 360 : evt.detail / -9) + undrawnDelta,
-                    z,
-                    p,
-                    k;
-
-                if (canDraw()) {
-                    z = Math.pow(1 + zoomScale, delta);
-                    p = getEventPoint(evt).matrixTransform(svgRoot.getCTM().inverse());
-
-                    // Compute new scale matrix in current mouse position
-                    k = root.createSVGMatrix().translate(p.x, p.y).scale(z).translate(-p.x, -p.y);
-
-                    setCTM(svgRoot, svgRoot.getCTM().multiply(k));
-
-                    if (typeof stateTf === "undefined") {
-                        stateTf = svgRoot.getCTM().inverse();
-                    }
-
-                    stateTf = stateTf.multiply(k.inverse());
-
-                    undrawnDelta = 0;
-                } else {
-                    undrawnDelta = delta;
-                }
-            },
-
-            /**
-             * Handle mouse move event.
-             */
-            handleMouseMove = function (evt) {
-
-                if (evt.preventDefault) {
-                    evt.preventDefault();
-                }
-
-                if (canDraw()) {
-                    evt.returnValue = false;
-
-                    var p;
-
-                    if (state === 'pan' && enablePan) {
-                        // Pan mode
-                        p = getEventPoint(evt).matrixTransform(stateTf);
-
-                        setCTM(svgRoot, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
-                    } else if (state === 'drag' && enableDrag) {
-                        // Drag mode
-                        p = getEventPoint(evt).matrixTransform(svgRoot.getCTM().inverse());
-
-                        setCTM(stateTarget,
-                               root.createSVGMatrix().translate(p.x - stateOrigin.x, p.y - stateOrigin.y).multiply(svgRoot.getCTM().inverse()).multiply(stateTarget.getCTM()));
-
-                        stateOrigin = p;
-                    }
-                }
-            },
-
-            /**
-             * Handle click event.
-             */
-            handleMouseDown = function (evt) {
-                if (evt.preventDefault) {
-                    evt.preventDefault();
-                }
-
-                evt.returnValue = false;
-
-                // bind our mousemove listener only when we have a mousedown
-                //$root.bind('mousemove', handleMouseMove );
-
-                //var svgDoc = evt.target.ownerDocument;
-
-                //var g = getRoot(svgDoc);
-                var g = svgRoot;
-
-                // Pan anyway when drag is disabled and the user clicked on an element
-                if (evt.target.tagName === "svg" || !enableDrag) {
-                    // Pan mode
-                    state = 'pan';
-
-                    stateTf = g.getCTM().inverse();
-
-                    stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
-                } else {
-                    // Drag mode
-                    state = 'drag';
-
-                    stateTarget = evt.target;
-
-                    stateTf = g.getCTM().inverse();
-
-                    stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
-                }
-            },
-
-            /**
-             * Handle mouse button release event.
-             */
-            handleMouseUp = function (evt) {
-                if (evt.preventDefault) {
-                    evt.preventDefault();
-                }
-
-                evt.returnValue = false;
-
-                // unbind our mousemove listener immediately when we have a mouseup
-                //$root.unbind('mousemove', handleMouseMove );
-
-                //var svgDoc = evt.target.ownerDocument;
-
-                if (state === 'pan' || state === 'drag') {
-                    // Quit pan mode
-                    state = '';
-                }
-            };
-
-        /**
-         * Register handlers
-         */
-
-        // MODIFICATION: registers events through jQuery
-        $root.bind('mouseup', handleMouseUp)
-            .bind('mousedown', handleMouseDown)
-            .bind('mousemove', handleMouseMove) // this is now bound & unbound upon mousedown & mouseup
-            .bind('mouseenter', handleMouseEnter) // added 
-            .bind('mouseleave', handleMouseLeave); // added
-
-        //if (navigator.userAgent.toLowerCase().indexOf('webkit') >= 0) {
-
-        if ($.browser.webkit) {
-            window.addEventListener('mousewheel', handleMouseWheel, false); // Chrome/Safari
-        } else {
-            window.addEventListener('DOMMouseScroll', handleMouseWheel, false); // Others
+    var Mousewheel = (function () {
+        function Mousewheel() {
+            var self = this;
+            this.watching = [];
+            this.trigger = function () { Mousewheel.prototype.trigger.apply(self, arguments); };
+            this.watch = function () { Mousewheel.prototype.watch.apply(self, arguments); };
         }
 
-    };
+        Mousewheel.prototype.trigger = function (evt) {
+            var i = 0,
+                len = this.watching.length;
+
+            // Iterate through what we're watching & hit callbacks
+            while (i < len) {
+                this.watching[i][1](evt);
+                i += 1;
+            }
+        };
+
+        /**
+         * Watch an element with a callback.  This will also do cleanup on the
+         * watched elements.
+         *
+         * @param $el {DOM} A jQuery-fied DOM element.
+         * @param callback A callback to call with the mousewheel event when it
+         * happens.
+         */
+        Mousewheel.prototype.watch = function ($el, callback) {
+            var i = 0;
+            while (i < this.watching.length) {
+                if (this.watching[i][0].closest('html').length === 0) {
+                    this.watching.splice(i, 1);
+                    i -= 1;
+                }
+                i += 1;
+            }
+
+            this.watching.push([$el, callback]);
+        };
+
+        return Mousewheel;
+    }()),
+
+        mousewheel = new Mousewheel(),
+
+        init = function (root, svgRoot, enablePan, enableZoom, enableDrag, zoomScale) {
+            var state = 'none',
+                stateTarget,
+                stateOrigin,
+                stateTf,
+                svgDoc = root,
+
+                $root = $(root),
+                isMouseOverElem = false,
+                undrawnDelta = 0, // we may take mouse input faster than it can be
+                //drawn, so we save undrawn deltas here.
+                fps = 30, // maximum redraw speed.
+                drawing = false,
+                drawingTimer,
+
+                canDraw = function () {
+                    if (!drawing) {
+                        clearTimeout(drawingTimer);
+                        drawingTimer = setTimeout(function () {
+                            drawing = false;
+                        }, 1000 / fps);
+                        drawing = true;
+                        return false;
+                    } else {
+                        return true;
+                    }
+                },
+
+                /**
+                 * Instance an SVGPoint object with given event coordinates.
+                 */
+                getEventPoint = function (evt) {
+                    var p = root.createSVGPoint();
+
+                    p.x = evt.clientX;
+                    p.y = evt.clientY;
+
+                    return p;
+                },
+
+                /**
+                 * Sets the current transform matrix of an element.
+                 */
+                setCTM = function (element, matrix) {
+                    setTimeout(function () {
+                        var s = "matrix(" + matrix.a + "," + matrix.b + "," + matrix.c + "," + matrix.d + "," + matrix.e + "," + matrix.f + ")";
+
+                        element.setAttribute("transform", s);
+                    }, 0);
+                },
+
+                /**
+                 * Dumps a matrix to a string (useful for debug).
+                 */
+                // dumpMatrix = function (matrix) {
+                //     var s = "[ " + matrix.a + ", " + matrix.c + ", " + matrix.e + "\n  " + matrix.b + ", " + matrix.d + ", " + matrix.f + "\n  0, 0, 1 ]";
+
+                //     return s;
+                // },
+
+                /**
+                 * Handle mouseenter event.  This has been added to stop ignoring
+                 * inputs when the mouse is over the element.
+                 **/
+                handleMouseEnter = function (evt) {
+                    isMouseOverElem = true;
+                },
+
+                /**
+                 * Handle mouseleave event.  This has been added to ignore
+                 * inputs when the mouse is not over the element.
+                 **/
+                handleMouseLeave = function (evt) {
+                    isMouseOverElem = false;
+                },
+
+                /**
+                 * Handle mouse wheel event.
+                 */
+                handleMouseWheel = function (evt) {
+                    if (!enableZoom) {
+                        return;
+                    }
+
+                    // added, we only hit this if we're over this particular element
+                    if (!isMouseOverElem) {
+                        return;
+                    }
+
+                    if (evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+
+                    evt.returnValue = false;
+
+                    var delta = (evt.wheelDelta ? evt.wheelDelta / 360 : evt.detail / -9) + undrawnDelta,
+                        z,
+                        p,
+                        k;
+
+                    if (canDraw()) {
+                        z = Math.pow(1 + zoomScale, delta);
+                        p = getEventPoint(evt).matrixTransform(svgRoot.getCTM().inverse());
+
+                        // Compute new scale matrix in current mouse position
+                        k = root.createSVGMatrix().translate(p.x, p.y).scale(z).translate(-p.x, -p.y);
+
+                        setCTM(svgRoot, svgRoot.getCTM().multiply(k));
+
+                        if (typeof stateTf === "undefined") {
+                            stateTf = svgRoot.getCTM().inverse();
+                        }
+
+                        stateTf = stateTf.multiply(k.inverse());
+
+                        undrawnDelta = 0;
+                    } else {
+                        undrawnDelta = delta;
+                    }
+                },
+
+                /**
+                 * Handle mouse move event.
+                 */
+                handleMouseMove = function (evt) {
+
+                    if (evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+
+                    if (canDraw()) {
+                        evt.returnValue = false;
+
+                        var p;
+
+                        if (state === 'pan' && enablePan) {
+                            // Pan mode
+                            p = getEventPoint(evt).matrixTransform(stateTf);
+
+                            setCTM(svgRoot, stateTf.inverse().translate(p.x - stateOrigin.x, p.y - stateOrigin.y));
+                        } else if (state === 'drag' && enableDrag) {
+                            // Drag mode
+                            p = getEventPoint(evt).matrixTransform(svgRoot.getCTM().inverse());
+
+                            setCTM(stateTarget,
+                                   root.createSVGMatrix().translate(p.x - stateOrigin.x, p.y - stateOrigin.y).multiply(svgRoot.getCTM().inverse()).multiply(stateTarget.getCTM()));
+
+                            stateOrigin = p;
+                        }
+                    }
+                },
+
+                /**
+                 * Handle click event.
+                 */
+                handleMouseDown = function (evt) {
+                    if (evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+
+                    evt.returnValue = false;
+
+                    // bind our mousemove listener only when we have a mousedown
+                    //$root.bind('mousemove', handleMouseMove );
+
+                    //var svgDoc = evt.target.ownerDocument;
+
+                    //var g = getRoot(svgDoc);
+                    var g = svgRoot;
+
+                    // Pan anyway when drag is disabled and the user clicked on an element
+                    if (evt.target.tagName === "svg" || !enableDrag) {
+                        // Pan mode
+                        state = 'pan';
+
+                        stateTf = g.getCTM().inverse();
+
+                        stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
+                    } else {
+                        // Drag mode
+                        state = 'drag';
+
+                        stateTarget = evt.target;
+
+                        stateTf = g.getCTM().inverse();
+
+                        stateOrigin = getEventPoint(evt).matrixTransform(stateTf);
+                    }
+                },
+
+                /**
+                 * Handle mouse button release event.
+                 */
+                handleMouseUp = function (evt) {
+                    if (evt.preventDefault) {
+                        evt.preventDefault();
+                    }
+
+                    evt.returnValue = false;
+
+                    // unbind our mousemove listener immediately when we have a mouseup
+                    //$root.unbind('mousemove', handleMouseMove );
+
+                    //var svgDoc = evt.target.ownerDocument;
+
+                    if (state === 'pan' || state === 'drag') {
+                        // Quit pan mode
+                        state = '';
+                    }
+                };
+
+            /**
+             * Register handlers
+             */
+
+            // MODIFICATION: registers events through jQuery
+            $root.bind('mouseup', handleMouseUp)
+                .bind('mousedown', handleMouseDown)
+                .bind('mousemove', handleMouseMove) // this is now bound & unbound upon mousedown & mouseup
+                .bind('mouseenter', handleMouseEnter) // added 
+                .bind('mouseleave', handleMouseLeave); // added
+
+            mousewheel.watch($root, handleMouseWheel);
+        };
+
+    if ($.browser.webkit) {
+        window.addEventListener('mousewheel', mousewheel.trigger, false); // Chrome/Safari
+    } else {
+        window.addEventListener('DOMMouseScroll', mousewheel.trigger, false); // Others
+    }
 
     /**
-       Enable SVG panning on an SVG element.
-
-       @param viewportId the ID of an element to use as viewport for pan.  Required.
-       @param enablePan Boolean enable or disable panning (default enabled)
-       @param enableZoom Boolean enable or disable zooming (default enabled)
-       @param enableDrag Boolean enable or disable dragging (default disabled)
-       @param zoomScale Float zoom sensitivity, defaults to .2
-    **/
+     * Enable SVG panning on an SVG element.
+     *
+     * @param viewportId the ID of an element to use as viewport for pan.  Required.
+     * @param enablePan Boolean enable or disable panning (default enabled)
+     * @param enableZoom Boolean enable or disable zooming (default enabled)
+     * @param enableDrag Boolean enable or disable dragging (default disabled)
+     * @param zoomScale Float zoom sensitivity, defaults to .2
+    ***/
     $.fn.svgPan = function (viewportId, enablePan, enableZoom, enableDrag, zoomScale) {
         enablePan = typeof enablePan !== 'undefined' ? enablePan : true;
         enableZoom = typeof enableZoom !== 'undefined' ? enableZoom : true;
