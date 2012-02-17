@@ -238,6 +238,8 @@
                  * inputs when the mouse is not over the element.
                  **/
                 handleMouseLeave = function (evt) {
+                    state = 'none'; // kill panning when we leave element
+
                     isMouseOverElem = false;
                 },
 
