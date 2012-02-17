@@ -282,7 +282,7 @@ define([
          *
          * @return {Number}
          */
-        y: function () {
+        translation: function () {
             return _.reduce(
                 _.invoke(this.collection.getAll(this.get('ancestors')), 'width'),
                 function (memo, width) { return memo + width + padding; },
@@ -293,35 +293,35 @@ define([
         /**
          * Determine the radial x of this node, out of 360 degrees.
          */
-        x: function () {
-            if (this.get('ancestors').length === 0) {
-                return 0;
-            }
+        // x: function () {
+        //     if (this.get('ancestors').length === 0) {
+        //         return 0;
+        //     }
 
-            var x = 0,
-                circumference =  this.y() * Math.PI,
-                totalHeight = 0,
-                foundThis = false,
-                parent = this.parent(),
-                parentX = parent.x(),
-                siblingsAndThis = this.collection.getAll(parent.get('childIds'));
+        //     var x = 0,
+        //         circumference =  this.y() * Math.PI,
+        //         totalHeight = 0,
+        //         foundThis = false,
+        //         parent = this.parent(),
+        //         parentX = parent.x(),
+        //         siblingsAndThis = this.collection.getAll(parent.get('childIds'));
 
-            _.each(siblingsAndThis, _.bind(function (node) {
-                var height = node.height();
-                foundThis = node.id === this.id;
-                totalHeight += height;
-                x += foundThis ? 0 : height;
-            }, this));
+        //     _.each(siblingsAndThis, _.bind(function (node) {
+        //         var height = node.height();
+        //         foundThis = node.id === this.id;
+        //         totalHeight += height;
+        //         x += foundThis ? 0 : height;
+        //     }, this));
 
-            console.log(siblingsAndThis);
-            console.log('totalHeight: ' + totalHeight);
-            console.log('x: ' + x);
-            console.log('y: ' + this.y());
-            console.log('circumference: ' + circumference);
-            console.log('parentX: ' + parentX);
-            console.log('result: ' + (parentX + (360 * ((x - (totalHeight / 2)) / circumference))));
-            return parentX + (360 * ((x - (totalHeight / 2)) / circumference));
-        },
+        //     console.log(siblingsAndThis);
+        //     console.log('totalHeight: ' + totalHeight);
+        //     console.log('x: ' + x);
+        //     console.log('y: ' + this.y());
+        //     console.log('circumference: ' + circumference);
+        //     console.log('parentX: ' + parentX);
+        //     console.log('result: ' + (parentX + (360 * ((x - (totalHeight / 2)) / circumference))));
+        //     return parentX + (360 * ((x - (totalHeight / 2)) / circumference));
+        // },
 
         width: function () {
             return this.get('width');
