@@ -45,6 +45,10 @@ define([
         tagName: 'div',
         id: 'visual',
 
+        events: {
+            'click': 'click'
+        },
+
         initialize: function (options) {
             var x = options.x,
                 y = options.y;
@@ -93,6 +97,21 @@ define([
         },
 
         /**
+         * Zoom in on double clicks
+         */
+        click: function (evt) {
+            var timeout = 500;
+            if (this.justClicked === true) {
+                this.zoom(1);
+            } else {
+                this.justClicked = true;
+                setTimeout(_.bind(function () {
+                    this.justClicked = false;
+                }, this), timeout);
+            }
+        },
+
+        /**
          * Make sure that the SVG takes up the entirety of its container.
          */
         resize: function () {
@@ -102,7 +121,61 @@ define([
                 .attr('height', height);
         },
 
-        i: 1,
+        /**
+         * Manually zoom the svg by the specified amount about the
+         * center.  Plays nice with SVG pan, since it works with the
+         * viewport.
+         *
+         * @param inOut Positive to zoom in, negative to zoom out.
+         */
+        zoom: function (inOut) {
+            // todo scale from center
+            var svg = this.svg[0][0],
+                vis = this.vis[0][0],
+                ratio = 2,
+                center = svg.createSVGPoint(),
+                p,
+                m;
+
+            center.x = this.svg.attr('width') / 2;
+            center.y = this.svg.attr('height') / 2;
+
+            p = center.matrixTransform(vis.getCTM().inverse());
+
+            m = vis.getCTM()
+                .multiply(
+                    svg.createSVGMatrix()
+                        .translate(p.x, p.y)
+                        .scale(inOut > 0 ? ratio : 1 / ratio)
+                        .translate(-p.x, -p.y)
+                );
+            this.vis.transition()
+                .duration(200)
+                .attr('transform', 'matrix(' + m.a + ',' + m.b + ',' + m.c + ',' + m.d + ',' + m.e + ',' + m.f + ')');
+        },
+
+        /**
+         * Manually pan the svg .
+         *
+         * @param leftRight Positive to move to the right, negative to move to the left.
+         * @param upDown Positive to move down, negative to move up.
+         */
+        pan: function (leftRight, upDown) {
+            var svg = this.svg[0][0],
+                vis = this.vis[0][0],
+                offset = 150,
+                m = vis.getCTM().translate(
+                    leftRight ? (leftRight > 0 ? -offset : offset) : 0,
+                    upDown    ? (upDown    > 0 ? -offset : offset) : 0
+                );
+                    // .multiply(svg.createSVGMatrix().translate(
+                    //     leftRight ? (leftRight > 0 ? -offset : offset) : 0,
+                    //     upDown    ? (upDown    > 0 ? -offset : offset) : 0
+                    // ));
+            this.vis.transition()
+                .duration(200)
+                .attr('transform', 'matrix(' + m.a + ',' + m.b + ',' + m.c + ',' + m.d + ',' + m.e + ',' + m.f + ')');
+        },
 
         render: function () {
             this.resize();
