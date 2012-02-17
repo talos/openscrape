@@ -55,8 +55,9 @@ define([
                     center: new google.maps.LatLng(this.model.lat(),
                                                    this.model.lng()),
                     zoom: this.model.get('zoom'),
-                    mapTypeControl: false,
-                    streetViewControl: false,
+                    disableDefaultUI: true,
+                    // mapTypeControl: false,
+                    // streetViewControl: false,
                     mapTypeId: google.maps.MapTypeId.TERRAIN
                 }
             );

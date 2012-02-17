@@ -44,6 +44,27 @@ define([
 
         focus: function () {
             this.trigger('focus');
+        },
+
+        /**
+         * Manually zoom the map in or out.
+         *
+         * @param inOut Positive to zoom in, negative to zoom out.
+         */
+        zoomInOut: function (inOut) {
+            this.save('zoom', this.zoom() + (inOut > 0 ? 1 : -1));
+        },
+
+        /**
+         * Manually pan the map
+         */
+        pan: function (leftRight, upDown) {
+            // todo this is all wrong
+            if (leftRight !== 0) {
+                this.save('lat', this.lat() * (leftRight > 0 ? 1.2 : -1.2));
+            } else {
+                this.save('lng', this.lng() * (upDown > 0 ? 1.2 : -1.2));
+            }
         }
     });
 });

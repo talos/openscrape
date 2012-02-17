@@ -34,6 +34,7 @@
         'views/openscrape.warning',
         'views/openscrape.prompt',
         'views/openscrape.map',
+        'views/openscrape.controls',
         'views/openscrape.editor',
         'views/openscrape.visual',
         'lib/backbone',
@@ -44,9 +45,10 @@
         './openscrape.sync',
         'lib/jquery'
     ], function (require, NodesCollection, MarkersCollection,
-             WarningsCollection, PromptsCollection, MapModel,
-             WarningView, PromptView, MapView, EditorView, VisualView,
-             backbone, _, mustache, appTemplate, Caustic) {
+                 WarningsCollection, PromptsCollection, MapModel,
+                 WarningView, PromptView, MapView, ControlsView,
+                 EditorView, VisualView,
+                 backbone, _, mustache, appTemplate, Caustic) {
 
         var $ = require('jquery'),
 
@@ -69,6 +71,8 @@
 
                     this.caustic = new Caustic(prompts);
 
+                    this.controls = new ControlsView();
+
                     this.editor = new EditorView({
                         collection: nodes
                     });
@@ -80,9 +84,13 @@
 
                     this.map.$el.appendTo(this.$el);
                     this.editor.$el.appendTo(this.$el);
+                    this.controls.render().$el.appendTo(this.$el);
 
                     this.map.render();
                     this.editor.render();
+
+                    this.controls.on('zoom', this.zoom, this);
+                    this.controls.on('pan', this.pan, this);
 
                     prompts.on('add', this.prompt, this);
                     warnings.on('add', this.warn, this);
@@ -94,6 +102,28 @@
                     mapModel.on('error', this.createWarning, this);
                     nodes.on('error', this.createWarning, this);
                     markers.on('error', this.createWarning, this);
+                },
+
+                zoom: function (inOut) {
+                    if (this.visual) {
+                        if (this.visual.$el.is(':visible')) {
+                            this.visual.zoom(inOut);
+                        }
+                    }
+                    if (this.map.$el.is(':visible')) {
+                        mapModel.zoomInOut(inOut);
+                    }
+                },
+
+                pan: function (leftRight, upDown) {
+                    if (this.visual) {
+                        if (this.visual.$el.is(':visible')) {
+                            this.visual.pan(leftRight, upDown);
+                        }
+                    }
+                    if (this.map.$el.is(':visible')) {
+                        mapModel.pan(leftRight, upDown);
+                    }
                 },
 
                 /**

@@ -35,6 +35,72 @@ body {
     z-index: 4;
 }
 
+#openscrape #controls {
+    position: relative;
+    left: 15px;
+    top: 15px;
+    width: 59px;
+    height: 100px;
+    z-index: 3;
+}
+
+#openscrape #controls #pan {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 59px;
+    height: 59px;
+    background: url('images/controls.png') top;
+}
+
+#openscrape #controls #pan div {
+    position: absolute;
+    height: 20px;
+    width: 20px;
+}
+
+#openscrape #controls #pan #panUp {
+    top: 0px;
+    left: 19px;
+}
+
+#openscrape #controls #pan #panDown {
+    top: 35px;
+    left: 19px
+}
+
+#openscrape #controls #pan #panLeft {
+    top: 19px;
+    left: 0px
+}
+
+#openscrape #controls #pan #panRight {
+    top: 19px;
+    left: 35px
+}
+
+#openscrape #controls #zoom {
+    position: absolute;
+    top: 65px;
+    left: 20px;
+}
+
+#openscrape #controls #zoom div {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+}
+
+#openscrape #controls #zoom #zoomIn {
+    background: url('images/controls.png') -19px -400px;
+    top: 0px;
+}
+
+#openscrape #controls #zoom #zoomOut {
+    background: url('images/controls.png') -19px -360px;
+    top: 25px;
+}
+
 #openscrape #editor {
     display: inline-block;
     position: absolute;

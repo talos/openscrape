@@ -44,7 +44,7 @@ define([
         });
         return memo;
     },
-        padding = 50;
+        padding = 80;
 
     return backbone.Model.extend({
         defaults: function () {
