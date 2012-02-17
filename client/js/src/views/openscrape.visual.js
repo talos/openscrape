@@ -62,9 +62,22 @@ define([
             this.vis.attr('transform', "matrix(1, 0, 0, 1, " + x + "," + y + ")");
             this.tree = d3.layout.tree()
                 .size([360, 100]) // translation is handled manually, second number doesn't matter
-                .separation(function (a, b) {
-                    return (a.parent === b.parent ? 1 : 2) / (a.depth * 3);
-                })
+                .separation(_.bind(function (a, b) {
+                    var model1 = this.collection.get(a.id),
+                        model2 = this.collection.get(b.id),
+                        translation1 = model1.translation(),
+                        translation2 = model2.translation(),
+                        height1 = model1.height() || 0,
+                        height2 = model2.height() || 0;
+
+                    return (a.parent === b.parent ? 1 : 2)
+                        * (height1 + height2)
+                        / (Math.log(translation1) * Math.pow(translation1, 2));
+                        /// Math.pow(translation1 + translation2, 3);
+                    // return (a.parent === b.parent ? 1 : 2)
+                    //     * ((height1 / translation1) + (height2 / translation2))
+                    //     / a.depth;
+                }, this))
                 .children(_.bind(function (d) {
                     if (!d.hidden) {
                         return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
@@ -134,13 +147,34 @@ define([
                     }).render();
                 });
 
+            // TODO draw initial array without calculating nodes or links
+            // recalculate tree now that we have rendered heights.
+            processed = this.model ? _.map(
+                this.tree.nodes(this.model.toJSON()),
+                // bug in d3? make NaN x values 0.
+                function (node) {
+                    if (_.isNaN(node.x)) {
+                        node.x = 0;
+                    }
+                    return node;
+                }
+            ) : [];
+            link = this.vis.selectAll("path.link")
+                .data(this.tree.links(processed), function (d) {
+                    return d.source.id + '_' + d.target.id;
+                });
+            treeNode = this.vis.selectAll(".visual")
+                .data(processed, function (d) {
+                    return d.id;
+                });
+
             treeNode.transition()
                 .duration(1000)
                 .attr("transform", function (d) {
                     var model = collection.get(d.id),
-                        translate = model.y(),
-                        rotate = model.x() - 90;
-                        //rotate = d.x - 90;
+                        translate = model.translation(),
+                        //rotate = model.x() - 90;
+                        rotate = d.x - 90;
 
                     return "rotate(" + rotate + ")" +
                         "translate(" + translate + ")";
@@ -164,10 +198,10 @@ define([
                 .attr('d', function (d, i) {
                     var target = collection.get(d.target.id),
                         source = collection.get(d.source.id),
-                        targetX = target.x(),
-                        sourceX = source.x(),
-                        targetY = target.y(),
-                        sourceY = source.y();
+                        // targetX = target.x(),
+                        // sourceX = source.x(),
+                        targetY = target.translation(),
+                        sourceY = source.translation();
 
                     if (targetY < sourceY) {
                         targetY = targetY + target.width();
@@ -176,11 +210,11 @@ define([
                     }
 
                     return diagonal({
-                        //source: { x: d.source.x,
-                        source: { x: sourceX,
+                        source: { x: d.source.x,
+                        //source: { x: sourceX,
                                   y: sourceY },
-                        //target: { x: d.target.x,
-                        target: { x: targetX,
+                        target: { x: d.target.x,
+                        // target: { x: targetX,
                                   y: targetY }
                     }, i);
                 });
