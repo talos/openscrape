@@ -194,7 +194,9 @@ define([
                 .selectAll('path')
                 .remove();
 
-            var foreign = this.d3el.append('svg:foreignObject')
+            var container = this.d3el.append('g')
+                    .classed('container', true),
+                foreign = container.append('svg:foreignObject')
                     .classed('node', true)
                     .attr('width', this.iframeWidth)
                     .attr('height', this.iframeHeight),
@@ -221,7 +223,7 @@ define([
                 $div.removeClass('loading');
             }
 
-            this.d3el.insert('path', '.node')
+            this.d3el.insert('path', '.container')
                 .classed('background', true)
                 .classed(this.model.get('type'), true)
                 .classed('hidden', this.model.get('hidden'))
@@ -248,16 +250,40 @@ define([
                 silent: true
             });
 
-            foreign.attr('transform', function (d) {
-                var x = d.x < 180 ? lead(contentWidth) + padding : -(padding + contentWidth + lead(contentWidth)),
-                    y = -contentHeight / 2,
-                    rotate = d.x < 180 ? 0 : 180,
+            //this.d3el.select('.node')
+            container.attr('transform', function (d) {
+                var x = d.x < 179.99 ? lead(contentWidth) + padding : -(padding + contentWidth + lead(contentWidth)),
+                //var x = lead(contentWidth) + padding,
+                    y = -(contentHeight / 2),
                     scaleX = contentWidth / rawWidth,
                     scaleY = contentHeight / rawHeight;
-                return 'rotate(' + rotate + ')' +
+                return 'rotate(' + (d.x > 179.9 ? 180 : 0) + ')' +
                     'translate(' + x + ',' + y + ')' +
                     'scale(' + scaleX + ',' + scaleY + ')';
             });
+
+            //this.rotate();
+
+            return this;
+        },
+
+        /**
+         * Rotate content rightside up.
+         */
+        rotate: function () {
+            // var x = this.model.width() / 2,
+            //     y = this.model.height() / 2;
+
+            this.d3el.select('.node')
+                // .transition()
+                // .duration(100)
+                .attr('transform', function (d) {
+                    var x = $(this).width(),
+                        y = $(this).height();
+                    return 'translate(' + x + ',' + y + ')' +
+                        'rotate(' + (d.x > 179.99 ? 0 : 180) + ')';
+                    //'rotate(' + (d.x > 179.99 ? 0 : 180) + ')';
+                });
 
             return this;
         }

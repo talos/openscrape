@@ -43,7 +43,8 @@ define([
             'click #panUp': 'panUp',
             'click #panDown': 'panDown',
             'click #panLeft': 'panLeft',
-            'click #panRight': 'panRight'
+            'click #panRight': 'panRight',
+            'click #reset': 'reset'
         },
 
         render: function () {
@@ -73,6 +74,10 @@ define([
 
         panLeft: function () {
             this.trigger('pan', -1, 0);
+        },
+
+        reset: function () {
+            this.trigger('reset');
         }
     });
 });

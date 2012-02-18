@@ -91,15 +91,21 @@ body {
     height: 20px;
 }
 
+#openscrape #controls #zoom #reset {
+    background: url('images/controls.png') -23px -428px;
+    top: 0px
+}
+
 #openscrape #controls #zoom #zoomIn {
     background: url('images/controls.png') -19px -400px;
-    top: 0px;
+    top: 30px
 }
 
 #openscrape #controls #zoom #zoomOut {
-    background: url('images/controls.png') -19px -360px;
-    top: 25px;
+    background: url('images/controls.png') -19px -361px;
+    top: 52px;
 }
+
 
 #openscrape #editor {
     display: inline-block;

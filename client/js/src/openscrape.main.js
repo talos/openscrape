@@ -65,7 +65,6 @@
                 },
 
                 initialize: function (options) {
-
                     this.$el.html(mustache.render(appTemplate, options));
                     this.$help = this.$('#help').hide();
 
@@ -91,6 +90,7 @@
 
                     this.controls.on('zoom', this.zoom, this);
                     this.controls.on('pan', this.pan, this);
+                    this.controls.on('reset', this.reset, this);
 
                     prompts.on('add', this.prompt, this);
                     warnings.on('add', this.warn, this);
@@ -102,6 +102,20 @@
                     mapModel.on('error', this.createWarning, this);
                     nodes.on('error', this.createWarning, this);
                     markers.on('error', this.createWarning, this);
+                },
+
+                /**
+                 * Reset the current view
+                 */
+                reset: function () {
+                    if (this.visual) {
+                        if (this.visual.$el.is(':visible')) {
+                            this.visual.reset();
+                        }
+                    }
+                    if (this.map.$el.is(':visible')) {
+                        mapModel.reset();
+                    }
                 },
 
                 zoom: function (inOut) {

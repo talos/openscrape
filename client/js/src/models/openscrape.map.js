@@ -65,6 +65,13 @@ define([
             } else {
                 this.save('lng', this.lng() * (upDown > 0 ? 1.2 : -1.2));
             }
+        },
+
+        /**
+         * Reset to the original values.  TODO
+         */
+        reset: function () {
+
         }
     });
 });

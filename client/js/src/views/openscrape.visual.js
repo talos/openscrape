@@ -122,6 +122,13 @@ define([
         },
 
         /**
+         * Fit everything into the view. TODO
+         */
+        reset: function () {
+
+        },
+
+        /**
          * Manually zoom the svg by the specified amount about the
          * center.  Plays nice with SVG pan, since it works with the
          * viewport.
@@ -247,8 +254,9 @@ define([
                     var model = collection.get(d.id),
                         translate = model.translation(),
                         //rotate = model.x() - 90;
-                        rotate = d.x - 90;
+                        rotate = d.x + 180;
 
+                    //d.view.rotate();
                     return "rotate(" + rotate + ")" +
                         "translate(" + translate + ")";
                 });
@@ -264,7 +272,8 @@ define([
             link.enter()
                 .append("path")
                 .attr('d', origin)
-                .attr("class", "link");
+                .attr("class", "link")
+                .attr("transform", "rotate(-90)");
 
             link.transition()
                 .duration(1000)
