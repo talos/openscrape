@@ -30,9 +30,10 @@ define([
     'text!templates/map.mustache',
     '../openscrape.geocoder',
     'views/openscrape.marker',
+    'views/openscrape.controls',
     'lib/jquery'
 ], function (require, _, google, backbone, mustache, template, geocoder,
-             MarkerView) {
+             MarkerView, ControlsView, zip2borough) {
     "use strict";
 
     var $ = require('jquery');
@@ -42,21 +43,25 @@ define([
         tagName: 'div',
         id: 'map',
 
+        defaultLat: 40.77,
+        defaultLng: -73.98,
+        defaultZoom: 11,
+
         initialize: function (options) {
+            var dblClickWaitTime = 500,
+                dblClickWait = null,
+                controls = new ControlsView();
+
             this.$el.html(mustache.render(template));
             this.$el.addClass('loading');
-        },
-
-        render: function () {
-            var dblClickWaitTime = 500,
-                dblClickWait = null;
+            controls.$el.appendTo(this.$el);
+            controls.render();
 
             this.gMap = new google.maps.Map(
                 this.$el.find('#gMap')[0],
                 {
-                    center: new google.maps.LatLng(this.model.lat(),
-                                                   this.model.lng()),
-                    zoom: this.model.get('zoom'),
+                    zoom: this.defaultZoom,
+                    center: new google.maps.LatLng(this.defaultLat, this.defaultLng),
                     disableDefaultUI: true,
                     mapTypeId: google.maps.MapTypeId.TERRAIN
                 }
@@ -90,11 +95,8 @@ define([
 
             google.maps.event.addListener(this.gMap, 'bounds_changed', _.debounce(_.bind(function () {
                 var center = this.gMap.getCenter();
-                this.model.save({lat: center.lat(),
-                                 lng: center.lng(),
-                                 zoom: this.gMap.getZoom()});
+                this.trigger('bounds_changed', this.gMap.getZoom(), center.lat(), center.lng());
                 this.lookup.setBounds(this.gMap.getBounds());
-
             }, this), 500));
 
             google.maps.event.addListener(this.gMap, 'dblclick', function () {
@@ -113,48 +115,43 @@ define([
                 this.placeChanged();
             }, this));
 
-            this.model.on('change', this.recenter, this);
-        },
+            controls.on('pan', function (leftRight, upDown) {
+                var x = this.$el.width() / 4,
+                    y = this.$el.height() / 4;
+                this.gMap.panBy(leftRight === 0 ? 0 : leftRight > 0 ? x : -x,
+                                upDown    === 0 ? 0 : upDown    > 0 ? y : -y);
+            }, this);
 
-        recenter: function () {
-            this.gMap.setCenter(new google.maps.LatLng(this.model.lat(),
-                                                       this.model.lng()));
-            this.gMap.setZoom(this.model.get('zoom'));
-
-            return this;
+            controls.on('reset', this.reset, this);
+            controls.on('zoom', function (inOut) {
+                this.gMap.setZoom(this.gMap.getZoom() + (inOut > 0 ? 1 : -1));
+            }, this);
         },
 
         placeChanged: _.debounce(function () {
-
             var place = this.lookup.getPlace(),
-                bounds,
-                sw,
-                ne;
+                bounds = this.gMap.getBounds(),
+                sw = bounds.getSouthWest(),
+                ne = bounds.getNorthEast();
             if (place) {
                 if (place.geometry) {
                     this.$lookup.blur();
                     if (place.geometry.viewport) {
                         this.gMap.panToBounds(place.geometry.viewport);
                     } else {
-                        this.gotoLatLng(place.geometry.location.lat(),
-                                        place.geometry.location.lng());
+                        this.jumpTo(place.geometry.location.lat(),
+                                    place.geometry.location.lng());
                     }
                 } else if (place.name) {
-
-                    bounds = this.gMap.getBounds();
-                    sw = bounds.getSouthWest();
-                    ne = bounds.getNorthEast();
-
                     this.$lookup.addClass('loading');
                     geocoder.geocode(place.name, sw.lat(), sw.lng(), ne.lat(), ne.lng())
                         .done(_.bind(function (result) {
                             this.$lookup.val(result.name);
                             this.$lookup.blur();
-                            this.gotoLatLng(result.lat, result.lng);
+                            this.jumpTo(result.lat, result.lng);
                         }, this))
                         .fail(_.bind(function (reason) {
                             this.$lookup.val('');
-                            this.model.trigger('error', reason);
                         }, this))
                         .always(_.bind(function () {
                             this.$lookup.removeClass('loading');
@@ -163,9 +160,9 @@ define([
             }
         }, 1000),
 
-        gotoLatLng: function (lat, lng) {
-            this.gMap.panTo(new google.maps.LatLng(lat, lng));
-            this.gMap.setZoom(17);
+        jumpTo: function (lat, lng) {
+            this.pan(lat, lng);
+            this.zoom(17);
             this.createMarker(lat, lng);
         },
 
@@ -175,24 +172,57 @@ define([
         },
 
         createMarker: function (lat, lng) {
-            return this.collection.findByLatLng(lat, lng) ||
-                this.collection.create({
-                    lat: lat,
-                    lng: lng
+            var loadingMarker = new google.maps.Marker({
+                map: this.gMap,
+                position: new google.maps.LatLng(lat, lng),
+                animation: google.maps.Animation.BOUNCE,
+                title: 'Looking up address...'
+            });
+            geocoder.reverseGeocode(lat, lng)
+                .done(_.bind(function (address) {
+                    this.collection.create({
+                        address: address,
+                        latLng: {lat: lat, lng: lng}
+                    });
+                }, this))
+                .fail(_.bind(function (reason) {
+                    this.trigger('error', reason);
+                }, this))
+                .always(function () {
+                    loadingMarker.setMap(null);
                 });
         },
 
+        bubble: function () {
+            this.trigger(arguments);
+        },
+
         drawMarker: function (marker) {
-            new MarkerView({
+            var markerView = new MarkerView({
                 model: marker,
                 gMap: this.gMap,
                 projectionOverlay: this.projectionOverlay
             }).render();
+
+            markerView.on('any', this.bubble, this);
         },
 
         remove: function () {
             $('.pac-container').remove();
             backbone.View.prototype.remove.call(this);
+        },
+
+        zoom: function (zoom) {
+            this.gMap.setZoom(zoom);
+        },
+
+        pan: function (lat, lng) {
+            this.gMap.panTo(new google.maps.LatLng(lat, lng));
+        },
+
+        reset: function () {
+            this.pan(this.defaultLat, this.defaultLng);
+            this.zoom(this.defaultZoom);
         }
     });
 });

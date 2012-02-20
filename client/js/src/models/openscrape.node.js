@@ -222,10 +222,10 @@ define([
         },
 
         /**
-         * @return The immediate {openscrape.NodeModel} parent of this node.
+         * @return {Array<Number>} Immediate visible children IDs of this node.
          */
-        parent: function () {
-            return this.collection.get(_.last(this.get('ancestors')));
+        visibleChildIds: function () {
+            return this.get('hidden') ? [] : this.get('childIds');
         },
 
         /**
@@ -291,52 +291,23 @@ define([
         },
 
         /**
-         * Determine the radial x of this node, out of 360 degrees.
+         * Get or set the rendered width of this node.
          */
-        // x: function () {
-        //     if (this.get('ancestors').length === 0) {
-        //         return 0;
-        //     }
-
-        //     var x = 0,
-        //         circumference =  this.y() * Math.PI,
-        //         totalHeight = 0,
-        //         foundThis = false,
-        //         parent = this.parent(),
-        //         parentX = parent.x(),
-        //         siblingsAndThis = this.collection.getAll(parent.get('childIds'));
-
-        //     _.each(siblingsAndThis, _.bind(function (node) {
-        //         var height = node.height();
-        //         foundThis = node.id === this.id;
-        //         totalHeight += height;
-        //         x += foundThis ? 0 : height;
-        //     }, this));
-
-        //     console.log(siblingsAndThis);
-        //     console.log('totalHeight: ' + totalHeight);
-        //     console.log('x: ' + x);
-        //     console.log('y: ' + this.y());
-        //     console.log('circumference: ' + circumference);
-        //     console.log('parentX: ' + parentX);
-        //     console.log('result: ' + (parentX + (360 * ((x - (totalHeight / 2)) / circumference))));
-        //     return parentX + (360 * ((x - (totalHeight / 2)) / circumference));
-        // },
-
-        width: function () {
+        width: function (w) {
+            if (w) {
+                this.set('width', w);
+            }
             return this.get('width');
         },
 
-        height: function () {
+        /**
+         * Get or set the rendered height of this node.
+         */
+        height: function (h) {
+            if (h) {
+                this.set('height', h);
+            }
             return this.get('height');
-        },
-
-        edit: function () {
-            this.trigger('edit', this);
-        },
-
-        visualize: function (x, y) {
-            this.trigger('visualize', this, x, y);
         }
     });
 });

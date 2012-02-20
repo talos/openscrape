@@ -38,36 +38,24 @@ define([
         initialize: function (options) {
             this.marker = new google.maps.Marker({
                 map: options.gMap, // bound to google maps
-                animation: google.maps.Animation.DROP
+                animation: google.maps.Animation.DROP,
+                position: new google.maps.LatLng(this.model.latLng().lat,
+                                                 this.model.latLng().lng),
+                title: this.model.address()
             });
 
             this.projectionOverlay = options.projectionOverlay;
 
             google.maps.event.addListener(this.marker, 'click', _.bind(this.click, this));
-            this.model.on('change', this.render, this);
             this.model.on('destroy', this.destroy, this);
         },
 
-        render: function () {
-            var address = this.model.address();
-
-            this.marker.setPosition(new google.maps.LatLng(this.model.lat(),
-                                                           this.model.lng()));
-
-            this.marker.setAnimation(address ? null : google.maps.Animation.BOUNCE);
-            this.marker.setTitle(address ?
-                                 address.number + ' ' + address.street :
-                                 'Looking up address...');
-        },
-
         click: function (evt) {
-            if (this.model.address()) {
-                var p = this.projectionOverlay
-                        .getProjection()
-                        .fromLatLngToContainerPixel(this.marker.getPosition());
+            var p = this.projectionOverlay
+                    .getProjection()
+                    .fromLatLngToContainerPixel(this.marker.getPosition());
 
-                this.model.visualize(p.x, p.y);
-            }
+            this.trigger('visualize', this.model.address(), p.x, p.y);
         },
 
         destroy: function () {

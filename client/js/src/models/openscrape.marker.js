@@ -24,77 +24,34 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.geocoder',
-    '../openscrape.zip2borough',
-    '../openscrape.store'
-], function (_, backbone, geocoder, zip2borough, Store) {
+    '../openscrape.zip2borough'
+], function (_, backbone, zip2borough) {
     "use strict";
 
     return backbone.Model.extend({
 
-        initialize: function () {
-            if (!this.has('lat') || !this.has('lng')) {
-                throw "Missing lng/lat for marker";
+        validate: function (attrs) {
+            if (typeof attrs.latLng.lat !== 'number' || typeof attrs.latLng.lng !== 'number') {
+                return "invalid lat/lng: " + attrs.latLng.lat + ',' + attrs.latLng.lng;
             }
 
-            if (!this.has('address')) {
-                this.lookupAddress(this.lat(), this.lng());
+            attrs.address.apt = '';
+            attrs.address.borough = zip2borough(attrs.address.azip);
+            attrs.address.Borough = attrs.address.borough;
+
+            if (!attrs.address.borough) {
+                return "Sorry, that selection is not in the five boroughs.";
             }
+
+            return undefined;
+        },
+
+        latLng: function () {
+            return this.get('latLng');
         },
 
         address: function () {
             return this.get('address');
-        },
-
-        lookupAddress: function (lat, lng) {
-            geocoder.reverseGeocode(lat, lng)
-                .done(_.bind(function (address) {
-
-                    // TODO
-                    address.apt = '';
-                    address.borough = zip2borough(address.zip);
-                    address.Borough = address.borough;
-
-                    if (!address.borough) {
-                        this.trigger('error',
-                                     "Sorry, that selection is not in the five boroughs.");
-                        this.destroy();
-                    } else {
-                        this.save({ address: address });
-                    }
-                }, this))
-                .fail(_.bind(function (reason) {
-                    this.trigger('error', reason);
-                    this.destroy();
-                }, this));
-        },
-
-        lat: function () {
-            return this.get('lat');
-        },
-
-        lng: function () {
-            return this.get('lng');
-        },
-
-        nodeId: function () {
-            return this.get('nodeId');
-        },
-
-        saveNodeId: function (nodeId) {
-            this.save('nodeId', nodeId);
-        },
-
-        /**
-         * Trigger a visualization at x/y.
-         *
-         * @param x The x location to trigger the visual
-         * @param y The y location to trigger the visual
-         */
-        visualize: function (x, y) {
-            if (this.has('address')) {
-                this.trigger('visualize', this, this.get('address'), x, y);
-            }
         }
     });
 });

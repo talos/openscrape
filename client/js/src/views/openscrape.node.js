@@ -119,7 +119,7 @@ define([
         initialize: function (options) {
             this.model.on('change:highlight', this.highlight, this);
             this.model.on('change:scraping change:hidden', this.render, this);
-            this.d3el = d3.select(this.el);
+            this.d3el = d3.select(this.el).classed('node', true);
         },
 
         /**
@@ -137,12 +137,13 @@ define([
         },
 
         highlight: function () {
-            this.d3el.select('.background')
-                .classed('highlight', this.model.get('highlight') === true);
+            if (this.background) {
+                this.background.classed('highlight', this.model.get('highlight') === true);
+            }
         },
 
         click: function (evt) {
-            this.model.edit();
+            //this.model.edit();
 
             if (this.model.get('type') === 'wait') {
                 //console.log(this.model);
@@ -186,21 +187,15 @@ define([
         },
 
         render: function () {
-            this.d3el
-                .selectAll('.node')
-                .remove();
+            this.d3el.selectAll('*').remove();
 
-            this.d3el
-                .selectAll('path')
-                .remove();
-
-            var container = this.d3el.append('g')
-                    .classed('container', true),
-                foreign = container.append('svg:foreignObject')
-                    .classed('node', true)
-                    .attr('width', this.iframeWidth)
-                    .attr('height', this.iframeHeight),
-                $div = $(foreign.append('xhtml:body')
+            this.container = this.d3el.append('g')
+                .classed('container', true);
+            this.foreign = this.container.append('svg:foreignObject')
+                .classed('foreign', true)
+                .attr('width', this.iframeWidth)
+                .attr('height', this.iframeHeight);
+            var $div = $(this.foreign.append('xhtml:body')
                          .append('div')[0])
                     .html(mustache.render(
                         this.templates[this.model.get('type')],
@@ -215,7 +210,9 @@ define([
                 contentHeight = rawHeight > this.maxHeight ? this.maxHeight : rawHeight,
                 width = contentWidth + (padding * 2) + (lead(contentWidth) * 2),
                 height = contentHeight + (padding * 2),
-                path = containerPath(contentWidth, contentHeight);
+                path = containerPath(contentWidth, contentHeight),
+                scaleX = contentWidth / rawWidth,
+                scaleY = contentHeight / rawHeight;
 
             if (this.model.scraping()) {
                 $div.addClass('loading');
@@ -223,7 +220,7 @@ define([
                 $div.removeClass('loading');
             }
 
-            this.d3el.insert('path', '.container')
+            this.background = this.d3el.insert('path', '.container')
                 .classed('background', true)
                 .classed(this.model.get('type'), true)
                 .classed('hidden', this.model.get('hidden'))
@@ -243,47 +240,13 @@ define([
                 // .attr('svg:to', '1')
                 // .attr('svg:repeatCount', 'indefinite');
 
-            this.model.set({
-                width: width,
-                height: height
-            }, {
-                silent: true
-            });
+            this.model.width(width);
+            this.model.height(height);
 
-            //this.d3el.select('.node')
-            container.attr('transform', function (d) {
-                var x = d.x < 179.99 ? lead(contentWidth) + padding : -(padding + contentWidth + lead(contentWidth)),
-                //var x = lead(contentWidth) + padding,
-                    y = -(contentHeight / 2),
-                    scaleX = contentWidth / rawWidth,
-                    scaleY = contentHeight / rawHeight;
-                return 'rotate(' + (d.x > 179.9 ? 180 : 0) + ')' +
-                    'translate(' + x + ',' + y + ')' +
-                    'scale(' + scaleX + ',' + scaleY + ')';
-            });
-
-            //this.rotate();
-
-            return this;
-        },
-
-        /**
-         * Rotate content rightside up.
-         */
-        rotate: function () {
-            // var x = this.model.width() / 2,
-            //     y = this.model.height() / 2;
-
-            this.d3el.select('.node')
-                // .transition()
-                // .duration(100)
-                .attr('transform', function (d) {
-                    var x = $(this).width(),
-                        y = $(this).height();
-                    return 'translate(' + x + ',' + y + ')' +
-                        'rotate(' + (d.x > 179.99 ? 0 : 180) + ')';
-                    //'rotate(' + (d.x > 179.99 ? 0 : 180) + ')';
-                });
+            this.container
+                .attr('transform',
+                      'translate(' + (lead(contentWidth) + padding) + ',' + (-contentHeight / 2) + ')' +
+                      'scale(' + scaleX + ',' + scaleY + ')');
 
             return this;
         }

@@ -27,9 +27,11 @@ define([
     'lib/underscore',
     'lib/backbone',
     'views/openscrape.node',
+    'views/openscrape.editor',
+    'views/openscrape.controls',
     'lib/jquery',
     'lib/jquery-svgpan'
-], function (require, d3, _, backbone, NodeView) {
+], function (require, d3, _, backbone, NodeView, EditorView, ControlsView) {
     "use strict";
 
     var $ = require('jquery'),
@@ -50,8 +52,13 @@ define([
         },
 
         initialize: function (options) {
-            var x = options.x,
-                y = options.y;
+            var controls = new ControlsView();
+            controls.$el.appendTo(this.$el);
+            controls.render();
+
+            controls.on('pan', this.pan, this);
+            controls.on('zoom', this.zoom, this);
+            controls.on('reset', this.reset, this);
 
             this.svg = d3.select(this.el)
                 .append('svg')
@@ -63,35 +70,19 @@ define([
             this.resize();
 
             $(this.svg).svgPan('viewport');
-            this.vis.attr('transform', "matrix(1, 0, 0, 1, " + x + "," + y + ")");
-            this.tree = d3.layout.tree()
-                .size([360, 100]) // translation is handled manually, second number doesn't matter
+            this.layoutTree = d3.layout.tree()
+                .size([180, 1]) // translation is handled by width rather than node depth, so second number doesn't matter
                 .separation(_.bind(function (a, b) {
-                    var model1 = this.collection.get(a.id),
-                        model2 = this.collection.get(b.id),
-                        translation1 = model1.translation(),
-                        translation2 = model2.translation(),
-                        height1 = model1.height() || 0,
-                        height2 = model2.height() || 0;
-
                     return (a.parent === b.parent ? 1 : 2)
-                        * (height1 + height2)
-                        / (Math.log(translation1) * Math.pow(translation1, 2));
-                        /// Math.pow(translation1 + translation2, 3);
-                    // return (a.parent === b.parent ? 1 : 2)
-                    //     * ((height1 / translation1) + (height2 / translation2))
-                    //     / a.depth;
+                        * (a.height() + b.height())
+                        / (Math.log(a.translation()) * Math.pow(b.translation(), 2));
                 }, this))
-                .children(_.bind(function (d) {
-                    if (!d.hidden) {
-                        return _.invoke(this.collection.getAll(d.childIds), 'toJSON');
-                    } else {
-                        return [];
-                    }
+                .children(_.bind(function (node) {
+                    return this.collection.getAll(node.visibleChildIds());
                 }, this));
 
             this.collection.on('add change:hidden change:childIds remove',
-                               _.debounce(this.render, 500), this);
+                               _.debounce(this.refresh, 500), this);
 
             $(window).resize(_.debounce(_.bind(this.resize, this), 100));
         },
@@ -122,10 +113,39 @@ define([
         },
 
         /**
-         * Fit everything into the view. TODO
+         * Fit everything into the view.
          */
         reset: function () {
+            var ratio = 0,
+                left = 0,
+                right = 0,
+                top = 0,
+                bottom = 0,
+                x = 0,
+                y = 0,
+                svgWidth = this.svg.attr('width'),
+                svgHeight = this.svg.attr('height');
 
+            _.each(this.calculateData(), function (node) {
+                var t = node.translation() + node.width(),
+                    x = Math.cos(node.x + 180) * t,
+                    y = Math.sin(node.x + 180) * t;
+                left = x < left ? x : left;
+                right = x > right ? x : right;
+                top = y < top ? y : top;
+                bottom = y > bottom ? y : bottom;
+            });
+
+            x = svgWidth / (right - left);
+            y = svgHeight / (bottom - top);
+
+            ratio = Number(x < y ? x : y).toFixed(3);
+
+            this.vis.transition()
+                .duration(200)
+                .attr('transform', 'matrix(' + ratio + ',0,0,' + ratio + ',' +
+                      ((right * ratio / 2) + (svgWidth / 2)) + ',' +
+                      ((bottom  * ratio / 2) + (svgHeight / 2)) + ')');
         },
 
         /**
@@ -162,7 +182,7 @@ define([
         },
 
         /**
-         * Manually pan the svg .
+         * Manually pan the svg.
          *
          * @param leftRight Positive to move to the right, negative to move to the left.
          * @param upDown Positive to move down, negative to move up.
@@ -175,93 +195,68 @@ define([
                     leftRight ? (leftRight > 0 ? -offset : offset) : 0,
                     upDown    ? (upDown    > 0 ? -offset : offset) : 0
                 );
-                    // .multiply(svg.createSVGMatrix().translate(
-                    //     leftRight ? (leftRight > 0 ? -offset : offset) : 0,
-                    //     upDown    ? (upDown    > 0 ? -offset : offset) : 0
-                    // ));
             this.vis.transition()
                 .duration(200)
                 .attr('transform', 'matrix(' + m.a + ',' + m.b + ',' + m.c + ',' + m.d + ',' + m.e + ',' + m.f + ')');
         },
 
-        render: function () {
-            this.resize();
+        draw: function (node, x, y) {
+            x = x || this.svg.attr('width') / 2;
+            y = y || this.svg.attr('height') / 2;
+            this.vis.attr('transform', "matrix(1, 0, 0, 1, " + x + "," + y + ")");
+            this.data = this.layoutTree.nodes(node);
+            _.each(this.data, function (node) {
+                node.x = _.isNaN(node.x) ? 0 : node.x;
+            });
+        },
 
-            // The .nodes function generates nested JSON.
-            // When we need access to models, use collection.get()
-            var collection = this.collection,
-                processed = this.model ? _.map(
-                    this.tree.nodes(this.model.toJSON()),
-                    // bug in d3? make NaN x values 0.
-                    function (node) {
-                        if (_.isNaN(node.x)) {
-                            node.x = 0;
-                        }
-                        return node;
-                    }
-                ) : [],
+        refresh: function () {
+            var outer = this.vis.selectAll(".outer")
+                    .data(this.data, function (d) { return d.id; }),
                 link = this.vis.selectAll("path.link")
-                    .data(this.tree.links(processed), function (d) {
+                    .data(this.layoutTree.links(this.data), function (d) {
                         return d.source.id + '_' + d.target.id;
                     }),
-                treeNode = this.vis.selectAll(".visual")
-                    .data(processed, function (d) {
-                        return d.id;
-                    });
+                inner;
 
-            treeNode.enter()
+            outer.enter()
                 .append('g')
-                .classed('visual', true)
-                // .attr('transform', function (d) {
-                //     // correct orientation upon entry
-                //     var model = collection.get(d.id),
-                //         rotate = model.x() - 90;
-                //     //var rotate = d.x - 90;
-                //     return "rotate(" + rotate + ")scale(0)";
-                // })
-                .each(function (d) {
-                    // create view for node
+                .classed('outer', true)
+                .append('g')
+                .classed('inner', true)
+                .each(function (node) {
+                    // create view for node, so that we know width/height
                     new NodeView({
-                        model: collection.get(d.id),
+                        model: node,
                         el: this
                     }).render();
                 });
 
-            // TODO draw initial array without calculating nodes or links
-            // recalculate tree now that we have rendered heights.
-            processed = this.model ? _.map(
-                this.tree.nodes(this.model.toJSON()),
-                // bug in d3? make NaN x values 0.
-                function (node) {
-                    if (_.isNaN(node.x)) {
-                        node.x = 0;
-                    }
-                    return node;
-                }
-            ) : [];
-            link = this.vis.selectAll("path.link")
-                .data(this.tree.links(processed), function (d) {
-                    return d.source.id + '_' + d.target.id;
-                });
-            treeNode = this.vis.selectAll(".visual")
-                .data(processed, function (d) {
-                    return d.id;
-                });
+            // regenerate data, since we have renders to allow for separation
+            //this.calculateData();
 
-            treeNode.transition()
+            inner = this.vis.selectAll('.inner');
+
+            outer.transition()
                 .duration(1000)
-                .attr("transform", function (d) {
-                    var model = collection.get(d.id),
-                        translate = model.translation(),
-                        //rotate = model.x() - 90;
-                        rotate = d.x + 180;
+                .attr("transform", function (node) {
+                    var translate = node.translation(),
+                        angle = node.x + 180;
 
-                    //d.view.rotate();
-                    return "rotate(" + rotate + ")" +
+                    return "rotate(" + angle + ")" +
                         "translate(" + translate + ")";
                 });
 
-            treeNode.exit()
+            inner.transition().attr('transform', function (node) {
+                if (node.x < 90 || node.x > 270) {
+                    var x = -node.width();
+                    return 'rotate(180)translate(' + x + ',0)';
+                } else {
+                    return '';
+                }
+            });
+
+            outer.exit()
                 .transition()
                 .duration(1000)
                 .attr("transform", function (d) {
@@ -277,26 +272,20 @@ define([
 
             link.transition()
                 .duration(1000)
-                .attr('d', function (d, i) {
-                    var target = collection.get(d.target.id),
-                        source = collection.get(d.source.id),
-                        // targetX = target.x(),
-                        // sourceX = source.x(),
-                        targetY = target.translation(),
-                        sourceY = source.translation();
+                .attr('d', function (node, i) {
+                    var targetY = node.target.translation(),
+                        sourceY = node.source.translation();
 
                     if (targetY < sourceY) {
-                        targetY = targetY + target.width();
+                        targetY = targetY + node.target.width();
                     } else {
-                        sourceY = sourceY + source.width();
+                        sourceY = sourceY + node.source.width();
                     }
 
                     return diagonal({
-                        source: { x: d.source.x,
-                        //source: { x: sourceX,
+                        source: { x: node.source.x,
                                   y: sourceY },
-                        target: { x: d.target.x,
-                        // target: { x: targetX,
+                        target: { x: node.target.x,
                                   y: targetY }
                     }, i);
                 });
@@ -318,15 +307,8 @@ define([
         },
 
         erase: function () {
-            this.model = null;
-            this.render();
-        },
-
-        remove: function () {
-            this.erase();
-            _.delay(_.bind(function () {
-                backbone.View.prototype.remove.call(this);
-            }, this), 1000);
+            this.data = [];
+            this.refresh();
         }
     });
 });
