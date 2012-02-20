@@ -43,11 +43,13 @@ define([
         id: 'map',
 
         initialize: function (options) {
-            var dblClickWaitTime = 500,
-                dblClickWait = null;
-
             this.$el.html(mustache.render(template));
             this.$el.addClass('loading');
+        },
+
+        render: function () {
+            var dblClickWaitTime = 500,
+                dblClickWait = null;
 
             this.gMap = new google.maps.Map(
                 this.$el.find('#gMap')[0],
@@ -56,8 +58,6 @@ define([
                                                    this.model.lng()),
                     zoom: this.model.get('zoom'),
                     disableDefaultUI: true,
-                    // mapTypeControl: false,
-                    // streetViewControl: false,
                     mapTypeId: google.maps.MapTypeId.TERRAIN
                 }
             );
@@ -79,10 +79,7 @@ define([
                 bounds: this.gMap.getBounds()
             });
 
-            // add existing markers when map is idle
-            this.collection.on('reset', function (collection) {
-                collection.each(_.bind(this.drawMarker, this));
-            }, this);
+            this.collection.each(_.bind(this.drawMarker, this));
             this.collection.on('add', this.drawMarker, this);
 
             // Bind all google events to model.
@@ -116,10 +113,10 @@ define([
                 this.placeChanged();
             }, this));
 
-            this.model.on('change', this.render, this);
+            this.model.on('change', this.recenter, this);
         },
 
-        render: function () {
+        recenter: function () {
             this.gMap.setCenter(new google.maps.LatLng(this.model.lat(),
                                                        this.model.lng()));
             this.gMap.setZoom(this.model.get('zoom'));
@@ -191,6 +188,11 @@ define([
                 gMap: this.gMap,
                 projectionOverlay: this.projectionOverlay
             }).render();
+        },
+
+        remove: function () {
+            $('.pac-container').remove();
+            backbone.View.prototype.remove.call(this);
         }
     });
 });
