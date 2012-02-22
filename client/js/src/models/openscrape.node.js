@@ -66,6 +66,16 @@ define([
                     node.save('translation', node.translation());
                 });
             }, this);
+
+            // When tags or children change here, check all related models for changes
+            this.on('change:tags change:childIds', function () {
+                _.invoke(this.related().concat(this), 'tagsChanged');
+            });
+            
+        },
+
+        type: function () {
+            return this.get('type');
         },
 
         parent: function () {
@@ -77,6 +87,20 @@ define([
 
         translation: function () {
             return this.parent() ? this.parent().translation() + this.parent().width() + padding : 0;
+        },
+
+        /**
+         * Check this model for changes to type resulting from new tags.
+         */
+        tagsChanged: function () {
+            if (this.type() === 'missing') {
+                console.log('missing');
+                console.log(this.tags());
+                console.log(this.get('missing'));
+                this.save('missing',
+                          _(this.get('missing')).without(_(this.tags()).keys())
+                         );
+            }
         },
 
         /**
@@ -99,16 +123,16 @@ define([
                         thisTags = this.get('tags'),
                         childNode;
 
-                    if (status === 'found') {
-                        if (children.length === 1) {
-                            // one-to-one relations store the tag here
-                            thisTags[this.get('name')] = valueName;
-                            this.set('tags', thisTags, {silent: true});
-                        } else {
-                            // otherwise, the tag is in the child.
-                            childTags[this.get('name')] = valueName;
-                        }
-                    }
+                    // if (status === 'found') {
+                    //     if (children.length === 1) {
+                    //         // one-to-one relations store the tag here
+                    //         thisTags[this.get('name')] = valueName;
+                    //         this.set('tags', thisTags, {silent: true});
+                    //     } else {
+                    //         // otherwise, the tag is in the child.
+                    //         childTags[this.get('name')] = valueName;
+                    //     }
+                    // }
 
                     childNode = this.collection.create({
                         name: valueName,
@@ -141,8 +165,12 @@ define([
             });
 
             this.save();
-
-            this.trigger('normalized');
+            if (this.type() === 'missing') {
+                console.log('missing');
+                console.log(this.toJSON());
+                console.log(this.tags());
+                console.log(this.related());
+            }
         },
 
         /**
@@ -173,17 +201,17 @@ define([
         /**
          * @param excludeId a child ID to ignore when tracking down.  Optional.
          *
-         * @return {Array} of IDs below this node, excluding only
+         * @return {Array[openscrape.NodeModel]} below this node, excluding only
          * one-to-many found relations.
          */
         oneToOneDescendents: function (excludeId) {
             var descendents = [],
-                isBranch = (this.get('type') === 'found' && this.get('childIds').length > 1),
-                childIds = _.without(this.get('childIds'), excludeId);
+                isBranch = (this.type() === 'value' && this.get('childIds').length > 1),
+                children = this.collection.filterIds(_.without(this.get('childIds'), excludeId));
 
             if (!isBranch) {
-                Array.prototype.push.apply(descendents, childIds);
-                _.each(this.collection.filterIds(childIds), function (child) {
+                Array.prototype.push.apply(descendents, children);
+                _.each(children, function (child) {
                     Array.prototype.push.apply(descendents, child.oneToOneDescendents(excludeId));
                 });
             }
@@ -193,17 +221,17 @@ define([
         /**
          * @param excludeId a child ID to ignore when tracking down.  Optional.
          *
-         * @return {Array} of IDs that are one-to-one found relations
+         * @return {Array[openscrape.NodeModel]} One-to-one found relations
          * both below this node, above, and around it.
          */
         related: function (excludeId) {
-            var related = this.oneToOneDescendents(excludeId);
+            var related = this.collection.filterIds(this.oneToOneDescendents(excludeId));
 
             if (this.parent()) {
                 Array.prototype.push.apply(related, this.parent().related(this.id));
             }
 
-            related.push(this.id);
+            related.push(this);
             return related;
         },
 
@@ -217,7 +245,7 @@ define([
          */
         cookies: function () {
             return _.reduce(
-                _.invoke(this.collection.filterIds(this.related()), 'get', 'cookies'),
+                _.invoke(this.related(), 'get', 'cookies'),
                 accumulate,
                 {}
             );
@@ -231,7 +259,7 @@ define([
          */
         tags: function () {
             return _.reduce(
-                _.invoke(this.collection.filterIds(this.related()), 'get', 'tags'),
+                _.invoke(this.related(), 'get', 'tags'),
                 function (memo, tags) { return _.extend(memo, tags); },
                 {}
             );

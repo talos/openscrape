@@ -126,36 +126,26 @@ define([
          */
         reset: function () {
             var ratio = 0,
-                left = 0,
-                right = 0,
-                top = 0,
-                bottom = 0,
                 x = 0,
                 y = 0,
                 svgWidth = this.svg.attr('width'),
                 svgHeight = this.svg.attr('height');
 
-            // TODO
-            _.each(this.model.getVisible(), function (node) {
-                var t = node.translation() + node.width(),
-                    x = Math.cos(node.x + 180) * t,
-                    y = Math.sin(node.x + 180) * t;
-                left = x < left ? x : left;
-                right = x > right ? x : right;
-                top = y < top ? y : top;
-                bottom = y > bottom ? y : bottom;
-            });
+            this.right = this.right || svgWidth / 2;
+            this.left  = this.left  || -svgWidth / 2;
+            this.top   = this.top   || -svgHeight / 2;
+            this.left  = this.left  || svgHeight / 2;
 
-            x = svgWidth / (right - left);
-            y = svgHeight / (bottom - top);
+            x = svgWidth / (this.right - this.left);
+            y = svgHeight / (this.bottom - this.top);
 
             ratio = Number(x < y ? x : y).toFixed(3);
 
             this.vis.transition()
                 .duration(200)
                 .attr('transform', 'matrix(' + ratio + ',0,0,' + ratio + ',' +
-                      ((right * ratio / 2) + (svgWidth / 2)) + ',' +
-                      ((bottom  * ratio / 2) + (svgHeight / 2)) + ')');
+                      ((this.right * ratio / 2) + (svgWidth / 2)) + ',' +
+                      ((this.bottom  * ratio / 2) + (svgHeight / 2)) + ')');
         },
 
         /**
@@ -209,15 +199,15 @@ define([
                 .attr('transform', 'matrix(' + m.a + ',' + m.b + ',' + m.c + ',' + m.d + ',' + m.e + ',' + m.f + ')');
         },
 
-        // draw: function (node, x, y) {
-        //     x = x || this.svg.attr('width') / 2;
-        //     y = y || this.svg.attr('height') / 2;
-        //     this.vis.attr('transform', "matrix(1, 0, 0, 1, " + x + "," + y + ")");
-        //     this.data = this.layoutTree.nodes(node);
-        //     _.each(this.data, function (node) {
-        //         node.x = _.isNaN(node.x) ? 0 : node.x;
-        //     });
-        // },
+        /**
+         * Force the center of the SVG to a particular x & y.
+         *
+         * @param {Number} x The x offset, in pixels.
+         * @param {Number} y The y offset, in pixels.
+         */
+        center: function (x, y) {
+            this.vis.attr('transform', 'translate(' + x + ',' + y + ')');
+        },
 
         /**
          * Render every node into an invisible SVG so that we know how
@@ -329,6 +319,18 @@ define([
                     // if b has a target, it is a link
                     return (_.has(a, 'target') || _.has(a, 'source')) ? -1 : 0;
                 });
+
+            // Recalculate bounds for this render
+            this.bottom = this.top = this.left = this.right = 0;
+            _.each(data, _.bind(function (node) {
+                var t = node.translation + node.width,
+                    x = Math.cos(node.x + 180) * t,
+                    y = Math.sin(node.x + 180) * t;
+                this.left = x < this.left ? x : this.left;
+                this.right = x > this.right ? x : this.right;
+                this.top = y < this.top ? y : this.top;
+                this.bottom = y > this.bottom ? y : this.bottom;
+            }, this));
 
             return this;
         }

@@ -119,6 +119,7 @@ define([
         initialize: function (options) {
             this.model.on('change:highlight', this.highlight, this);
             this.model.on('change:type', this.render, this);
+            this.model.on('change:missing', this.scrape, this);
             this.d3el = d3.select(this.el).classed('node', true);
         },
 
@@ -126,6 +127,7 @@ define([
             backbone.View.prototype.remove.call(this);
             this.model.off('change:highlight', this.highlight, this);
             this.model.off('change:type', this.render, this);
+            this.model.off('change:missing', this.scrape, this);
         },
 
         /**
@@ -150,12 +152,11 @@ define([
 
         click: function (evt) {
             //this.model.edit();
-            console.log(this.model);
 
-            if (this.model.get('type') === 'wait') {
+            console.log(_(this.model.related()).invoke('toJSON'));
+            console.log(this.model.tags());
+            if (this.model.type() === 'wait') {
                 this.model.save('force', true);
-                this.scrape();
-            } else if (this.model.get('type') === 'missing') {
                 this.scrape();
             } else if (this.model.get('childIds').length > 1) {
                 this.model.toggle();
@@ -164,21 +165,25 @@ define([
         },
 
         scrape: function () {
-            var request = this.model.asRequest();
-            console.log('scraping'); // todo svg animation
-            caustic.scrape(request, this.$el.closest('div'))
-                .done(_.bind(function (resp) {
-                    // todo handle this in store?
-                    delete resp.id;
-                    this.model.set(resp, {silent: true});
-                    this.model.normalize();
-                }, this))
-                .fail(_.bind(function (error) {
-                    this.model.trigger('error', this.model, error);
-                }, this))
-                .always(_.bind(function () {
-                    console.log('done scraping'); // todo svg animation
-                }, this));
+            if (this.model.type() === 'wait' ||
+                     (this.model.type() === 'missing' &&
+                      this.model.get('missing').length === 0)) {
+                var request = this.model.asRequest();
+                console.log('scraping'); // todo svg animation
+                caustic.scrape(request, this.$el.closest('div'))
+                    .done(_.bind(function (resp) {
+                        // todo handle this in store?
+                        delete resp.id;
+                        this.model.set(resp, {silent: true});
+                        this.model.normalize();
+                    }, this))
+                    .fail(_.bind(function (error) {
+                        this.model.trigger('error', this.model, error);
+                    }, this))
+                    .always(_.bind(function () {
+                        console.log('done scraping'); // todo svg animation
+                    }, this));
+            }
         },
 
         nameIsHTML: function () {
