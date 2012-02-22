@@ -26,39 +26,30 @@
 
     require([
         'require',
-        'collections/openscrape.nodes',
+        'models/openscrape.warning',
         'collections/openscrape.markers',
-        'collections/openscrape.warnings',
-        'collections/openscrape.prompts',
+        'collections/openscrape.nodes',
         'views/openscrape.warning',
-        'views/openscrape.prompt',
         'views/openscrape.map',
         'views/openscrape.visual',
         'lib/backbone',
         'lib/underscore',
         'lib/requirejs.mustache',
         'text!templates/app.mustache',
-        './openscrape.caustic',
+        './openscrape.address',
         './openscrape.sync',
         'lib/jquery'
-    ], function (require, NodesCollection, MarkersCollection,
-                 WarningsCollection, PromptsCollection,
-                 WarningView, PromptView, MapView, VisualView,
-                 backbone, _, mustache, appTemplate, Caustic) {
+    ], function (require, WarningModel, MarkersCollection,
+                 NodesCollection, WarningView, MapView, VisualView,
+                 backbone, _, mustache, appTemplate, Address) {
 
         var $ = require('jquery'),
 
-            nodes = new NodesCollection(),
             markers = new MarkersCollection(),
-            warnings = new WarningsCollection(),
-            prompts = new PromptsCollection(),
+            nodes = new NodesCollection(),
 
             map = new MapView({
                 collection: markers
-            }),
-
-            visual = new VisualView({
-                collection: nodes
             }),
 
             AppView = backbone.View.extend({
@@ -71,62 +62,74 @@
                     this.$el.html(mustache.render(appTemplate, options));
                     this.$help = this.$('#help').hide();
 
-                    this.caustic = new Caustic(prompts);
+                    map.on('visualize', this.visualizeAddress, this);
 
-                    prompts.on('add', this.prompt, this);
-                    warnings.on('add', this.warn, this);
-                    map.on('visualize', this.visualize, this);
+                    nodes.on('error', this.warn, this);
+                    markers.on('error', this.warn, this);
+                },
 
-                    nodes.on('error', this.createWarning, this);
-                    markers.on('error', this.createWarning, this);
+                showMap: function (zoom, lat, lng) {
+                    this.hideVisual().done(_.bind(function () {
+                        console.log('done');
+                        if (lat && lng) {
+                            map.pan(lat, lng);
+                        }
+                        if (zoom) {
+                            map.zoom(zoom);
+                        }
+                        if (map.$el.parent().length === 0) {
+                            map.$el.appendTo(this.$el).fadeIn();
+                        }
+                    }, this));
                 },
 
                 /**
-                 * Handle caustic service.
+                 * Fade the map out and pull it out of the DOM once it's faded.
                  */
-                scrape: function (node, request) {
-                    this.caustic.scrape(request)
-                        .done(_.bind(function (resp) {
-                            // todo handle this in store?
-                            delete resp.id;
-                            node.set(resp, {silent: true});
-                            node.normalize();
-                        }, this))
-                        .always(_.bind(function () {
-                            node.doneScraping();
-                        }, this));
-                },
-
-                showMap: function (options) {
-                    options = options || {};
-                    if (options.lat && options.lng) {
-                        map.pan(options.lat, options.lng);
-                    }
-                    if (options.zoom) {
-                        map.zoom(options.zoom);
-                    }
-                    map.$el.appendTo(this.$el);
-                },
-
                 hideMap: function () {
                     map.$el.fadeOut(_.bind(map.remove, map));
                 },
 
-                visualize: function (address, x, y) {
-                    var node = nodes.findAddress(address) ||
-                            nodes.create({
-                                instruction: 'instructions/nyc/property.json',
-                                uri: document.URL,
-                                name: 'Property Info',
-                                type: 'wait',
-                                tags: address
-                            });
-                    visual.draw(node, x, y);
-                    visual.$el.appendTo(this.$el);
+                /**
+                 * Create a new visual view for the address, centered on x and y.
+                 */
+                visualizeAddress: function (address, x, y) {
+                    var model = nodes.forAddress(address);
+
+                    if (model) {
+                        this.hideVisual(); // hide existing visual
+                        this.hideMap();
+
+                        this.visual = new VisualView({
+                            model: model,
+                            x: x || this.$el.width() / 2,
+                            y: y || this.$el.height() / 2
+                        });
+                        this.visual.$el.appendTo(this.$el);
+                        this.visual.resize();
+                        this.visual.render();
+                    }
                 },
 
+                /**
+                 * Fade out any existing visual, and remove it from the DOM once
+                 * it's faded.
+                 *
+                 * @return {Promise} that is resolved once the visual is gone.
+                 */
                 hideVisual: function () {
-                    visual.$el.fadeOut(_.bind(visual.remove, visual));
+                    var visual = this.visual,
+                        dfd = new $.Deferred();
+                    if (visual) {
+                        visual.$el.fadeOut(function () {
+                            visual.remove();
+                            dfd.resolve();
+                        });
+                        delete this.visual;
+                    } else {
+                        dfd.resolve();
+                    }
+                    return dfd.promise();
                 },
 
                 toggleHelp: function () {
@@ -137,40 +140,41 @@
                     }
                 },
 
-                createWarning: function (text) {
-                    warnings.create({ text: text });
-                },
-
-                warn: function (warning) {
-                    var view = new WarningView({ model: warning });
-                    view.$el.appendTo(this.$el);
-                    view.render();
-                },
-
-                prompt: function (prompt) {
-                    var view = new PromptView({ model: prompt });
-                    view.$el.appendTo(this.$el);
-                    view.render();
+                /**
+                 * Display a warning with the specified text.
+                 *
+                 * @param {String} text What the warning says.
+                 */
+                warn: function (model, text) {
+                    new WarningView({
+                        model: new WarningModel({ text: text})
+                    }).render().$el.appendTo(this.$el);
                 }
             }),
+
             appView = new AppView({ el: $('#openscrape') }),
 
             AppRouter = backbone.Router.extend({
 
                 initialize: function () {
                     map.on('bounds_changed', function (zoom, lat, lng) {
-                        this.navigate('map/' + zoom + '/' + lat + '/' + lng,
-                                      { replace: true });
+                        if (map.$el.is(':visible')) {
+                            this.navigate('map/' + zoom + '/' + lat + '/' + lng,
+                                          { replace: true });
+                        }
                     }, this);
 
-                    visual.on('visualize', function (node) {
-                        this.navigate('visualize/' + node.id);
+                    map.on('visualize', function (address) {
+                        this.navigate('visualize/address/' + address.zip +
+                                      '/' + address.street +
+                                      '/' + address.number);
                     }, this);
                 },
 
                 routes: {
                     '': 'index',
-                    'visualize/:address': 'visualize',
+                    'visualize/address/:zip/:street/:number': 'visualizeAddress',
+                    'map*': 'map',
                     'map/:zoom/:lat/:lng': 'map'
                 },
 
@@ -182,23 +186,34 @@
                 },
 
                 map: function (zoom, lat, lng) {
-                    appView.showMap({zoom: Number(zoom), lat: Number(lat), lng: Number(lng)});
+                    appView.showMap(Number(zoom), Number(lat), Number(lng));
                 },
 
-                visualize: function (address) {
-                    appView.visualize(address);
+                /**
+                 * Visualize the specified address.
+                 */
+                visualizeAddress: function (zip, street, number) {
+                    try {
+                        appView.visualizeAddress(new Address({
+                            zip: zip,
+                            street: street,
+                            number: number
+                        }));
+                    } catch (err) {
+                        appView.warn("Cannot visualize " + [number, street, zip].join(' '));
+                        this.navigate('/');
+                    }
                 }
             }),
 
             router = new AppRouter();
 
-        nodes.fetch();
-        markers.fetch();
-        warnings.fetch();
-        prompts.fetch();
-
         appView.render();
-        backbone.history.start();
+
+        // Send user to index for bad path
+        if (!backbone.history.start({ pushState: true })) {
+            router.navigate('/');
+        }
     });
 }());
 

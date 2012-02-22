@@ -52,31 +52,38 @@ define([
             return this;
         },
 
-        zoomIn: function () {
+        zoomIn: function (evt) {
+            evt.stopPropagation();
             this.trigger('zoom', 1);
         },
 
-        zoomOut: function () {
+        zoomOut: function (evt) {
+            evt.stopPropagation();
             this.trigger('zoom', -1);
         },
 
-        panDown: function () {
+        panDown: function (evt) {
+            evt.stopPropagation();
             this.trigger('pan', 0, 1);
         },
 
-        panUp: function () {
+        panUp: function (evt) {
+            evt.stopPropagation();
             this.trigger('pan', 0, -1);
         },
 
-        panRight: function () {
+        panRight: function (evt) {
+            evt.stopPropagation();
             this.trigger('pan', 1, 0);
         },
 
-        panLeft: function () {
+        panLeft: function (evt) {
+            evt.stopPropagation();
             this.trigger('pan', -1, 0);
         },
 
-        reset: function () {
+        reset: function (evt) {
+            evt.stopPropagation();
             this.trigger('reset');
         }
     });

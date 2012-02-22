@@ -34,17 +34,34 @@ define([
 
         store: new Store('markers'),
 
+        initialize: function () {
+            this.fetch();
+        },
+
         /**
          * Find a marker by lat/lng.
          *
          * @param lat {Number} the latitude
          * @param lng {Number} the longitude
          *
-         * @return {openscrape.MarkerModel} a marker
+         * @return {openscrape.MarkerModel} a marker, or null if there is none.
          */
         findByLatLng: function (lat, lng) {
             return this.find(function (marker) {
                 return marker.lat() === lat && marker.lng() === lng;
+            });
+        },
+
+        /**
+         * Find a marker by address.
+         *
+         * @param address
+         *
+         * @return {openscrape.MarkerModel} a marker, or null if there is none.
+         */
+        findByAddress: function (address) {
+            return this.find(function (marker) {
+                return marker.address().equals(address);
             });
         }
     });

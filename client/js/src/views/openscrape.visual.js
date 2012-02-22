@@ -52,14 +52,19 @@ define([
         },
 
         initialize: function (options) {
-            var controls = new ControlsView();
-            controls.$el.appendTo(this.$el);
-            controls.render();
+            this.controls = new ControlsView();
+            this.controls.$el.appendTo(this.$el);
+            this.controls.render();
 
-            controls.on('pan', this.pan, this);
-            controls.on('zoom', this.zoom, this);
-            controls.on('reset', this.reset, this);
+            this.controls.on('pan', this.pan, this);
+            this.controls.on('zoom', this.zoom, this);
+            this.controls.on('reset', this.reset, this);
 
+            this.debouncedResize = _.debounce(_.bind(this.resize, this), 100);
+            this.debouncedRender = _.debounce(this.render, 500);
+            this.model.collection.on('change:expanded change:childIds', this.debouncedRender, this);
+
+            $(window).resize(this.debouncedResize);
             this.svg = d3.select(this.el)
                 .append('svg')
                 .attr('xmlns', 'http://www.w3.org/2000/svg');
@@ -67,24 +72,27 @@ define([
             this.vis = this.svg.append("g")
                 .attr('id', 'viewport');
 
-            this.resize();
+            this.preloader = this.svg.append('g')
+                .attr('id', 'preloader');
 
             $(this.svg).svgPan('viewport');
             this.layoutTree = d3.layout.tree()
                 .size([180, 1]) // translation is handled by width rather than node depth, so second number doesn't matter
                 .separation(_.bind(function (a, b) {
+                    var translation = a.translation + b.translation + Math.E;
+
                     return (a.parent === b.parent ? 1 : 2)
-                        * (a.height() + b.height())
-                        / (Math.log(a.translation()) * Math.pow(b.translation(), 2));
-                }, this))
-                .children(_.bind(function (node) {
-                    return this.collection.getAll(node.visibleChildIds());
+                        * (a.height + b.height)
+                    // TODO determine translations
+                        / (Math.log(translation) * Math.pow(translation, 2));
                 }, this));
+        },
 
-            this.collection.on('add change:hidden change:childIds remove',
-                               _.debounce(this.refresh, 500), this);
-
-            $(window).resize(_.debounce(_.bind(this.resize, this), 100));
+        remove: function () {
+            backbone.View.prototype.remove.call(this);
+            this.controls.remove();
+            this.model.collection.off('change:expanded change:childIds', this.debouncedRender);
+            $(window).unbind('resize', this.debouncedResize);
         },
 
         /**
@@ -108,6 +116,7 @@ define([
         resize: function () {
             var width = this.$el.width(),
                 height = this.$el.height();
+
             this.svg.attr('width', width)
                 .attr('height', height);
         },
@@ -126,7 +135,8 @@ define([
                 svgWidth = this.svg.attr('width'),
                 svgHeight = this.svg.attr('height');
 
-            _.each(this.calculateData(), function (node) {
+            // TODO
+            _.each(this.model.getVisible(), function (node) {
                 var t = node.translation() + node.width(),
                     x = Math.cos(node.x + 180) * t,
                     y = Math.sin(node.x + 180) * t;
@@ -156,7 +166,6 @@ define([
          * @param inOut Positive to zoom in, negative to zoom out.
          */
         zoom: function (inOut) {
-            // todo scale from center
             var svg = this.svg[0][0],
                 vis = this.vis[0][0],
                 ratio = 2,
@@ -192,69 +201,96 @@ define([
                 vis = this.vis[0][0],
                 offset = 150,
                 m = vis.getCTM().translate(
-                    leftRight ? (leftRight > 0 ? -offset : offset) : 0,
-                    upDown    ? (upDown    > 0 ? -offset : offset) : 0
+                    leftRight === 0 ? 0 : leftRight > 0 ? -offset : offset,
+                    upDown    === 0 ? 0 : upDown    > 0 ? -offset : offset
                 );
             this.vis.transition()
                 .duration(200)
                 .attr('transform', 'matrix(' + m.a + ',' + m.b + ',' + m.c + ',' + m.d + ',' + m.e + ',' + m.f + ')');
         },
 
-        draw: function (node, x, y) {
-            x = x || this.svg.attr('width') / 2;
-            y = y || this.svg.attr('height') / 2;
-            this.vis.attr('transform', "matrix(1, 0, 0, 1, " + x + "," + y + ")");
-            this.data = this.layoutTree.nodes(node);
-            _.each(this.data, function (node) {
-                node.x = _.isNaN(node.x) ? 0 : node.x;
-            });
+        // draw: function (node, x, y) {
+        //     x = x || this.svg.attr('width') / 2;
+        //     y = y || this.svg.attr('height') / 2;
+        //     this.vis.attr('transform', "matrix(1, 0, 0, 1, " + x + "," + y + ")");
+        //     this.data = this.layoutTree.nodes(node);
+        //     _.each(this.data, function (node) {
+        //         node.x = _.isNaN(node.x) ? 0 : node.x;
+        //     });
+        // },
+
+        /**
+         * Render every node into an invisible SVG so that we know how
+         * big they are for scaling purposes.
+         */
+        preload: function () {
+            var nodes = this.preloader
+                    .selectAll('.preload')
+                    .data(this.model.descendents().concat(this.model), function (node) {
+                        return node.id;
+                    });
+
+            nodes.enter()
+                .append('g')
+                .classed('preload', true)
+                .each(function (node) {
+                    var view = new NodeView({
+                        model: node,
+                        el: this
+                    }).render();
+                    view.remove();
+                });
+
+            nodes.exit()
+                .remove();
         },
 
-        refresh: function () {
-            var outer = this.vis.selectAll(".outer")
-                    .data(this.data, function (d) { return d.id; }),
-                link = this.vis.selectAll("path.link")
-                    .data(this.layoutTree.links(this.data), function (d) {
+        render: function () {
+            this.preload();
+
+            var data = _.map(this.layoutTree.nodes(this.model.asTree()), function (d) {
+                    // d3's tree assigns NaN x sometimes. This fixes it.
+                    d.x = _.isNaN(d.x) ? 0 : d.x;
+                    return d;
+                }),
+                outer = this.vis
+                    .selectAll(".outer")
+                    .data(data, function (d) { return d.id; }),
+                link = this.vis
+                    .selectAll("path.link")
+                    .data(this.layoutTree.links(data), function (d) {
                         return d.source.id + '_' + d.target.id;
                     }),
-                inner;
+                collection = this.model.collection;
 
             outer.enter()
                 .append('g')
                 .classed('outer', true)
                 .append('g')
                 .classed('inner', true)
-                .each(function (node) {
+                .attr('transform', function (d) {
+                    if (d.x < 90 || d.x > 270) {
+                        return 'rotate(180)translate(' + -d.width + ',0)';
+                    } else {
+                        return '';
+                    }
+                })
+                .each(function (d) {
                     // create view for node, so that we know width/height
                     new NodeView({
-                        model: node,
+                        model: collection.get(d.id),
                         el: this
                     }).render();
                 });
 
-            // regenerate data, since we have renders to allow for separation
-            //this.calculateData();
-
-            inner = this.vis.selectAll('.inner');
-
             outer.transition()
                 .duration(1000)
-                .attr("transform", function (node) {
-                    var translate = node.translation(),
-                        angle = node.x + 180;
+                .attr("transform", function (d) {
+                    var angle = Number(d.x + 180).toFixed(3);
 
                     return "rotate(" + angle + ")" +
-                        "translate(" + translate + ")";
+                        "translate(" + d.translation + ")";
                 });
-
-            inner.transition().attr('transform', function (node) {
-                if (node.x < 90 || node.x > 270) {
-                    var x = -node.width();
-                    return 'rotate(180)translate(' + x + ',0)';
-                } else {
-                    return '';
-                }
-            });
 
             outer.exit()
                 .transition()
@@ -272,21 +308,12 @@ define([
 
             link.transition()
                 .duration(1000)
-                .attr('d', function (node, i) {
-                    var targetY = node.target.translation(),
-                        sourceY = node.source.translation();
-
-                    if (targetY < sourceY) {
-                        targetY = targetY + node.target.width();
-                    } else {
-                        sourceY = sourceY + node.source.width();
-                    }
-
+                .attr('d', function (d, i) {
                     return diagonal({
-                        source: { x: node.source.x,
-                                  y: sourceY },
-                        target: { x: node.target.x,
-                                  y: targetY }
+                        source: { x: d.source.x,
+                                  y: d.source.translation + d.source.width },
+                        target: { x: d.target.x,
+                                  y: d.target.translation }
                     }, i);
                 });
 
@@ -304,11 +331,6 @@ define([
                 });
 
             return this;
-        },
-
-        erase: function () {
-            this.data = [];
-            this.refresh();
         }
     });
 });

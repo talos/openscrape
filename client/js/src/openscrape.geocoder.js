@@ -23,11 +23,12 @@
 
 define([
     'require',
+    './openscrape.address',
     'lib/underscore',
     'lib/google',
     'lib/json2',
     'lib/jquery'
-], function (require, _, google, json) {
+], function (require, Address, _, google, json) {
     "use strict";
 
     var $ = require('jquery');
@@ -35,6 +36,7 @@ define([
     function Geocoder() {
         this.geocoder = new google.maps.Geocoder();
         _.bind(this.reverseGeocode, this);
+        _.bind(this.geocode, this);
     }
 
     /**
@@ -46,10 +48,8 @@ define([
      * @param northEastLat
      * @param northEastLng
      *
-     * @return {Promise} that will be resolved with a JS object:
-     * in the format {name: <fullname>, lat: <lat>, lng: <lng>} or
-     * rejected with an error message
-     * if there was a problem.
+     * @return {Promise} that will be resolved with (fullname, lat, lng)
+     * rejected with an error message if there was a problem.
      */
     Geocoder.prototype.geocode = function (address, southWestLat, southWestLng,
                                            northEastLat, northEastLng) {
@@ -58,16 +58,16 @@ define([
         this.geocoder.geocode(
             {
                 address: address,
-                bounds: new google.maps.LatLngBounds(
+                bounds: southWestLat ? new google.maps.LatLngBounds(
                     new google.maps.LatLng(southWestLat, southWestLng),
                     new google.maps.LatLng(northEastLat, northEastLng)
-                )
+                ) : undefined
             },
             function (results, status) {
                 if (status === google.maps.GeocoderStatus.OK) {
-                    dfd.resolve({ name: results[0].formatted_address,
-                             lat: results[0].geometry.location.lat(),
-                             lng: results[0].geometry.location.lng() });
+                    dfd.resolve(results[0].formatted_address,
+                             results[0].geometry.location.lat(),
+                             results[0].geometry.location.lng());
 
                     // var result = _.find(results, function (result) {
                     //     return result.geometry.location;
@@ -93,15 +93,14 @@ define([
      * @param lat The float latitude to reverse geocode.
      * @param lng The float longitude to reverse geocode.
      *
-     * @return {Promise} that will be resolved with a JS object with address
-     * info when successful, or rejected with
-     * an error message if there is a problem.
+     * @return {Promise} that will be resolved with an {openscrape.Address}
+     * when successful, or rejected with an error message if there is a problem.
      */
     Geocoder.prototype.reverseGeocode = function (lat, lng) {
         var dfd = new $.Deferred(),
-            latlng = new google.maps.LatLng(lat, lng);
+            latLng = new google.maps.LatLng(lat, lng);
 
-        this.geocoder.geocode({ 'latLng': latlng }, function (results, status) {
+        this.geocoder.geocode({ 'latLng': latLng }, function (results, status) {
             var addresses;
 
             if (status === google.maps.GeocoderStatus.OK) {
@@ -126,13 +125,11 @@ define([
                         });
 
                         if (number && street && zip) {
-                            addresses.push({
+                            addresses.push(new Address({
                                 number: number,
                                 street: street,
-                                zip: zip,
-                                lat: lat,
-                                lng: lng
-                            });
+                                zip: zip
+                            }));
                         }
                     }
                 });

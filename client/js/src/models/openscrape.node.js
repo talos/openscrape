@@ -49,78 +49,57 @@ define([
     return backbone.Model.extend({
         defaults: function () {
             return {
-                ancestors: [], // root is first, immediate parent last
                 childIds: [],
                 cookies: {},
                 tags: {},
                 force: false,
-                hidden: false,
-                selected: false,
-                scraping: false,
+                expanded: true,
+                translation: 0,
                 width: 0,
-                height: 0,
-                rawWidth: 0,
-                rawHeight: 0
+                height: 0
             };
         },
 
         initialize: function () {
-            this.normalize();
-            //this.collection.on('change:tags', this.checkTags, this);
-            //this.collection.on('normalized', this.checkTags, this); // nts: add is unsafe
+            //this.normalize();
+
+            // handle tree events
+            //if (this.has('parentId')) {
+                //this.parent = this.collection.get(this.get('parentId'));
+
+                // bubble up changes in visibility and childIds
+                //this.on('change:expanded', this.parent.trigger, this.parent, 'change:expanded');
+                //this.on('change:childIds', this.parent.trigger, this.parent, 'change:childIds');
+
+            //}
+            this.on('change:width change: translation', function () {
+                _.each(this.descendents(), function (node) {
+                    node.save('translation', node.translation());
+                });
+            }, this);
         },
 
-        scrape: function () {
-            this.set('scraping', true);
-            this.trigger('scrape', this, this.asRequest());
+        parent: function () {
+            if (!this._parent) {
+                this._parent = this.collection.get(this.get('parentId'));
+            }
+            return this._parent;
         },
 
-        doneScraping: function () {
-            this.set('scraping', false);
+        translation: function () {
+            return this.parent() ? this.parent().translation() + this.parent().width() + padding : 0;
         },
-
-        scraping: function () {
-            return this.get('scraping');
-        },
-
-        //checkTags: function () {
-            // console.log('checkTags');
-            // if (this.get('type') === 'missing') {
-            //     var missingTags = this.get('missing'),
-            //         tagNames = _.keys(this.tags());
-
-            //     console.log(missingTags);
-            //     console.log(tagNames);
-            //     console.log(_.all(missingTags,
-            //               function (mTag) {
-            //                   console.log(tagNames);
-            //                   console.log(mTag);
-            //                   console.log( _.include(tagNames, mTag));
-            //                   return _.include(tagNames, mTag); }));
-            //     if (_.all(missingTags,
-            //               function (mTag) {
-            //                   console.log(tagNames);
-            //                   console.log(mTag);
-            //                   console.log( _.include(tagNames, mTag));
-            //                   return _.include(tagNames, mTag); })) {
-            //         console.log('newTags');
-            //         this.trigger('newTags');
-            //     }
-            // }
-        //},
 
         /**
          * Flatten all children into separate childIDs.
          */
         normalize: function () {
-            this.save({}, {silent: true}); // ninja grab our ID
-
             var children = this.get('children'),
                 childIds = this.get('childIds'),
-                childAncestors = this.get('ancestors').concat([this.id]),
                 status;
 
             this.unset('children', {silent: true});
+            this.save({}, {silent: true}); // ninja grab our ID
 
             if (this.has('status')) {
                 // is a proper response, create values for children
@@ -128,7 +107,8 @@ define([
                 this.set('type', status, {silent: true});
                 _.each(children, function (respAry, valueName) {
                     var childTags = {},
-                        thisTags = this.get('tags');
+                        thisTags = this.get('tags'),
+                        childNode;
 
                     if (status === 'found') {
                         if (children.length === 1) {
@@ -141,20 +121,24 @@ define([
                         }
                     }
 
-                    childIds.push(this.collection.create({
+                    childNode = this.collection.create({
                         name: valueName,
-                        ancestors: childAncestors,
+                        parentId: this.id,
                         type: status === 'loaded' ? 'page' : 'match',
                         children: respAry,
                         tags: childTags
-                    }).id);
+                    });
+                    childNode.normalize();
+                    childIds.push(childNode.id);
                 }, this);
             } else {
                 // is a value, already has responses for children
                 _.each(children, function (child) {
-                    child.ancestors = childAncestors;
+                    child.parentId = this.id;
                     delete child.id;
-                    childIds.push(this.collection.create(child).id);
+                    var childNode = this.collection.create(child);
+                    childNode.normalize();
+                    childIds.push(childNode.id);
                 }, this);
             }
 
@@ -164,7 +148,7 @@ define([
 
             this.set({
                 childIds: childIds,
-                hidden: childIds.length > 1 // auto-hide if childIds greater than 1
+                expanded: childIds.length === 1 // only show if one child
             });
 
             this.save();
@@ -172,16 +156,19 @@ define([
             this.trigger('normalized');
         },
 
-        show: function () {
-            this.save('hidden', false);
-        },
-
-        hide: function () {
-            this.save('hidden', true);
-        },
-
+        /**
+         * Toggle whether this node's children are visible.
+         */
         toggle: function () {
-            this.save('hidden', !this.get('hidden'));
+            this.save('expanded', !this.expanded());
+        },
+
+        /**
+         * @return {Boolean} True if this node's children are visible,
+         * False otherwise.
+         */
+        expanded: function () {
+            return this.get('expanded');
         },
 
         /**
@@ -207,7 +194,7 @@ define([
 
             if (!isBranch) {
                 Array.prototype.push.apply(descendents, childIds);
-                _.each(this.collection.getAll(childIds), function (child) {
+                _.each(this.collection.filterIds(childIds), function (child) {
                     Array.prototype.push.apply(descendents, child.oneToOneDescendents(excludeId));
                 });
             }
@@ -217,16 +204,9 @@ define([
         /**
          * @return {Array} of {openscrape.NodeModel} ancestors of this node.
          */
-        ancestors: function () {
-            return this.collection.getAll(this.get('ancestors'));
-        },
-
-        /**
-         * @return {Array<Number>} Immediate visible children IDs of this node.
-         */
-        visibleChildIds: function () {
-            return this.get('hidden') ? [] : this.get('childIds');
-        },
+        // ancestors: function () {
+        //     return this.collection.filterIds(this.get('ancestors'));
+        // },
 
         /**
          * @return {Array} of IDs that are one-to-one found relations
@@ -257,7 +237,7 @@ define([
          */
         cookies: function () {
             return _.reduce(
-                _.invoke(this.collection.getAll(this.related()), 'get', 'cookies'),
+                _.invoke(this.collection.filterIds(this.related()), 'get', 'cookies'),
                 accumulate,
                 {}
             );
@@ -271,22 +251,9 @@ define([
          */
         tags: function () {
             return _.reduce(
-                _.invoke(this.collection.getAll(this.related()), 'get', 'tags'),
+                _.invoke(this.collection.filterIds(this.related()), 'get', 'tags'),
                 function (memo, tags) { return _.extend(memo, tags); },
                 {}
-            );
-        },
-
-        /**
-         * Adds up the width of this node's ancestors.
-         *
-         * @return {Number}
-         */
-        translation: function () {
-            return _.reduce(
-                _.invoke(this.collection.getAll(this.get('ancestors')), 'width'),
-                function (memo, width) { return memo + width + padding; },
-                0
             );
         },
 
@@ -308,6 +275,49 @@ define([
                 this.set('height', h);
             }
             return this.get('height');
+        },
+
+        /**
+         * Return this model's attributes and its visible children's
+         * attributes as a tree for d3.
+         *
+         * @return {Object}
+         */
+        asTree: function () {
+            var obj = this.toJSON();
+            if (this.expanded()) {
+                obj.children = _.map(
+                    this.children(),
+                    function (child) { return child.asTree(); }
+                );
+            }
+            return obj;
+        },
+
+        /**
+         * @return {Array[openscrape.NodeModel]}
+         */
+        children: function () {
+            return this.collection.filterIds(this.get('childIds'));
+        },
+
+        /**
+         * Obtain all descendent nodes matching the filter.
+         *
+         * @param {Function} filter An optional filter.  Will pull all
+         * descendents if not included.
+         *
+         * @return {Array[openscrape.NodeModel]}
+         */
+        descendents: function (filter) {
+            return _.reduce(
+                filter ? _.filter(this.children(), filter) : this.children(),
+                function (memo, child) {
+                    memo.push(child);
+                    return memo.concat(child.descendents(filter));
+                },
+                []
+            );
         }
     });
 });

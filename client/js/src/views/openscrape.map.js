@@ -31,9 +31,11 @@ define([
     '../openscrape.geocoder',
     'views/openscrape.marker',
     'views/openscrape.controls',
+    'models/openscrape.warning',
+    'views/openscrape.warning',
     'lib/jquery'
 ], function (require, _, google, backbone, mustache, template, geocoder,
-             MarkerView, ControlsView, zip2borough) {
+             MarkerView, ControlsView, WarningModel, WarningView) {
     "use strict";
 
     var $ = require('jquery');
@@ -80,11 +82,10 @@ define([
                 }
             );
 
-            this.geocoder = new google.maps.Geocoder({
-                bounds: this.gMap.getBounds()
-            });
-
             this.collection.each(_.bind(this.drawMarker, this));
+            this.collection.on('reset', function () {
+                this.collection.each(_.bind(this.drawMarker, this));
+            }, this);
             this.collection.on('add', this.drawMarker, this);
 
             // Bind all google events to model.
@@ -128,6 +129,12 @@ define([
             }, this);
         },
 
+        warn: function (text) {
+            new WarningView({
+                model: new WarningModel({text: text})
+            }).render().$el.appendTo(this.$el);
+        },
+
         placeChanged: _.debounce(function () {
             var place = this.lookup.getPlace(),
                 bounds = this.gMap.getBounds(),
@@ -145,13 +152,14 @@ define([
                 } else if (place.name) {
                     this.$lookup.addClass('loading');
                     geocoder.geocode(place.name, sw.lat(), sw.lng(), ne.lat(), ne.lng())
-                        .done(_.bind(function (result) {
-                            this.$lookup.val(result.name);
+                        .done(_.bind(function (name, lat, lng) {
+                            this.$lookup.val(name);
                             this.$lookup.blur();
-                            this.jumpTo(result.lat, result.lng);
+                            this.jumpTo(lat, lng);
                         }, this))
                         .fail(_.bind(function (reason) {
                             this.$lookup.val('');
+                            this.warn(reason);
                         }, this))
                         .always(_.bind(function () {
                             this.$lookup.removeClass('loading');
@@ -162,7 +170,7 @@ define([
 
         jumpTo: function (lat, lng) {
             this.pan(lat, lng);
-            this.zoom(17);
+            //this.zoom(17);
             this.createMarker(lat, lng);
         },
 
@@ -182,20 +190,24 @@ define([
                 .done(_.bind(function (address) {
                     this.collection.create({
                         address: address,
-                        latLng: {lat: lat, lng: lng}
+                        lat: lat,
+                        lng: lng
                     });
                 }, this))
                 .fail(_.bind(function (reason) {
-                    this.trigger('error', reason);
+                    this.warn(reason);
                 }, this))
                 .always(function () {
                     loadingMarker.setMap(null);
                 });
         },
 
-        bubble: function () {
-            this.trigger(arguments);
-        },
+        /**
+         * Bubble an event up.
+         */
+        // bubble: function () {
+        //     backbone.Events.trigger.apply(this, arguments);
+        // },
 
         drawMarker: function (marker) {
             var markerView = new MarkerView({
@@ -203,8 +215,8 @@ define([
                 gMap: this.gMap,
                 projectionOverlay: this.projectionOverlay
             }).render();
-
-            markerView.on('any', this.bubble, this);
+            // bubble event up
+            markerView.on('all', backbone.Events.trigger, this);
         },
 
         remove: function () {

@@ -18,31 +18,86 @@
    *
    ***/
 
-/*jslint nomen: true*/
+/*jslint nomen: true, browser: true*/
 /*global define*/
 
 define([
     'lib/underscore',
     'lib/backbone',
     '../openscrape.store',
-    'models/openscrape.node'
-], function (_, backbone, Store, NodeModel) {
+    'models/openscrape.node',
+    '../openscrape.zip2borough'
+], function (_, backbone, Store, NodeModel, zip2borough) {
     "use strict";
 
     return backbone.Collection.extend({
         model: NodeModel,
+
         store: new Store('nodes'),
+
+        initialize: function () {
+            this.fetch();
+        },
 
         /**
          * Get an array of nodes from an array of IDs.
          *
-         * @param {Array} ids array of IDs.
+         * @param {Array[String]} ids array of IDs.
          *
-         * @return {Array} of nodes in the same order as the original ids.
-         * If an ID was not found, it will have a null entry.
+         * @return {Array[openscrape.NodeModel]} The models whose IDs were in the list.
          */
-        getAll: function (ids) {
-            return _.map(ids, function (id) { return this.get(id); }, this);
+        filterIds: function (ids) {
+            //return _.map(ids, function (id) { return this.get(id); }, this);
+            return this.filter(function (model) {
+                return _.include(ids, model.id);
+            });
+        },
+
+        /**
+         * Find all root nodes -- those with no ancestors.
+         *
+         * @return {Array[openscrape.NodeModel]} All root models.
+         */
+        roots: function () {
+            return this.filter(function (model) {
+                return !_.has(model, 'parent');
+            });
+        },
+
+        /**
+         * Find the root node corresponding to this address.  Creates
+         * a new one if there is none.
+         *
+         * @param {openscrape.Address} address the address.
+         *
+         * @return {openscrape.NodeModel} the model for this address, or
+         * undefined if it was not possible to create a node for the address.
+         * In that case, an error will be triggered on the collection.
+         */
+        forAddress: function (address) {
+            var addressTags = address.toJSON(),
+                borough = zip2borough(address.zip);
+
+            if (borough) {
+                addressTags.apt = '';
+                addressTags.Borough = addressTags.borough = borough;
+                return _.find(this.roots(), function (node) {
+                    var tags = node.tags();
+                    return _.all(addressTags, function (value, key) {
+                        return tags[key] === value;
+                    });
+                }) || this.create({
+                    instruction: '/instructions/nyc/property.json',
+                    uri: window.location.origin + '/instructions/',
+                    name: 'Property Info',
+                    type: 'wait',
+                    tags: addressTags
+                });
+            } else {
+                this.trigger('error', null, address.toString() +
+                             ' is not in the five boroughs.');
+                return undefined;
+            }
         }
     });
 });

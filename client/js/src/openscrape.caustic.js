@@ -29,13 +29,14 @@ define([
     './openscrape.caustic.applet',
     './openscrape.queue',
     'models/openscrape.prompt',
+    'views/openscrape.prompt',
     'lib/jquery'
-], function (require, _, json, proxy, applet, Queue, PromptModel) {
+], function (require, _, json, proxy, applet, Queue, PromptModel, PromptView) {
     "use strict";
 
     var $ = require('jquery');
 
-    function Caustic(prompts) {
+    function Caustic() {
         this.queue = new Queue('caustic');
         this.started = false;
         this.prompt = new PromptModel({
@@ -47,7 +48,6 @@ define([
             resolve: 'Applet',
             reject: 'Proxy'
         });
-        this.prompts = prompts;
 
         this.prompt.on('resolved', _.bind(function () {
             applet.enable().done(_.bind(function () {
@@ -72,15 +72,17 @@ define([
      * Scrape a request.
      *
      * @param {Object} request a JS object to request.
+     * @param {jquery.DOM} $el a jquery element to which a prompt can be
+     * attached, if necessary.
      *
      * @return {Promise} that will be resolved with the raw JS object
      * of the response when the request is done, or rejected with a
      * reason for why it failed.
      **/
-    Caustic.prototype.scrape = function (request) {
-        if (this.prompt.isNew()) {
-            this.prompts.add(this.prompt);
-            this.prompt.save();
+    Caustic.prototype.scrape = function (request, $el) {
+        if (!this.requester) {
+            new PromptView({ model: this.prompt })
+                .render().$el.prependTo($el);
         }
 
         var dfd = new $.Deferred(),
@@ -102,5 +104,5 @@ define([
         return dfd.promise();
     };
 
-    return Caustic;
+    return new Caustic();
 });

@@ -118,22 +118,28 @@ define([
 
         initialize: function (options) {
             this.model.on('change:highlight', this.highlight, this);
-            this.model.on('change:scraping change:hidden', this.render, this);
+            this.model.on('change:type', this.render, this);
             this.d3el = d3.select(this.el).classed('node', true);
+        },
+
+        remove: function () {
+            backbone.View.prototype.remove.call(this);
+            this.model.off('change:highlight', this.highlight, this);
+            this.model.off('change:type', this.render, this);
         },
 
         /**
          * Highlight ancestors
          */
         mouseEnter: function (evt) {
-            _.invoke(this.model.ancestors(), 'set', 'highlight', true);
+            //_.invoke(this.model.ancestors(), 'set', 'highlight', true);
         },
 
         /**
          * Unhighlight ancestors
          */
         mouseLeave: function (evt) {
-            _.invoke(this.model.ancestors(), 'set', 'highlight', false);
+            //_.invoke(this.model.ancestors(), 'set', 'highlight', false);
         },
 
         highlight: function () {
@@ -144,17 +150,35 @@ define([
 
         click: function (evt) {
             //this.model.edit();
+            console.log(this.model);
 
             if (this.model.get('type') === 'wait') {
-                //console.log(this.model);
                 this.model.save('force', true);
-                this.model.scrape();
+                this.scrape();
             } else if (this.model.get('type') === 'missing') {
-                this.model.scrape();
+                this.scrape();
             } else if (this.model.get('childIds').length > 1) {
                 this.model.toggle();
             }
             evt.stopPropagation();
+        },
+
+        scrape: function () {
+            var request = this.model.asRequest();
+            console.log('scraping'); // todo svg animation
+            caustic.scrape(request, this.$el.closest('div'))
+                .done(_.bind(function (resp) {
+                    // todo handle this in store?
+                    delete resp.id;
+                    this.model.set(resp, {silent: true});
+                    this.model.normalize();
+                }, this))
+                .fail(_.bind(function (error) {
+                    this.model.trigger('error', this.model, error);
+                }, this))
+                .always(_.bind(function () {
+                    console.log('done scraping'); // todo svg animation
+                }, this));
         },
 
         nameIsHTML: function () {
@@ -214,22 +238,16 @@ define([
                 scaleX = contentWidth / rawWidth,
                 scaleY = contentHeight / rawHeight;
 
-            if (this.model.scraping()) {
-                $div.addClass('loading');
-            } else {
-                $div.removeClass('loading');
-            }
-
             this.background = this.d3el.insert('path', '.container')
                 .classed('background', true)
                 .classed(this.model.get('type'), true)
-                .classed('hidden', this.model.get('hidden'))
+                .classed('hidden', !this.model.expanded())
                 .attr('d', path);
 
             this.d3el.append('path')
                 .classed('mask', true)
                 .classed(this.model.get('type'), true)
-                .classed('hidden', this.model.get('hidden'))
+                .classed('hidden', !this.model.expanded())
                 .attr('d', path);
                 // .append('svg:animate')
                 // .attr('svg:attributeType', 'CSS')

@@ -24,34 +24,44 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.zip2borough'
-], function (_, backbone, zip2borough) {
+    '../openscrape.address',
+    '../openscrape.zip2borough',
+    'collections/openscrape.nodes'
+], function (_, backbone, Address, NodesCollection) {
     "use strict";
 
     return backbone.Model.extend({
 
-        validate: function (attrs) {
-            if (typeof attrs.latLng.lat !== 'number' || typeof attrs.latLng.lng !== 'number') {
-                return "invalid lat/lng: " + attrs.latLng.lat + ',' + attrs.latLng.lng;
-            }
+        // validate: function (attrs) {
+        //     // console.log('validate');
+        //     // if (typeof attrs.lat !== 'number' || typeof attrs.lng !== 'number') {
+        //     //     return "invalid lat/lng: " + attrs.lat + ',' + attrs.lng;
+        //     // }
 
-            attrs.address.apt = '';
-            attrs.address.borough = zip2borough(attrs.address.azip);
-            attrs.address.Borough = attrs.address.borough;
+        //     // console.log(attrs);
+        //     // if (attrs.address.constructor !== Address) {
+        //     //     return "invalid address: " + attrs.address;
+        //     // }
 
-            if (!attrs.address.borough) {
-                return "Sorry, that selection is not in the five boroughs.";
-            }
+        //     // return undefined;
+        // },
 
-            return undefined;
+        lat: function () {
+            return this.get('lat');
         },
 
-        latLng: function () {
-            return this.get('latLng');
+        lng: function () {
+            return this.get('lng');
         },
 
         address: function () {
-            return this.get('address');
+            //console.log(this);
+            //console.log(this.get('address').constructor);
+            return new Address(this.get('address'));
+        },
+
+        title: function () {
+            return this.address().toString();
         }
     });
 });

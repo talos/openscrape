@@ -54,6 +54,8 @@ define([
                 .hide()
                 .html(mustache.render(template, this.model.toJSON()))
                 .slideDown('fast');
+
+            return this;
         },
 
         remove: function () {

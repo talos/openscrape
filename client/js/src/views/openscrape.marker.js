@@ -36,12 +36,13 @@ define([
          * projection can be obtained.
          */
         initialize: function (options) {
+
             this.marker = new google.maps.Marker({
                 map: options.gMap, // bound to google maps
                 animation: google.maps.Animation.DROP,
-                position: new google.maps.LatLng(this.model.latLng().lat,
-                                                 this.model.latLng().lng),
-                title: this.model.address()
+                position: new google.maps.LatLng(this.model.lat(),
+                                                 this.model.lng()),
+                title: this.model.title()
             });
 
             this.projectionOverlay = options.projectionOverlay;
@@ -50,6 +51,10 @@ define([
             this.model.on('destroy', this.destroy, this);
         },
 
+        /**
+         * Capture the x & y of the click, and bubble up a
+         * visualization event with the address.
+         */
         click: function (evt) {
             var p = this.projectionOverlay
                     .getProjection()
@@ -58,6 +63,9 @@ define([
             this.trigger('visualize', this.model.address(), p.x, p.y);
         },
 
+        /**
+         * Pull the marker off the map when its model is destroyed.
+         */
         destroy: function () {
             this.marker.setMap(null);
         }
