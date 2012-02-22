@@ -133,6 +133,15 @@ define([
             }, this);
         },
 
+        /**
+         * No additional drawing is necessary after initialization,
+         * but this prevents blank tiles from appearing.
+         */
+        render: function () {
+            google.maps.event.trigger(this.gMap, 'resize');
+            return this;
+        },
+
         warn: function (text) {
             new WarningView({
                 model: new WarningModel({text: text})
