@@ -133,33 +133,31 @@ body {
     z-index: 2;
 }
 
-#openscrape #map input {
-    z-index: 3;
-    position: absolute;
-    height: 1.8em;
-    border: 1px solid black;
-    border-radius: .5em;
-    top: 1em;
-}
-
 #openscrape #map #gMap {
     position: absolute;
     width: 100%;
     height: 100%;
 }
 
-#openscrape #map #lookup {
-    width: 260px;
+#openscrape #map #inputs {
+    z-index: 3;
+    position: absolute;
+    top: 1em;
     left: 80px;
 }
 
-#openscrape #map #toggle {
-    left: 350px;
-    width: 90px;
+#openscrape #map #inputs input {
+    height: 1.8em;
+    border: 1px solid black;
+    border-radius: .5em;
 }
 
-#openscrape #map #clear {
-    left: 450px;
+#openscrape #map #inputs #lookup {
+    width: 260px;
+}
+
+#openscrape #map #inputs #erase {
+    left: 350px;
     width: 90px;
 }
 

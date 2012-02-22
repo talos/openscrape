@@ -49,6 +49,10 @@ define([
         defaultLng: -73.98,
         defaultZoom: 11,
 
+        events: {
+            'click #erase': 'eraseMarkers'
+        },
+
         initialize: function (options) {
             var dblClickWaitTime = 500,
                 dblClickWait = null,
@@ -235,6 +239,13 @@ define([
         reset: function () {
             this.pan(this.defaultLat, this.defaultLng);
             this.zoom(this.defaultZoom);
+        },
+
+        eraseMarkers: function () {
+            // why does this need to be in a loop?
+            while (this.collection.length) {
+                this.collection.invoke('destroy');
+            }
         }
     });
 });
