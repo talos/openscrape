@@ -70,15 +70,15 @@
 
                 showMap: function (zoom, lat, lng) {
                     this.hideVisual().done(_.bind(function () {
-                        console.log('done');
+                        if (map.$el.parent().length === 0) {
+                            map.$el.appendTo(this.$el).fadeIn();
+                            map.render();
+                        }
                         if (lat && lng) {
                             map.pan(lat, lng);
                         }
                         if (zoom) {
                             map.zoom(zoom);
-                        }
-                        if (map.$el.parent().length === 0) {
-                            map.$el.appendTo(this.$el).fadeIn();
                         }
                     }, this));
                 },
@@ -101,13 +101,15 @@
                         this.hideMap();
 
                         this.visual = new VisualView({
-                            model: model,
-                            x: x || this.$el.width() / 2,
-                            y: y || this.$el.height() / 2
+                            model: model
                         });
                         this.visual.$el.appendTo(this.$el);
+                        if (x && y) {
+                            this.visual.center(x, y);
+                        }
                         this.visual.resize();
                         this.visual.render();
+                        this.visual.reset();
                     }
                 },
 
