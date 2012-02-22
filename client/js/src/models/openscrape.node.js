@@ -61,18 +61,7 @@ define([
         },
 
         initialize: function () {
-            //this.normalize();
-
-            // handle tree events
-            //if (this.has('parentId')) {
-                //this.parent = this.collection.get(this.get('parentId'));
-
-                // bubble up changes in visibility and childIds
-                //this.on('change:expanded', this.parent.trigger, this.parent, 'change:expanded');
-                //this.on('change:childIds', this.parent.trigger, this.parent, 'change:childIds');
-
-            //}
-            this.on('change:width change: translation', function () {
+            this.on('change:width change:translation', function () {
                 _.each(this.descendents(), function (node) {
                     node.save('translation', node.translation());
                 });
@@ -202,26 +191,17 @@ define([
         },
 
         /**
-         * @return {Array} of {openscrape.NodeModel} ancestors of this node.
-         */
-        // ancestors: function () {
-        //     return this.collection.filterIds(this.get('ancestors'));
-        // },
-
-        /**
+         * @param excludeId a child ID to ignore when tracking down.  Optional.
+         *
          * @return {Array} of IDs that are one-to-one found relations
          * both below this node, above, and around it.
          */
-        related: function () {
-            var related = this.oneToOneDescendents();
+        related: function (excludeId) {
+            var related = this.oneToOneDescendents(excludeId);
 
-            _.each(this.get('ancestors'), function (ancestor) {
-                if (!_.include(related, ancestor)) {
-                    related.push(ancestor);
-                    Array.prototype.push.apply(related,
-                                               this.collection.get(ancestor).oneToOneDescendents(this.id));
-                }
-            }, this);
+            if (this.parent()) {
+                Array.prototype.push.apply(related, this.parent().related(this.id));
+            }
 
             related.push(this.id);
             return related;
