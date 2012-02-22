@@ -33,7 +33,7 @@ define([
 
         pollFrequency = 200, // how often to poll the applet when requesting
         javaClass = 'com.openscrape.applet.OpenScrapeApplet.class',
-        dir = 'jar/',
+        dir = '/jar/',
         //jar = 'openscrape.jar?' + Date.now(),
         jar = 'openscrape.jar',
 
