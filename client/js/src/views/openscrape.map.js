@@ -50,7 +50,7 @@ define([
         defaultZoom: 11,
 
         events: {
-            'click #erase': 'eraseMarkers'
+            'click #inputs #erase': 'eraseMarkers'
         },
 
         initialize: function (options) {
