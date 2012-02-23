@@ -155,7 +155,7 @@ define([
 
         click: function (evt) {
             //this.model.edit();
-
+            //console.log(this.model);
             if (this.model.type() === 'wait') {
                 this.model.save('force', true);
                 this.scrape();

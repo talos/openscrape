@@ -78,7 +78,7 @@ define([
         },
 
         parent: function () {
-            if (!this._parent) {
+            if (!this._parent && this.has('parentId')) {
                 this._parent = this.collection.get(this.get('parentId'));
             }
             return this._parent;
