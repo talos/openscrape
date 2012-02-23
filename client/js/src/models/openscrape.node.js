@@ -145,6 +145,7 @@ define([
             });
 
             this.save();
+            _(this.related()).invoke('tagsChanged');
         },
 
         /**
@@ -181,7 +182,7 @@ define([
         oneToOneDescendents: function (excludeId) {
             var descendents = [],
                 isBranch = this.type() === 'found' && this.get('childIds').length > 1,
-                children = this.collection.filterIds(_.without(this.get('childIds'), excludeId));
+                children = this.children(function (ids) { return _(ids).without(excludeId); });
 
             if (!isBranch) {
                 Array.prototype.push.apply(descendents, children);
@@ -283,10 +284,15 @@ define([
         },
 
         /**
-         * @return {Array[openscrape.NodeModel]}
+         * Obtain immediate children of this node.
+         *
+         * @param {function} filter An optional filter to exclude childIds.
+         * Defaults to all childIds.
+         *
+         * @return {Array[openscrape.NodeModel]} the children.
          */
-        children: function () {
-            return this.collection.filterIds(this.get('childIds'));
+        children: function (filter) {
+            return this.collection.filterIds(filter ? filter(this.get('childIds')) : this.get('childIds'));
         },
 
         /**
@@ -295,7 +301,7 @@ define([
          * @param {Function} filter An optional filter.  Will pull all
          * descendents if not included.
          *
-         * @return {Array[openscrape.NodeModel]}
+         * @return {Array[openscrape.NodeModel]} all descendent nodes.
          */
         descendents: function (filter) {
             return _.reduce(
