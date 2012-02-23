@@ -105,63 +105,65 @@
  * authors and should not be interpreted as representing official policies, either expressed
  * or implied, of Andrea Leofreddi.
  */
+/*jslint browser: true*/
+/*global define*/
 
-/*global define, jQuery, window*/
-
-(function (factory) {
+// (function (factory) {
+//     "use strict";
+//     if (typeof define === 'function' && define.amd) {
+//         // AMD. Register as an anonymous module.
+//         define(['jquery'], factory);
+//     } else {
+//         // Browser globals
+//         factory(jQuery);
+//     }
+// }(function ($) {
+define(['require', 'lib/jquery'], function (require) {
     "use strict";
-    if (typeof define === 'function' && define.amd) {
-        // AMD. Register as an anonymous module.
-        define(['jquery'], factory);
-    } else {
-        // Browser globals
-        factory(jQuery);
-    }
-}(function ($) {
-    "use strict";
 
-    var Mousewheel = (function () {
-        function Mousewheel() {
-            var self = this;
-            this.watching = [];
-            this.trigger = function () { Mousewheel.prototype.trigger.apply(self, arguments); };
-            this.watch = function () { Mousewheel.prototype.watch.apply(self, arguments); };
-        }
-
-        Mousewheel.prototype.trigger = function (evt) {
-            var i = 0,
-                len = this.watching.length;
-
-            // Iterate through what we're watching & hit callbacks
-            while (i < len) {
-                this.watching[i][1](evt);
-                i += 1;
+    var $ = require('jquery'),
+        Mousewheel = (function () {
+            function Mousewheel() {
+                var self = this;
+                this.watching = [];
+                this.trigger = function () { Mousewheel.prototype.trigger.apply(self, arguments); };
+                this.watch = function () { Mousewheel.prototype.watch.apply(self, arguments); };
             }
-        };
 
-        /**
-         * Watch an element with a callback.  This will also do cleanup on the
-         * watched elements.
-         *
-         * @param $el {DOM} A jQuery-fied DOM element.
-         * @param callback A callback to call with the mousewheel event when it
-         * happens.
-         */
-        Mousewheel.prototype.watch = function ($el, callback) {
-            var i = 0;
-            while (i < this.watching.length) {
-                if (this.watching[i][0].closest('html').length === 0) {
-                    this.watching.splice(i, 1);
-                    i -= 1;
+            Mousewheel.prototype.trigger = function (evt) {
+                var i = 0,
+                    len = this.watching.length;
+
+                // Iterate through what we're watching & hit callbacks
+                while (i < len) {
+                    this.watching[i][1](evt);
+                    i += 1;
                 }
-                i += 1;
-            }
+            };
 
-            this.watching.push([$el, callback]);
-        };
+            /**
+             * Watch an element with a callback.  This will also do cleanup on the
+             * watched elements.
+             *
+             * @param $el {DOM} A jQuery-fied DOM element.
+             * @param callback A callback to call with the mousewheel event when it
+             * happens.
+             */
+            Mousewheel.prototype.watch = function ($el, callback) {
+                var i = 0;
+                while (i < this.watching.length) {
+                    if (this.watching[i][0].closest('html').length === 0) {
+                        this.watching.splice(i, 1);
+                        i -= 1;
+                    }
+                    i += 1;
+                }
 
-        return Mousewheel;
-    }()),
+                this.watching.push([$el, callback]);
+            };
+
+            return Mousewheel;
+        }()),
 
         mousewheel = new Mousewheel(),
 
@@ -428,4 +430,4 @@
             }
         });
     };
-}));
+});
