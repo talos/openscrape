@@ -120,6 +120,9 @@ define([
             this.model.on('change:highlight', this.highlight, this);
             this.model.on('change:type', this.render, this);
             this.model.on('change:missing', this.scrape, this);
+            if (this.model.type() === 'missing' && this.model.get('missing').length === 0) {
+                this.scrape();
+            }
             this.d3el = d3.select(this.el).classed('node', true);
         },
 
@@ -153,8 +156,6 @@ define([
         click: function (evt) {
             //this.model.edit();
 
-            console.log(_(this.model.related()).invoke('toJSON'));
-            console.log(this.model.tags());
             if (this.model.type() === 'wait') {
                 this.model.save('force', true);
                 this.scrape();
@@ -169,7 +170,7 @@ define([
                      (this.model.type() === 'missing' &&
                       this.model.get('missing').length === 0)) {
                 var request = this.model.asRequest();
-                console.log('scraping'); // todo svg animation
+                //console.log('scraping'); // todo svg animation
                 caustic.scrape(request, this.$el.closest('div'))
                     .done(_.bind(function (resp) {
                         // todo handle this in store?
@@ -181,7 +182,7 @@ define([
                         this.model.trigger('error', this.model, error);
                     }, this))
                     .always(_.bind(function () {
-                        console.log('done scraping'); // todo svg animation
+                        //console.log('done scraping'); // todo svg animation
                     }, this));
             }
         },
