@@ -92,7 +92,6 @@ define([
             }, this);
             this.collection.on('add', this.drawMarker, this);
 
-            // Bind all google events to model.
             // Thanks to http://stackoverflow.com/questions/832692
             google.maps.event.addListenerOnce(this.gMap, 'idle', _.bind(function () {
                 this.$el.removeClass('loading');

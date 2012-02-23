@@ -46,7 +46,6 @@ define([
             });
 
             this.projectionOverlay = options.projectionOverlay;
-
             google.maps.event.addListener(this.marker, 'click', _.bind(this.click, this));
             this.model.on('destroy', this.destroy, this);
         },
@@ -59,7 +58,6 @@ define([
             var p = this.projectionOverlay
                     .getProjection()
                     .fromLatLngToContainerPixel(this.marker.getPosition());
-
             this.trigger('visualize', this.model.address(), p.x, p.y);
         },
 
