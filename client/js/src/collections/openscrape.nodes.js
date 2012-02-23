@@ -88,7 +88,7 @@ define([
                     });
                 }) || this.create({
                     instruction: '/instructions/nyc/property.json',
-                    uri: window.location.origin + '/instructions/',
+                    uri: window.location.href.split('/').slice(0, 3).join('/') + '/instructions/',
                     name: 'Property Info',
                     type: 'wait',
                     tags: addressTags
