@@ -71,7 +71,6 @@ define([
             this.on('change:tags change:childIds', function () {
                 _.invoke(this.related().concat(this), 'tagsChanged');
             });
-            
         },
 
         type: function () {
@@ -94,9 +93,6 @@ define([
          */
         tagsChanged: function () {
             if (this.type() === 'missing') {
-                console.log('missing');
-                console.log(this.tags());
-                console.log(this.get('missing'));
                 this.save('missing',
                           _(this.get('missing')).without(_(this.tags()).keys())
                          );
@@ -119,27 +115,11 @@ define([
                 status = this.get('status');
                 this.set('type', status, {silent: true});
                 _.each(children, function (respAry, valueName) {
-                    var childTags = {},
-                        thisTags = this.get('tags'),
-                        childNode;
-
-                    // if (status === 'found') {
-                    //     if (children.length === 1) {
-                    //         // one-to-one relations store the tag here
-                    //         thisTags[this.get('name')] = valueName;
-                    //         this.set('tags', thisTags, {silent: true});
-                    //     } else {
-                    //         // otherwise, the tag is in the child.
-                    //         childTags[this.get('name')] = valueName;
-                    //     }
-                    // }
-
-                    childNode = this.collection.create({
+                    var childNode = this.collection.create({
                         name: valueName,
                         parentId: this.id,
                         type: status === 'loaded' ? 'page' : 'match',
-                        children: respAry,
-                        tags: childTags
+                        children: respAry
                     });
                     childNode.normalize();
                     childIds.push(childNode.id);
@@ -165,12 +145,6 @@ define([
             });
 
             this.save();
-            if (this.type() === 'missing') {
-                console.log('missing');
-                console.log(this.toJSON());
-                console.log(this.tags());
-                console.log(this.related());
-            }
         },
 
         /**
@@ -206,7 +180,7 @@ define([
          */
         oneToOneDescendents: function (excludeId) {
             var descendents = [],
-                isBranch = (this.type() === 'value' && this.get('childIds').length > 1),
+                isBranch = this.type() === 'found' && this.get('childIds').length > 1,
                 children = this.collection.filterIds(_.without(this.get('childIds'), excludeId));
 
             if (!isBranch) {
@@ -225,7 +199,7 @@ define([
          * both below this node, above, and around it.
          */
         related: function (excludeId) {
-            var related = this.collection.filterIds(this.oneToOneDescendents(excludeId));
+            var related = this.oneToOneDescendents(excludeId);
 
             if (this.parent()) {
                 Array.prototype.push.apply(related, this.parent().related(this.id));
@@ -259,8 +233,14 @@ define([
          */
         tags: function () {
             return _.reduce(
-                _.invoke(this.related(), 'get', 'tags'),
-                function (memo, tags) { return _.extend(memo, tags); },
+                this.related().concat(this),
+                function (memo, node) {
+                    var tags = node.get('tags');
+                    if (node.type() === 'match') {
+                        tags[node.parent().get('name')] = node.get('name');
+                    }
+                    return _.extend(memo, tags);
+                },
                 {}
             );
         },
