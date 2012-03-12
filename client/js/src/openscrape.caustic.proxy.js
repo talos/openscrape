@@ -24,7 +24,7 @@ define(['require', 'lib/jquery'], function (require) {
     "use strict";
 
     // PRIVATE
-    var request_path = "/request", //Path to hit caustic backend.
+    var request_path = "/proxy", //Path to hit caustic backend.
         $ = require('jquery');
 
     $.ajaxSetup({ timeout: 10000 });

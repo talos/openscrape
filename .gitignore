@@ -5,10 +5,13 @@
 *.sqlite
 *.db
 *.ini
+*.swp
 *.conf
+start.sh
 log/*
 todos.txt
 bin/*
+config/*
 client/index.dev.html
 client/js/build/*
 !client/js/build/openscrape.main.js
