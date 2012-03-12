@@ -8,6 +8,7 @@
 *.swp
 *.conf
 start.sh
+*.jsongit/
 log/*
 todos.txt
 bin/*
