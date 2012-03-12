@@ -4,7 +4,7 @@ Test the database.  Mongod must be running.
 
 import unittest
 import shutil
-from caustic.database import get_db, Users, Instructions
+from server.app.database import get_db, Users, Instructions
 from jsongit import JsonGitRepository
 from dictshield.base import ShieldException
 from pymongo.errors import DuplicateKeyError
