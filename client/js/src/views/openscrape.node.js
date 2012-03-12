@@ -159,6 +159,8 @@ define([
             if (this.model.type() === 'wait') {
                 this.model.save('force', true);
                 this.scrape();
+            } else if (this.model.type() === 'failed') {
+                console.log(this.model.toJSON());
             } else if (this.model.get('childIds').length > 1) {
                 this.model.toggle();
             }
