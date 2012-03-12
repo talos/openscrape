@@ -33,7 +33,7 @@ class Handler(MustacheRendering, UserHandlingMixin):
         """
         Convert an instruction to its path.
         """
-        return "/%s/instructions/%s" % (user_name, instruction_doc.name)
+        return "/instructions/%s/%s" % (user_name, instruction_doc.name)
 
     def instruction_paths(self, user_name, instruction_docs):
         """
@@ -377,11 +377,11 @@ V_C = VALID_URL_CHARS
 config = {
     'mongrel2_pair': (RECV_SPEC, SEND_SPEC),
     'handler_tuples': [
-        (r'^/?$', IndexHandler),
-        (r'^/([%s]+)/?$' % V_C, UserHandler),
-        (r'^/([%s]+)/instructions/?$' % V_C, InstructionCollectionHandler),
-        (r'^/([%s]+)/instructions/([%s]+)/?$' % (V_C, V_C), InstructionModelHandler),
-        (r'^/([%s]+)/tagged/([%s]+)/?$' % (V_C, V_C), TagCollectionHandler)],
+        (r'^/instructions/?$', IndexHandler),
+        (r'^/instructions/([%s]+)$' % V_C, UserHandler),
+        (r'^/instructions/([%s]+)/$' % V_C, InstructionCollectionHandler),
+        (r'^/instructions/([%s]+)/([%s]+)$' % (V_C, V_C), InstructionModelHandler),
+        (r'^/instructions/([%s]+)/([%s]+)/$' % (V_C, V_C), TagCollectionHandler)],
     'template_loader': load_mustache_env(TEMPLATE_DIR),
     'cookie_secret': COOKIE_SECRET,
 }

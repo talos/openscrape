@@ -87,7 +87,7 @@ define([
                         return tags[key] === value;
                     });
                 }) || this.create({
-                    instruction: '/instructions/nyc/property.json',
+                    instruction: '/instructions/openscrape/' + address.zip + '/',
                     uri: window.location.href.split('/').slice(0, 3).join('/') + '/instructions/',
                     name: 'Property Info',
                     type: 'wait',
