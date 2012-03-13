@@ -1,9 +1,7 @@
-#!/usr/bin/env python
-
 """
-Caustic server.
+Openscrape server.
 
-Store caustic JSON templates in little repos and let users shoot 'em round.
+Store caustic JSON instructions.
 """
 
 try:
@@ -291,8 +289,10 @@ class InstructionModelHandler(Handler):
         """
         context = {}
         doc = self.application.instructions.find(user_name, name)
+        print doc.instruction.__class__
         if doc:
             context['instruction'] = doc.to_python()
+            print doc.instruction.__class__
             status = 200
         else:
             context['error'] = "Instruction does not exist"
@@ -301,6 +301,10 @@ class InstructionModelHandler(Handler):
         if self.is_json_request():
             if status == 200:
                 context = doc.instruction
+            print doc.to_python()
+            print 'doc.instruction class: %s' % doc.instruction.__class__
+            print 'predump: %s' % context
+            #print 'postdump for json: %s' % json.dumps(context.for_json())
             self.set_body(json.dumps(context))
             self.set_status(status)
             return self.render()
@@ -321,6 +325,7 @@ class InstructionModelHandler(Handler):
             status = 403
         else:
             try:
+                print 'about to save or create'
                 doc = self.application.instructions.save_or_create(
                     user, name,
                     json.loads(self.get_argument('instruction')),

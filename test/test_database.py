@@ -200,3 +200,32 @@ class TestInstructions(unittest.TestCase):
         self.assertEqual({'load': 'something else'}, doc.instruction)
         self.assertEqual(['foo'], doc.tags)
 
+    def test_retrieve_fields(self):
+        """Get out what we put in
+        """
+        self.instructions.create(self.creator, 'retrieve', INSTRUCTION, TAGS)
+        doc = self.instructions.find(self.creator.name, 'retrieve')
+        self.assertEqual(INSTRUCTION, doc.instruction)
+        self.assertEqual(TAGS, doc.tags)
+
+    def test_save_and_retrieve_instruction(self):
+        """Should be able to edit instruction, persist it, and retrieve it.
+        """
+        self.instructions.create(self.creator, 'retrieve', INSTRUCTION, TAGS)
+        doc = self.instructions.find(self.creator.name, 'retrieve')
+        doc.instruction = {'load': 'nytimes.com'}
+        self.instructions.save(doc)
+        retrieved = self.instructions.find(self.creator.name, 'retrieve')
+        self.assertEqual({'load': 'nytimes.com'}, retrieved.instruction)
+
+    def test_save_or_create_and_retrieve_instruction(self):
+        """Should be able to edit instruction, persist it, and retrieve it.
+        All using save_or_create instead of create or save.
+        """
+        self.instructions.save_or_create(self.creator, 'retrieve', INSTRUCTION, TAGS)
+        doc = self.instructions.find(self.creator.name, 'retrieve')
+        retrieved = self.instructions.save_or_create(self.creator,
+                                                     'retrieve',
+                                                     {'load': 'nytimes.com'}, doc.tags)
+        self.assertEqual({'load': 'nytimes.com'}, retrieved.instruction)
+

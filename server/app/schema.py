@@ -1,3 +1,5 @@
+import copy
+
 BASE = {
     "type" : "object",
     "properties": {
@@ -15,7 +17,7 @@ BASE = {
             "description" : "An optional hash of metadata about this instruction.",
             "type" : "object",
             "required" : False
-        },
+        }
     },
     "additionalProperties": False
 }
@@ -30,25 +32,21 @@ LOAD_PROPERTIES = {
         "description" : "The HTTP method that should be used by this load.",
         "type" : "string",
         "enum" : ["head", "get", "post"],
-        "dependencies" : "load",
         "required" : False
     },
     "posts"   : {
         "description" : "Post data for this load.  Can either be name-value pairs or a string.  Mustache substitutions are performed either way.",
         "type" : ["object", "string"],
-        "dependencies" : "load",
         "required" : False
     },
     "headers" : {
         "description" : "A set of name-value pairs that will be used as extra headers for this particular load.  Mustache substitutions are performed on both the name and value.",
         "type" : "object",
-        "dependencies" : "load",
         "required" : False
     },
     "cookies": {
         "description" : "A set of name-value pairs that will be used as extra cookies for this particular load.  Mustache substitutions are performed on both the name and value.",
         "type" : "object",
-        "dependencies" : "load",
         "required" : False
     }
 }
@@ -57,7 +55,7 @@ FIND_PROPERTIES = {
     "find": {
         "description" : "The regular expression this instruction will use to find result(s) from its source.  Mustache substitutions are performed on this.",
         "type" : "string",
-        "required" : True 
+        "required" : True
     },
     "case_insensitive" : {
         "description" : "Whether this pattern is case-sensitive.",
@@ -102,26 +100,46 @@ FIND_PROPERTIES = {
     }
 }
 
-LOAD = dict(BASE)
+# Manually inherit from BASE, extend property dict
+LOAD = BASE.copy()
 LOAD['properties'] = dict(LOAD['properties'].items() + LOAD_PROPERTIES.items())
 
-FIND = dict(BASE)
+FIND = BASE.copy()
 FIND['properties'] = dict(FIND['properties'].items() + FIND_PROPERTIES.items())
+
+# These versions do not require 'load' or 'find', but do require 'extends'
+EXTENDED_FIND = copy.deepcopy(FIND)
+EXTENDED_LOAD = copy.deepcopy(LOAD)
+
+EXTENDED_FIND['properties']['find']['required'] = False
+EXTENDED_LOAD['properties']['load']['required'] = False
 
 INSTRUCTION = {
     "description" : "A Caustic instruction",
-    "type" : ["string", "array", LOAD, FIND],
+    # this is how validictory does 'extends', kinda
+    "type" : ["string", "array", EXTENDED_FIND, EXTENDED_LOAD, LOAD, FIND],
     "items": {
-        "type" : ["string", LOAD, FIND]
+        # disallow array inside array
+        "type" : ["string", EXTENDED_FIND, EXTENDED_LOAD, LOAD, FIND]
     }
 }
 
 THEN = {
-    "description" : "A Caustic instruction to run after.",
+    "description" : "Caustic instruction(s) to run after this one is done.",
     "required" : False,
     "type": INSTRUCTION
 }
 
+EXTENDS = {
+    "description" : "Caustic instruction(s) to inherit attributes from.",
+    "required" : True,
+    "type": INSTRUCTION
+}
+
+# Assign recursive properties dependent upon the above
 LOAD['properties']['then'] = THEN
 FIND['properties']['then'] = THEN
-
+EXTENDED_LOAD['properties']['then'] = THEN
+EXTENDED_FIND['properties']['then'] = THEN
+EXTENDED_LOAD['properties']['extends'] = EXTENDS
+EXTENDED_FIND['properties']['extends'] = EXTENDS

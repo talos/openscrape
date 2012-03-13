@@ -77,6 +77,26 @@ class TestInstructionDocument(unittest.TestCase):
                                   name='name',instruction={"load":"google.com"})
         doc.validate()
 
+    def test_modify_instruction(self):
+        """
+        Dict in, dict out.
+        """
+        doc = InstructionDocument(creator_id=self.cid,
+                                  name='name',instruction={"load":"google.com"})
+        doc.instruction = {'load': 'nytimes.com'}
+        doc.validate()
+        self.assertEqual({'load':'nytimes.com'}, doc.instruction)
+
+    def test_modify_tags(self):
+        doc = InstructionDocument(creator_id=self.cid,
+                                  name='name',
+                                  tags=['foo'],
+                                  instruction={"load":"google.com"})
+        doc.tags = ['foo', 'bar', 'baz']
+        doc.validate()
+        self.assertEqual(['foo', 'bar', 'baz'], doc.tags)
+
+
 class TestInstructionField(unittest.TestCase):
 
     def test_invalid(self):

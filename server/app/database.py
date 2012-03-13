@@ -146,12 +146,19 @@ class Instructions(object):
         """
         doc = self.find(creator.name, name)
         if doc:
+            print 'exists'
+            print doc.instruction.__class__
             doc.instruction = instruction
+            print doc.instruction.__class__
             doc.tags = tags
             self.save(doc)
             return doc
         else:
-            return self.create(creator, name, instruction, tags)
+            print 'does not exist'
+            doc =  self.create(creator, name, instruction, tags)
+            print doc.instruction
+            return doc
+            #return self.create(creator, name, instruction, tags)
 
     def save(self, doc):
         """Save an instruction.
