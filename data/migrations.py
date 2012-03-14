@@ -139,8 +139,8 @@ docs = [
     {
         'name': 'acris-index',
         "instruction": {
-                "description" : "Index of all property transactions for BBL in NYC excluding Staten Island.",
-                "name" : "Deeds & Mortgages",
+                "description" : "ACRIS property transactions",
+                "name" : "Search ACRIS property transactions",
                 "load" : "http://a836-acris.nyc.gov/Scripts/DocSearch.dll/BBLResult",
                 "cookies" : {
                     "JUMPPAGE" : "YES"
@@ -168,9 +168,11 @@ docs = [
                     },
                 "then" : {
                     "find" : "<!--Table Begin!-->(.*?)<!--Table End-->",
+                    "name" : "ACRIS table",
                     "match" : 0,
                     "then" : {
                         "extends" : "/instructions/openscrape/html-row",
+                        "name" : "Property transactions",
                         "min"  : 2,
                         "max"  : -1,
                         "then" : [{
@@ -288,7 +290,7 @@ docs = [
         "instruction": {
                 "description": "NYS DOS Corporate Entities Database",
                 "load" : "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.SELECT_ENTITY",
-                "name" : "Corporate Info",
+                "name" : "Search NYS Corporate Entities Database",
                 "posts": {
                     "p_entity_name" : "{{Name}}",
                     "p_name_type"   : "%25",
