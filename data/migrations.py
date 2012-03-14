@@ -15,7 +15,7 @@ docs = [
     {
         "name" : "property",
         "instruction": {
-            "name" : "DoF Lookup",
+            "name" : "Department of Finance Lookup",
             "load" : "http://webapps.nyc.gov:8084/CICS/fin1/find001I",
             "method" : "post",
             "posts" : {
@@ -122,7 +122,6 @@ docs = [
         'name': 'acris-index-recent-docs',
         "instruction": {
             "extends"     : "/instructions/openscrape/acris-index",
-            "description" : "Subsitutes in defaults that make this grab the most recent twelve documents.",
             "posts" : {
                 "hid_selectdate": "To Current Date",
                 "hid_datefromm" : "",
