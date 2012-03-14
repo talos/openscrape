@@ -250,7 +250,7 @@ define([
                 this.related().concat(this),
                 function (memo, node) {
                     var tags = node.get('tags');
-                    if (node.type() === 'find_value') {
+                    if (node.type() === 'found_value') {
                         tags[node.parent().get('name')] = node.get('name');
                     }
                     return _.extend(memo, tags);

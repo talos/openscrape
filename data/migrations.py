@@ -312,7 +312,7 @@ docs = [
                                 "match"       : 0
                                 },{
                                 "description" : "Corporate entity info.",
-                                "load"        : "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.ENTITY_INFORMATION?p_nameid={{p_nameid}}&p_corpid={{p_corpid}}&p_entity_name={{Owner}}&p_name_type=%25&p_search_type=PARTIAL",
+                                "load"        : "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.ENTITY_INFORMATION?p_nameid={{p_nameid}}&p_corpid={{p_corpid}}&p_entity_name={{Name}}&p_name_type=%25&p_search_type=PARTIAL",
                                 "then" : [{
                                         "name"        : "Current Entity Name",
                                         "find"        : "<th scope=\"row\">Current Entity Name:</th>[^<]*<td>([^<]*)</td>",
