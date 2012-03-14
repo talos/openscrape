@@ -100,10 +100,11 @@ define([
         },
 
         /**
-         * Flatten all children into separate childIDs.
+         * Flatten all children into separate nodes, reference their childIDs.
          */
         normalize: function () {
             var children = this.get('children'),
+                referenced = this.get('referenced'),
                 childIds = this.get('childIds'),
                 status;
 
@@ -114,16 +115,28 @@ define([
                 // is a proper response, create values for children
                 status = this.get('status');
                 this.set('type', status, {silent: true});
-                _.each(children, function (respAry, valueName) {
-                    var childNode = this.collection.create({
-                        name: valueName,
-                        parentId: this.id,
-                        type: status === 'loaded' ? 'page' : 'match',
-                        children: respAry
-                    });
-                    childNode.normalize();
-                    childIds.push(childNode.id);
-                }, this);
+                if (status === 'reference') {
+                    _.each(referenced, function (reference) {
+                        // References aren't values, but are full on
+                        // instructions themselves.  Ripped from the bottom.
+                        reference.parentId = this.id;
+                        delete reference.id;
+                        var childNode = this.collection.create(reference);
+                        childNode.normalize();
+                        childIds.push(childNode.id);
+                    }, this);
+                } else {
+                    _.each(children, function (respAry, valueName) {
+                        var childNode = this.collection.create({
+                            name: valueName,
+                            parentId: this.id,
+                            type: status + '_value',
+                            children: respAry
+                        });
+                        childNode.normalize();
+                        childIds.push(childNode.id);
+                    }, this);
+                }
             } else {
                 // is a value, already has responses for children
                 _.each(children, function (child) {
@@ -237,7 +250,7 @@ define([
                 this.related().concat(this),
                 function (memo, node) {
                     var tags = node.get('tags');
-                    if (node.type() === 'match') {
+                    if (node.type() === 'find_value') {
                         tags[node.parent().get('name')] = node.get('name');
                     }
                     return _.extend(memo, tags);

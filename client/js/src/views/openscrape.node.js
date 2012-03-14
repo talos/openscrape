@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint nomen: true*/
+/*jslint nomen: true, regexp: true*/
 /*global define*/
 
 /**
@@ -27,8 +27,8 @@
 define([
     'require',
     'text!templates/ready.mustache',
-    'text!templates/match.mustache',
-    'text!templates/page.mustache',
+    'text!templates/loaded_value.mustache',
+    'text!templates/found_value.mustache',
     'text!templates/wait.mustache',
     'text!templates/reference.mustache',
     'text!templates/missing.mustache',
@@ -39,10 +39,9 @@ define([
     'lib/backbone',
     '../openscrape.caustic',
     'lib/jquery'
-], function (require, ready, match, page, wait, reference, missing, failed,
-             d3, mustache, _, backbone, caustic) {
+], function (require, ready, loaded_value, found_value,
+    wait, reference, missing, failed, d3, mustache, _, backbone, caustic) {
     "use strict";
-
     var $ = require('jquery'),
 
         padding = 20,
@@ -51,7 +50,6 @@ define([
          * @return How much a width should be lead by.
          */
         lead = function (x) { return x / 4; },
-
         /**
          * Static function to generate an SVG container for a node
          * based off of width and height.
@@ -63,18 +61,18 @@ define([
          */
         containerPath = function (contentWidth, contentHeight) {
             var height = contentHeight + padding,
-                width = contentWidth + padding,
+                w = contentWidth + padding,
                 top = height / 2,
                 bottom = -height / 2;
             return 'M0 0' +
-                'a' + lead(width) + ' ' + top + ' 0 0 1 ' + lead(width) + ' ' + top +
-                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (width / 2) + ' ' + (top / 2) +
-                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (width / 2) + ' -' + (top / 2) +
-                'a' + lead(width) + ' ' + top + ' 0 0 1 ' + lead(width) + ' -' + top +
-                'a' + lead(width) + ' ' + top + ' 0 0 1 -' + lead(width) + ' -' + top +
-                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (width / 2) + ' -' + (top / 2) +
-                'a' + (width / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (width / 2) + ' ' + (top / 2) +
-                'a' + lead(width) + ' ' + top + ' 0 0 1 -' + lead(width) + ' ' + top +
+                'a' + lead(w) + ' ' + top + ' 0 0 1 ' + lead(w) + ' ' + top +
+                'a' + (w / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (w / 2) + ' ' + (top / 2) +
+                'a' + (w / 2) + ' ' + (top / 2) + ' 0 0 0 ' + (w / 2) + ' -' + (top / 2) +
+                'a' + lead(w) + ' ' + top + ' 0 0 1 ' + lead(w) + ' -' + top +
+                'a' + lead(w) + ' ' + top + ' 0 0 1 -' + lead(w) + ' -' + top +
+                'a' + (w / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (w / 2) + ' -' + (top / 2) +
+                'a' + (w / 2) + ' ' + (top / 2) + ' 0 0 0 -' + (w / 2) + ' ' + (top / 2) +
+                'a' + lead(w) + ' ' + top + ' 0 0 1 -' + lead(w) + ' ' + top +
                 'Z';
         },
 
@@ -93,8 +91,8 @@ define([
     return backbone.View.extend({
 
         templates: {
-            match: match,
-            page: page,
+            found_value: found_value,
+            loaded_value: loaded_value,
             loaded: ready,
             found: ready,
             wait: wait,
@@ -155,12 +153,10 @@ define([
 
         click: function (evt) {
             //this.model.edit();
-            //console.log(this.model);
-            console.log(this.model.toJSON());
+            //console.log(this.model.toJSON());
             if (this.model.type() === 'wait') {
                 this.model.save('force', true);
                 this.scrape();
-            } else if (this.model.type() === 'failed') {
             } else if (this.model.get('childIds').length > 1) {
                 this.model.toggle();
             }
@@ -227,6 +223,7 @@ define([
                 .classed('foreign', true)
                 .attr('width', this.iframeWidth)
                 .attr('height', this.iframeHeight);
+
             var $div = $(this.foreign.append('xhtml:body')
                          .append('div')[0])
                     .html(mustache.render(
