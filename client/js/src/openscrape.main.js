@@ -52,6 +52,13 @@
                 collection: markers
             }),
 
+            slice = Array.prototype.slice,
+
+            MAP = 1,
+            VISUAL = 2,
+            LOGIN = 3,
+            SIGNUP = 4,
+
             AppView = backbone.View.extend({
 
                 events: {
@@ -62,44 +69,94 @@
                     this.$el.html(mustache.render(appTemplate, options));
                     this.$help = this.$('#help').hide();
 
-                    map.on('visualize', this.visualizeAddress, this);
+                    map.on('visualize', function () {
+                        this.show.apply(this, [VISUAL].concat(slice.call(arguments, 0)));
+                    }, this);
 
                     nodes.on('error', this.warn, this);
                     markers.on('error', this.warn, this);
-                },
 
-                showMap: function (zoom, lat, lng) {
-                    this.hideVisual().done(_.bind(function () {
-                        if (map.$el.parent().length === 0) {
-                            map.$el.appendTo(this.$el).fadeIn();
-                            map.render();
-                        }
-                        if (lat && lng) {
-                            map.pan(lat, lng);
-                        }
-                        if (zoom) {
-                            map.zoom(zoom);
-                        }
-                    }, this));
+                    this.show(MAP);
                 },
 
                 /**
-                 * Fade the map out and pull it out of the DOM once it's faded.
+                 * Put the app in a particular state.
+                 *
+                 * @param state {String} The state to move to.
                  */
-                hideMap: function () {
-                    map.$el.fadeOut(_.bind(map.remove, map));
+                show: function (state) {
+
+                    var dfd = new $.Deferred(),
+                        args = slice.call(arguments, 1);
+
+                    // Switch out prior state if it was different.
+                    if (_(this).has('state') && this.state !== state) {
+                        switch (this.state) {
+                        case MAP:
+                            map.$el.fadeOut(function () {
+                                map.remove();
+                                dfd.resolve();
+                            });
+                            break;
+                        case VISUAL:
+                            this.visual.$el.fadeOut(_.bind(function () {
+                                this.visual.remove();
+                                delete this.visual;
+                                dfd.resolve();
+                            }, this));
+                            break;
+                        case LOGIN:
+                            break;
+                        case SIGNUP:
+                            break;
+                        default:
+                            break;
+                        }
+                    } else {
+                        dfd.resolve();
+                    }
+
+                    // Switch in new state when the old one is gone.
+                    dfd.done(_.bind(function () {
+                        switch (state) {
+                        case MAP:
+                            this.showMap.apply(this, args);
+                            break;
+                        case VISUAL:
+                            this.showVisual.apply(this, args);
+                            break;
+                        case LOGIN:
+                            break;
+                        case SIGNUP:
+                            break;
+                        default:
+                            return; // premature return to prevent setting
+                                    // this.state to something weird
+                        }
+                        this.state = state;
+                    }, this));
+                },
+
+                showMap: function (zoom, lat, lng) {
+                    if (map.$el.parent().length === 0) {
+                        map.$el.appendTo(this.$el).fadeIn();
+                        map.render();
+                    }
+                    if (lat && lng) {
+                        map.pan(lat, lng);
+                    }
+                    if (zoom) {
+                        map.zoom(zoom);
+                    }
                 },
 
                 /**
                  * Create a new visual view for the address, centered on x and y.
                  */
-                visualizeAddress: function (address, x, y) {
+                showVisual: function (address, x, y) {
                     var model = nodes.forAddress(address);
 
                     if (model) {
-                        this.hideVisual(); // hide existing visual
-                        this.hideMap();
-
                         this.visual = new VisualView({
                             model: model
                         });
@@ -111,27 +168,6 @@
                         this.visual.render();
                         this.visual.reset();
                     }
-                },
-
-                /**
-                 * Fade out any existing visual, and remove it from the DOM once
-                 * it's faded.
-                 *
-                 * @return {Promise} that is resolved once the visual is gone.
-                 */
-                hideVisual: function () {
-                    var visual = this.visual,
-                        dfd = new $.Deferred();
-                    if (visual) {
-                        visual.$el.fadeOut(function () {
-                            visual.remove();
-                            dfd.resolve();
-                        });
-                        delete this.visual;
-                    } else {
-                        dfd.resolve();
-                    }
-                    return dfd.promise();
                 },
 
                 toggleHelp: function () {
@@ -175,6 +211,8 @@
 
                 routes: {
                     '': 'index',
+                    'login': 'login',
+                    'signup': 'signup',
                     'visualize/address/:zip/:street/:number': 'visualizeAddress',
                     'map*': 'map',
                     'map/:zoom/:lat/:lng': 'map'
@@ -184,19 +222,24 @@
                  * Default to NYC
                  */
                 index: function () {
-                    appView.showMap();
+                    appView.show(MAP);
+                },
+
+                login: function () {
+                    appView.show(LOGIN);
+                },
+
+                signup: function () {
+                    appView.show(SIGNUP);
                 },
 
                 map: function (zoom, lat, lng) {
-                    appView.showMap(Number(zoom), Number(lat), Number(lng));
+                    appView.show(MAP, Number(zoom), Number(lat), Number(lng));
                 },
 
-                /**
-                 * Visualize the specified address.
-                 */
                 visualizeAddress: function (zip, street, number) {
                     try {
-                        appView.visualizeAddress(new Address({
+                        appView.show(VISUAL, new Address({
                             zip: zip,
                             street: street,
                             number: number
