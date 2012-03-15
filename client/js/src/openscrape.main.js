@@ -32,6 +32,9 @@
         'views/openscrape.warning',
         'views/openscrape.map',
         'views/openscrape.visual',
+        'views/openscrape.login',
+        'views/openscrape.signup',
+        'views/openscrape.help',
         'lib/backbone',
         'lib/underscore',
         'lib/requirejs.mustache',
@@ -41,6 +44,7 @@
         'lib/jquery'
     ], function (require, WarningModel, MarkersCollection,
                  NodesCollection, WarningView, MapView, VisualView,
+                 LoginView, SignupView, HelpView,
                  backbone, _, mustache, appTemplate, Address) {
 
         var $ = require('jquery'),
@@ -53,6 +57,9 @@
             }),
 
             visual = new VisualView(),
+            login = new LoginView(),
+            signup = new SignupView(),
+            help = new HelpView(),
 
             slice = Array.prototype.slice,
 
@@ -60,12 +67,9 @@
             VISUAL = 2,
             LOGIN = 3,
             SIGNUP = 4,
+            HELP = 5,
 
             AppView = backbone.View.extend({
-
-                events: {
-                    'click .toggleHelp': 'toggleHelp'
-                },
 
                 initialize: function (options) {
                     this.$el.html(mustache.render(appTemplate, options));
@@ -75,11 +79,14 @@
                         this.show.apply(this, [VISUAL].concat(slice.call(arguments, 0)));
                     }, this);
 
-                    visual.$el.appendTo(this.$el);
+                    visual.$el.appendTo(this.$el).hide();
+                    help.$el.hide().appendTo(this.$el);
+                    login.$el.hide().appendTo(this.$el);
+                    signup.$el.hide().appendTo(this.$el);
                     nodes.on('error', this.warn, this);
                     markers.on('error', this.warn, this);
 
-                    this.show(MAP);
+                    //this.show(MAP);
                 },
 
                 /**
@@ -90,31 +97,32 @@
                 show: function (state) {
 
                     var dfd = new $.Deferred(),
-                        args = slice.call(arguments, 1);
+                        args = slice.call(arguments, 1),
+                        lastView;
 
                     // Switch out prior state if it was different.
                     if (_(this).has('state') && this.state !== state) {
                         switch (this.state) {
                         case MAP:
-                            map.$el.fadeOut(function () {
-                                map.remove();
-                                dfd.resolve();
-                            });
+                            lastView = map;
+                            dfd.done(_.bind(map.remove, map));
+                            break;
+                        case HELP:
+                            lastView = help;
                             break;
                         case VISUAL:
-                            visual.$el.fadeOut(function () {
-                                dfd.resolve();
-                            });
+                            lastView = visual;
                             break;
                         case LOGIN:
-                            dfd.resolve();
+                            lastView = login;
                             break;
                         case SIGNUP:
-                            dfd.resolve();
+                            lastView = signup;
                             break;
                         default:
-                            break; // never resolves, the new state is never fired
+                            throw "Invalid prior state: " + this.state;
                         }
+                        lastView.$el.fadeOut(dfd.resolve);
                     } else {
                         dfd.resolve();
                     }
@@ -128,9 +136,14 @@
                         case VISUAL:
                             this.showVisual.apply(this, args);
                             break;
+                        case HELP:
+                            help.render().$el.fadeIn();
+                            break;
                         case LOGIN:
+                            login.render().$el.fadeIn();
                             break;
                         case SIGNUP:
+                            signup.render().$el.fadeIn();
                             break;
                         default:
                             return; // premature return to prevent setting
@@ -171,14 +184,6 @@
                     }
                 },
 
-                toggleHelp: function () {
-                    if (this.$help.is(':visible')) {
-                        this.$help.slideUp();
-                    } else {
-                        this.$help.slideDown();
-                    }
-                },
-
                 /**
                  * Display a warning with the specified text.
                  *
@@ -212,6 +217,7 @@
 
                 routes: {
                     '': 'index',
+                    'help': 'help',
                     'login': 'login',
                     'signup': 'signup',
                     'visualize/address/:zip/:street/:number': 'visualizeAddress',
@@ -220,10 +226,14 @@
                 },
 
                 /**
-                 * Default to NYC
+                 * Default to map
                  */
                 index: function () {
                     appView.show(MAP);
+                },
+
+                help: function () {
+                    appView.show(HELP);
                 },
 
                 login: function () {
