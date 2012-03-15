@@ -62,7 +62,6 @@ define([
 
             this.debouncedResize = _.debounce(_.bind(this.resize, this), 100);
             this.debouncedRender = _.debounce(this.render, 500);
-            this.model.collection.on('change:expanded change:childIds', this.debouncedRender, this);
 
             $(window).resize(this.debouncedResize);
             this.svg = d3.select(this.el)
@@ -86,14 +85,27 @@ define([
                     // TODO determine translations
                         / (Math.log(translation) * Math.pow(translation, 2));
                 }, this));
+
+            if (this.model) {
+                this.setModel(this.model);
+            }
         },
 
-        remove: function () {
+        /**
+         * Switch which model is observed.
+         */
+        setModel: function (model) {
+            this.model = model;
+            this.model.collection.off('change:expanded change:childIds');
+            this.model.collection.on('change:expanded change:childIds', this.debouncedRender, this);
+        },
+
+        /*remove: function () {
             backbone.View.prototype.remove.call(this);
             this.controls.remove();
             this.model.collection.off('change:expanded change:childIds', this.debouncedRender);
             $(window).unbind('resize', this.debouncedResize);
-        },
+        },*/
 
         /**
          * Zoom in on double clicks

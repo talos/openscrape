@@ -52,6 +52,8 @@
                 collection: markers
             }),
 
+            visual = new VisualView(),
+
             slice = Array.prototype.slice,
 
             MAP = 1,
@@ -73,6 +75,7 @@
                         this.show.apply(this, [VISUAL].concat(slice.call(arguments, 0)));
                     }, this);
 
+                    visual.$el.appendTo(this.$el);
                     nodes.on('error', this.warn, this);
                     markers.on('error', this.warn, this);
 
@@ -99,18 +102,18 @@
                             });
                             break;
                         case VISUAL:
-                            this.visual.$el.fadeOut(_.bind(function () {
-                                this.visual.remove();
-                                delete this.visual;
+                            visual.$el.fadeOut(function () {
                                 dfd.resolve();
-                            }, this));
+                            });
                             break;
                         case LOGIN:
+                            dfd.resolve();
                             break;
                         case SIGNUP:
+                            dfd.resolve();
                             break;
                         default:
-                            break;
+                            break; // never resolves, the new state is never fired
                         }
                     } else {
                         dfd.resolve();
@@ -157,16 +160,14 @@
                     var model = nodes.forAddress(address);
 
                     if (model) {
-                        this.visual = new VisualView({
-                            model: model
-                        });
-                        this.visual.$el.appendTo(this.$el);
+                        visual.setModel(model);
+                        visual.$el.fadeIn();
                         if (x && y) {
-                            this.visual.center(x, y);
+                            visual.center(x, y);
                         }
-                        this.visual.resize();
-                        this.visual.render();
-                        this.visual.reset();
+                        visual.resize();
+                        visual.render();
+                        visual.reset();
                     }
                 },
 
@@ -259,6 +260,15 @@
         if (!backbone.history.start({ pushState: true })) {
             router.navigate('/');
         }
+
+        // pushState for designated links inside the appView
+        appView.$el.on('click', 'a.pushState', function (evt) {
+            router.navigate($(evt.currentTarget).attr('href'), {
+                'trigger': true
+            });
+            evt.preventDefault();
+        });
+
     });
 }());
 
