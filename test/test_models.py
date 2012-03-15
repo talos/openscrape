@@ -2,7 +2,7 @@
 Test caustic/models.py .
 """
 
-import unittest
+from helpers import unittest
 import bson
 from server.app.models import User, InstructionDocument, InstructionField
 from dictshield.base import ShieldException

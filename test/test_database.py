@@ -2,12 +2,12 @@
 Test the database.  Mongod must be running.
 """
 
-import unittest
+from helpers import unittest
 import shutil
 from server.app.database import get_db, Users, Instructions
 from jsongit import JsonGitRepository
 from dictshield.base import ShieldException
-from pymongo.errors import DuplicateKeyError
+import pymongo
 
 db = get_db('localhost', 27017, 'caustic_test')
 REPO_DIR = 'tmp_git'
@@ -96,7 +96,7 @@ class TestInstructions(unittest.TestCase):
         """Duplicate names forbidden if the creator is the same.
         """
         self.instructions.create(self.creator, 'name', INSTRUCTION, TAGS)
-        with self.assertRaises(DuplicateKeyError):
+        with self.assertRaises(pymongo.errors.OperationFailure):
             self.instructions.create(self.creator, 'name', INSTRUCTION, TAGS)
 
     def test_find_instruction(self):

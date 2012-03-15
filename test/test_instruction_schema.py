@@ -2,7 +2,7 @@
 Test the validation schema for instructions using our migration data.
 """
 
-import unittest
+from helpers import unittest
 import validictory
 
 import server.app.schema as schema

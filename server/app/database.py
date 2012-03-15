@@ -5,7 +5,6 @@ caustic.database
 """
 
 import pymongo
-from pymongo.errors import DuplicateKeyError
 from jsongit import signature
 from models import User, InstructionDocument
 from dictshield.base import ShieldException
@@ -34,8 +33,10 @@ class Users(object):
         try:
             id = self.coll.insert(User(name=name).to_python())
             return self.get(id)
-        except DuplicateKeyError:
+        except pymongo.errors.OperationFailure:
             return None
+        except pymongo.errors.DuplicateKeyError:
+            return None # requires server 1.3+
 
     def get(self, id):
         """Get a user by id.
@@ -121,7 +122,8 @@ class Instructions(object):
 
         Returns the InstructionDocument.
 
-        Raises a DuplicateKeyError or ShieldException otherwise.
+        Raises a DuplicateKeyError, OperationFailure, or ShieldException
+        otherwise.
         """
         doc = InstructionDocument(
             creator_id=creator.id,
