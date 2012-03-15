@@ -11,7 +11,7 @@ python server/app/app.py <MODE>
 
 Look at `config/app.ini` for defined modes. Defaults are `production`,
 `staging`, and `test`."""
-    exit(1)
+    sys.exit(1)
 
 MODE = sys.argv[1]
 PARSER = SafeConfigParser()

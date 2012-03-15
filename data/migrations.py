@@ -6,19 +6,6 @@ When executed, this will load in a set of pre-made instructions for HOST.
 It can also be used as a package to obtain fixtures to test validation.
 '''
 
-from ConfigParser import SafeConfigParser
-
-PARSER = SafeConfigParser()
-if len(PARSER.read('config/app.ini')):
-    HOST = PARSER.get('test', 'test_host')
-    PORT = PARSER.get('test', 'test_port')
-    ROOT = HOST + ':' + PORT
-else:
-    print("Migration requires a config/app.ini file")
-    sys.exit(1)
-
-USER = 'openscrape'
-
 import json
 import requests
 
@@ -381,6 +368,25 @@ docs = [
 # Make requests to server if running as executable.  uses assertions to ensure
 # the server is responding appropriately.
 if __name__ == '__main__':
+    from ConfigParser import SafeConfigParser
+    import sys
+
+    if len(sys.argv) != 2:
+        print("You must specify a configuration from `config/app.ini` to use")
+        sys.exit(1)
+
+    MODE = sys.argv[1]
+    PARSER = SafeConfigParser()
+    if len(PARSER.read('config/app.ini')):
+        HOST = PARSER.get(MODE, 'test_host')
+        PORT = PARSER.get(MODE, 'test_port')
+        ROOT = HOST + ':' + PORT
+    else:
+        print("Migration requires a config/app.ini file")
+        sys.exit(1)
+
+    USER = 'openscrape'
+
     s = requests.session(headers={'accept': 'application/json text/javascript'})
     r = s.post('%s/instructions/' % ROOT, data={
         'action':'signup',

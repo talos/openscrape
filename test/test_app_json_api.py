@@ -65,7 +65,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Destroy `user`.  Should already be logged in.
         """
-        r = self.s.delete("%s/instructions/%s" % (HOST, user))
+        r = self.s.delete("%s/instructions/%s" % (ROOT, user))
         self.assertEqual(200, r.status_code, r.content)
         self.assertIn('destroyed', json.loads(r.content), r.content)
         if user in self.created_accounts:
@@ -148,7 +148,7 @@ class TestServerJSON(unittest.TestCase):
         r = self._signup('wootage')
         self.assertEquals(200, r.status_code, r.content)
         self.assertTrue('session' in self.s.cookies)
-        r = self.s.get("%s/instructions/%s" % (HOST, 'wootage'))
+        r = self.s.get("%s/instructions/%s" % (ROOT, 'wootage'))
         self.assertEquals(200, r.status_code, r.content)
 
     def test_destroy(self):
@@ -158,7 +158,7 @@ class TestServerJSON(unittest.TestCase):
         self._signup('doomed')
         r = self._destroy('doomed')
         self.assertEquals(200, r.status_code, r.content)
-        r = self.s.get("%s/instructions/%s" % (HOST, 'doomed'))
+        r = self.s.get("%s/instructions/%s" % (ROOT, 'doomed'))
         self.assertEquals(404, r.status_code, r.content)
 
     def test_nonexistent(self):
@@ -310,6 +310,7 @@ class TestServerJSON(unittest.TestCase):
         Delete a tag.
         """
         self._signup('fashionista')
+        print "ROOT: %s" % ROOT
         self.s.put("%s/instructions/fashionista/ray-bans/" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags' : '["trendy"]'
