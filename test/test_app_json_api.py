@@ -1,10 +1,21 @@
+import sys
 from helpers import unittest
 import requests
 import json
+from ConfigParser import SafeConfigParser
 
 from server.app.database import get_db
 
-HOST = "http://localhost:8100"
+PARSER = SafeConfigParser()
+
+if len(PARSER.read('config/app.ini')):
+    HOST = PARSER.get('test', 'test_host')
+    PORT = PARSER.get('test', 'test_port')
+    ROOT = HOST + ':' + PORT
+else:
+    print("Test requires a config/app.ini file")
+    sys.exit(1)
+
 LOAD_GOOGLE = '{"load":"http://www.google.com/"}' # valid scraping instruction
 TAGS = '["fun", "interesting", "enlightening"]'
 VALID_INSTRUCTION = {
@@ -21,7 +32,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Sign up `user`, while keeping track of the signup for later cleanup.
         """
-        r = self.s.post("%s/instructions/" % HOST, data={
+        r = self.s.post("%s/instructions/" % ROOT, data={
             'action': 'signup',
             'user'  : user
         })
@@ -33,7 +44,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Login `user`.
         """
-        r = self.s.post("%s/instructions/" % HOST, data={
+        r = self.s.post("%s/instructions/" % ROOT, data={
             'action': 'login',
             'user'  : user
         })
@@ -44,7 +55,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Log out.
         """
-        r = self.s.post("%s/instructions/" % HOST, data={
+        r = self.s.post("%s/instructions/" % ROOT, data={
             'action': 'logout'
         })
         self.assertEqual(200, r.status_code, r.content)
@@ -154,7 +165,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Test getting a 404.
         """
-        r = self.s.get("%s/instructions/lksdjflksdjg" % HOST)
+        r = self.s.get("%s/instructions/lksdjflksdjg" % ROOT)
         self.assertEqual(404, r.status_code, r.content)
 
     def test_put_valid_instruction(self):
@@ -162,7 +173,7 @@ class TestServerJSON(unittest.TestCase):
         Create an instruction on the server using HTTP PUT.
         """
         self._signup('fuller')
-        r = self.s.put("%s/instructions/fuller/manhattan-bubble" % HOST, data={
+        r = self.s.put("%s/instructions/fuller/manhattan-bubble" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': TAGS
         })
@@ -173,7 +184,7 @@ class TestServerJSON(unittest.TestCase):
         Ensure the server rejects an invalid instruction.
         """
         self._signup('chiang')
-        r = self.s.put("%s/instructions/chiang/politics" % HOST, data={
+        r = self.s.put("%s/instructions/chiang/politics" % ROOT, data={
             'instruction': json.dumps({ 'foo':'bar' }),
             'tags': TAGS
         })
@@ -184,11 +195,11 @@ class TestServerJSON(unittest.TestCase):
         Ensure the server rejects an instructio missing an argument.
         """
         self._signup('chiang')
-        r = self.s.put("%s/instructions/chiang/missing_tags" % HOST, data={
+        r = self.s.put("%s/instructions/chiang/missing_tags" % ROOT, data={
             'instruction': LOAD_GOOGLE
         })
         self.assertEqual(400, r.status_code, r.content)
-        r = self.s.put("%s/instructions/chiang/missing_instruction" % HOST, data={
+        r = self.s.put("%s/instructions/chiang/missing_instruction" % ROOT, data={
             'tags': TAGS
         })
         self.assertEqual(400, r.status_code, r.content)
@@ -200,7 +211,7 @@ class TestServerJSON(unittest.TestCase):
         """
         self._signup('lennon')
         self._logout()
-        r = self.s.put("%s/instructions/lennon/nope" % HOST, data={
+        r = self.s.put("%s/instructions/lennon/nope" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': TAGS
         })
@@ -211,10 +222,10 @@ class TestServerJSON(unittest.TestCase):
         Get an instruction on the server using HTTP GET while logged in.
         """
         self._signup('jacobs')
-        self.s.put("%s/instructions/jacobs/life-n-death" % HOST,
+        self.s.put("%s/instructions/jacobs/life-n-death" % ROOT,
                    data=VALID_INSTRUCTION)
 
-        r = self.s.get("%s/instructions/jacobs/life-n-death" % HOST)
+        r = self.s.get("%s/instructions/jacobs/life-n-death" % ROOT)
         self.assertEqual(200, r.status_code, r.content)
         self.assertJsonEqual(LOAD_GOOGLE, r.content)
 
@@ -223,11 +234,11 @@ class TestServerJSON(unittest.TestCase):
         Get a instruction on the server using HTTP GET while not logged in.
         """
         self._signup('jacobs')
-        self.s.put("%s/instructions/jacobs/life-n-death" % HOST,
+        self.s.put("%s/instructions/jacobs/life-n-death" % ROOT,
                    data=VALID_INSTRUCTION)
         self._logout()
 
-        r = self.s.get("%s/instructions/jacobs/life-n-death" % HOST)
+        r = self.s.get("%s/instructions/jacobs/life-n-death" % ROOT)
         self.assertEqual(200, r.status_code, r.content)
         self.assertJsonEqual(LOAD_GOOGLE, r.content)
 
@@ -236,15 +247,15 @@ class TestServerJSON(unittest.TestCase):
         Update an instruction by replacing it with PUT.
         """
         self._signup('moses')
-        self.s.put("%s/instructions/moses/bqe" % HOST, data=VALID_INSTRUCTION)
+        self.s.put("%s/instructions/moses/bqe" % ROOT, data=VALID_INSTRUCTION)
 
         load_nytimes = json.dumps({"load":"http://www.nytimes.com/"})
-        self.s.put("%s/instructions/moses/bqe" % HOST, data={
+        self.s.put("%s/instructions/moses/bqe" % ROOT, data={
             'instruction': load_nytimes,
             'tags': TAGS
         })
 
-        r = self.s.get("%s/instructions/moses/bqe" % HOST)
+        r = self.s.get("%s/instructions/moses/bqe" % ROOT)
         self.assertEqual(200, r.status_code, r.content)
         self.assertJsonEqual(load_nytimes, r.content)
 
@@ -253,10 +264,10 @@ class TestServerJSON(unittest.TestCase):
         Get all the instructions by a particular user.
         """
         self._signup('joe')
-        self.s.put("%s/instructions/joe/foo" % HOST, data=VALID_INSTRUCTION)
-        self.s.put("%s/instructions/joe/bar" % HOST, data=VALID_INSTRUCTION)
+        self.s.put("%s/instructions/joe/foo" % ROOT, data=VALID_INSTRUCTION)
+        self.s.put("%s/instructions/joe/bar" % ROOT, data=VALID_INSTRUCTION)
 
-        r = self.s.get("%s/instructions/joe/" % HOST)
+        r = self.s.get("%s/instructions/joe/" % ROOT)
         self.assertEqual(200, r.status_code, r.content)
         self.assertItemsEqual(['/instructions/joe/foo',
                                '/instructions/joe/bar'],
@@ -268,16 +279,16 @@ class TestServerJSON(unittest.TestCase):
         links to the instructions.
         """
         self._signup('trog-dor')
-        self.s.put("%s/instructions/trog-dor/pillaging" % HOST, data={
+        self.s.put("%s/instructions/trog-dor/pillaging" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': '["burnination"]'
         })
-        self.s.put("%s/instructions/trog-dor/burning" % HOST, data={
+        self.s.put("%s/instructions/trog-dor/burning" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': '["burnination"]'
         })
 
-        r = self.s.get("%s/instructions/trog-dor/burnination/" % HOST)
+        r = self.s.get("%s/instructions/trog-dor/burnination/" % ROOT)
         self.assertEqual(200, r.status_code, r.content)
         self.assertItemsEqual(["/instructions/trog-dor/burning",
                                "/instructions/trog-dor/pillaging"],
@@ -290,7 +301,7 @@ class TestServerJSON(unittest.TestCase):
         self._signup('vicious')
         self._logout()
 
-        r = self.s.get("%s/instructions/vicious/erudite/" % HOST)
+        r = self.s.get("%s/instructions/vicious/erudite/" % ROOT)
         self.assertEqual(200, r.status_code, r.content)
         self.assertEqual([], json.loads(r.content))
 
@@ -299,16 +310,16 @@ class TestServerJSON(unittest.TestCase):
         Delete a tag.
         """
         self._signup('fashionista')
-        self.s.put("%s/instructions/fashionista/ray-bans/" % HOST, data={
+        self.s.put("%s/instructions/fashionista/ray-bans/" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags' : '["trendy"]'
         })
-        self.s.put("%s/instructions/fashionista/ray-bans/" % HOST, data={
+        self.s.put("%s/instructions/fashionista/ray-bans/" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags' : '[]'
         })
 
-        r = self.s.get("%s/instructions/fashionista/trendy/" % HOST)
+        r = self.s.get("%s/instructions/fashionista/trendy/" % ROOT)
         self.assertEqual(200, r.status_code, r.content)
         self.assertJsonEqual('[]', r.content)
 
@@ -319,24 +330,24 @@ class TestServerJSON(unittest.TestCase):
         TODO: keep tags?
         """
         self._signup('muddy')
-        self.s.put("%s/instructions/muddy/delta-blues" % HOST, data={
+        self.s.put("%s/instructions/muddy/delta-blues" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': "['guitar']"
         })
         self._logout()
 
         self._signup('crapton')
-        r = self.s.post("%s/instructions/crapton" % HOST, data={
+        r = self.s.post("%s/instructions/crapton" % ROOT, data={
             'clone': '/instructions/muddy/delta-blues'
         })
         self.assertEqual(201, r.status_code)
         self.assertEqual('/instructions/crapton/delta-blues', r.headers['Location'])
 
-        r = self.s.get("%s/instructions/crapton/delta-blues" % HOST)
+        r = self.s.get("%s/instructions/crapton/delta-blues" % ROOT)
         self.assertEqual(200, r.status_code)
         self.assertJsonEqual(LOAD_GOOGLE, r.content)
 
-        r = self.s.get("%s/instructions/crapton/guitar/" % HOST)
+        r = self.s.get("%s/instructions/crapton/guitar/" % ROOT)
         self.assertEqual(200, r.status_code)
         self.assertEqual(["/instructions/crapton/delta-blues"], json.loads(r.content))
 
@@ -348,31 +359,31 @@ class TestServerJSON(unittest.TestCase):
         """
         self._signup('barrett')
         data = json.dumps('{"load":"http://www.saucerful.com/"}')
-        self.s.put("%s/instructions/barrett/saucerful" % HOST, data={
+        self.s.put("%s/instructions/barrett/saucerful" % ROOT, data={
             'instruction': data,
             'tags': "[]"
         })
         self._logout()
 
         self._signup('gilmour')
-        self.s.post("%s/instructions/gilmour/" % HOST, {
+        self.s.post("%s/instructions/gilmour/" % ROOT, {
             'clone': '/instructions/barret/saucerful'
         })
         self._logout()
 
         self._login('barrett')
         data = json.dumps('{"load":"http://www.jugband.com/"}')
-        self.s.put("%s/instructions/barrett/saucerful" % HOST, data={
+        self.s.put("%s/instructions/barrett/saucerful" % ROOT, data={
             'instruction': data,
             'tags': "[]"
         })
         self._logout()
 
         self._login('gilmour')
-        r = self.s.post("%s/instructions/gilmour/saucerful" % HOST, data={
+        r = self.s.post("%s/instructions/gilmour/saucerful" % ROOT, data={
             'pull': '/instructions/barret/saucerful' 
         })
         self.assertEqual(204, r.status_code)
-        r = self.s.get("%s/instructions/gilmour/saucerful" % HOST)
+        r = self.s.get("%s/instructions/gilmour/saucerful" % ROOT)
         self.assertEqual(200, r.status_code)
         self.assertJsonEqual('{"load":"http://www.jugband.com/"}', r.content)

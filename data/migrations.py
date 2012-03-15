@@ -6,8 +6,19 @@ When executed, this will load in a set of pre-made instructions for HOST.
 It can also be used as a package to obtain fixtures to test validation.
 '''
 
-HOST = 'http://localhost:8100'
+from ConfigParser import SafeConfigParser
+
+PARSER = SafeConfigParser()
+if len(PARSER.read('config/app.ini')):
+    HOST = PARSER.get('test', 'test_host')
+    PORT = PARSER.get('test', 'test_port')
+    ROOT = HOST + ':' + PORT
+else:
+    print("Migration requires a config/app.ini file")
+    sys.exit(1)
+
 USER = 'openscrape'
+
 import json
 import requests
 
@@ -371,12 +382,12 @@ docs = [
 # the server is responding appropriately.
 if __name__ == '__main__':
     s = requests.session(headers={'accept': 'application/json text/javascript'})
-    r = s.post('%s/instructions/' % HOST, data={
+    r = s.post('%s/instructions/' % ROOT, data={
         'action':'signup',
         'user':  USER
     })
     if r.status_code == 400:
-        r = s.post('%s/instructions/' % HOST, data={
+        r = s.post('%s/instructions/' % ROOT, data={
             'action':'login',
             'user': USER
         })
@@ -384,7 +395,7 @@ if __name__ == '__main__':
     assert r.status_code == 200, r.content
 
     for doc in docs:
-        r = s.put('%s/instructions/%s/%s' % (HOST, USER, doc['name']), data = {
+        r = s.put('%s/instructions/%s/%s' % (ROOT, USER, doc['name']), data = {
             'instruction': json.dumps(doc['instruction']),
             'tags': json.dumps([str(e) for e in doc.get('tags', [])])
         })

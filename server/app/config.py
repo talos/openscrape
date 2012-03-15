@@ -29,6 +29,8 @@ if not len(PARSER.read('config/app.ini')):
         PARSER.set(mode, 'json_git_dir', "%s.jsongit" % mode)
         PARSER.set(mode, 'recv_spec', 'ipc://openscrape_app:1')
         PARSER.set(mode, 'send_spec', 'ipc://openscrape_app:0')
+        PARSER.set(mode, 'test_host', 'http://localhost')
+        PARSER.set(mode, 'test_port', '8100')
         PARSER.set(mode, 'valid_url_chars', '\w\-')
 
     try:
