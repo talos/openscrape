@@ -1,1 +1,29 @@
-Signup TODO
+<div>
+    Openscrape uses <a href="http://en.wikipedia.org/wiki/OAuth">OAuth</a> for
+    identification.  This means it never has to store any passwords.
+</div>
+<div>
+    You have to choose a unique user name, and then confirm the
+    login with the provider of your choice.  We use your email as a unique
+    key for your account, but as few permissions as possible are used besides
+    that.
+</div>
+{{#error}}
+<div class="error">
+    {{error}}
+</div>
+{{/error}}
+<div>
+    <form action="/oauth/signup" method="post">
+        <div>
+            <label for="user">Username: </label>
+            <input type="text" value="{{user}}" name="user" class="validate-pathname" />
+        </div>
+
+        <div>
+            <label for="provider">Choose an OAuth provider: </label>
+            <div><input type="submit" name="provider" value="Google" /></div>
+            <div><input type="submit" name="provider" value="Github" /></div>
+        </div>
+    </form>
+</div>

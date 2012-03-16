@@ -61,10 +61,10 @@ class User(Document):
     email = EmailField(required=True)
 
     provider = StringField(required=True)
-    provider_id = StringField(required=True)
-    provider_url = URLField(required=True)
-    provider_img = URLField(required=True)
-    provider_name = StringField(required=True)
+    provider_id = StringField()
+    provider_url = URLField()
+    provider_img = URLField()
+    provider_name = StringField()
     provider_dict = DictField()
 
     _private_fields = [id, deleted, email, provider, provider_id,

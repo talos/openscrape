@@ -6,7 +6,7 @@ caustic.database
 
 import pymongo
 import jsongit
-import dictshield.base as dictshield
+import dictshield
 from models import User, InstructionDocument
 
 def get_db(server, port, name):
@@ -24,16 +24,19 @@ class DatabaseError(RuntimeError):
 
 class DuplicateError(RuntimeError):
     """
-    This is raised when everything is danday, but it was a dupe.
+    This is raised when everything is dandy, but it was a dupe.
     """
     pass
 
 
 class ValidationError(RuntimeError):
     """
-    This is raised when a model is no good.
+    This is raised when a model is no good.  Should be from a ShieldException.
     """
-    pass
+    def __init__(self, shield_exc):
+        super(RuntimeError, self).__init__(shield_exc)
+        self.field_name = shield_exc.field_name
+        self.field_value = shield_exc.field_value
 
 
 class Users(object):
@@ -57,7 +60,7 @@ class Users(object):
             user.validate()
             id = self.coll.insert(user.to_python())
             user.id = id
-        except dictshield.ShieldException as e:
+        except dictshield.base.ShieldException as e:
             raise ValidationError(e)
         except pymongo.errors.DuplicateKeyError as e:
             raise DuplicateError()
@@ -172,7 +175,7 @@ class Instructions(object):
                              author=jsongit.signature(creator.name, creator.name))
             doc.id = self.coll.save(doc.to_python(), manipulate=True)
             return doc
-        except dictshield.ShieldException as e:
+        except dictshield.base.ShieldException as e:
             raise ValidationError(e)
         except pymongo.errors.OperationFailure as e:
             raise DatabaseError(e)

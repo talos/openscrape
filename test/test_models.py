@@ -14,11 +14,7 @@ class TestUser(unittest.TestCase):
         return {
             'name': 'name',
             'email': 'user@email.com',
-            'provider': 'provider',
-            'provider_id' : '1234',
-            'provider_img': 'http://foo.com/img.jpg',
-            'provider_url': 'http://foo.com/name',
-            'provider_name': 'some-other-name'
+            'provider': 'provider'
         }
 
     def test_required_fields(self):

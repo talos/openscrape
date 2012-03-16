@@ -1,5 +1,21 @@
-<form action="/oauth/login" method="POST">
-    <label for="user">Enter your username or email address to login.  You will be redirected to the appropriate login page depending on your account type.</label>
-    <input type="text" name="user" />
-    <input type="submit" value="Login" />
-</form>
+<div>
+    Enter your username or the email address associated with the account you
+    used for <a href="http://en.wikipedia.org/wiki/OAuth">OAuth</a> to login.
+    You will be temporarily redirected to your OAuth provider's login page.
+</div>
+{{#error}}
+<div class="error">
+    {{error}}
+</div>
+{{/error}}
+<div>
+    <form action="/oauth/login" method="POST">
+        <div>
+            <label for="name_or_email">Username or email:</label>
+            <input type="text" name="name_or_email" />
+        </div>
+        <div>
+            <input type="submit" value="Login" />
+        </div>
+    </form>
+</div>

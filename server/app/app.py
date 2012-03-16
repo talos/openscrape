@@ -25,7 +25,7 @@ import oauth
 from config import DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC, \
                    SEND_SPEC, JSON_GIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS, \
                    APP_HOST, APP_PORT
-from database import Users, Instructions, get_db
+import database
 
 
 class Handler(MustacheRendering, UserHandlingMixin):
@@ -82,7 +82,6 @@ class Handler(MustacheRendering, UserHandlingMixin):
 # HANDLERS
 #
 
-
 class OAuthLogin(Handler):
 
     def post(self):
@@ -93,15 +92,16 @@ class OAuthLogin(Handler):
         Does not support JSON.
         """
         context = {}
+        self.delete_cookie('signup')
         if self.current_user:
             context['error'] = 'You are already logged in as %s' % self.current_user.name
             status = 403
         else:
-            user = self.application.users.find(self.get_argument('user'))
+            user = self.application.users.find(self.get_argument('name_or_email'))
             if user:
                 try:
                     provider = oauth.OAuthProvider(APP_HOST, APP_PORT, user.provider)
-                    self.redirect(provider.auth_url('login'))
+                    return self.redirect(provider.auth_url)
                 except oauth.OAuthError as e:
                     context['error'] = "Unexpected OAuth error %s" % e
                     status = 500
@@ -122,8 +122,8 @@ class OAuthSignup(Handler):
         Does not support JSON.
         """
         user_name = self.get_argument('user')
-        provider_name = self.get_argument('provider')
-        context = {}
+        provider_name = self.get_argument('provider').lower()
+        context = { 'user': user_name }
 
         try:
             provider = oauth.OAuthProvider(APP_HOST, APP_PORT, provider_name)
@@ -131,8 +131,6 @@ class OAuthSignup(Handler):
                 context['error'] = 'You are already logged in as %s.' % self.current_user.name
                 status = 400
             else:
-                user_name = self.get_argument('user')
-
                 if not user_name:
                     context['error'] = 'You must specify user name to sign up'
                     status = 400
@@ -143,7 +141,8 @@ class OAuthSignup(Handler):
                     context['error'] = "User name '%s' is already in use." % user_name
                     status = 400
                 else:
-                    return self.redirect(provider.auth_url("signup=%s" % user_name))
+                    self.set_cookie('signup', user_name, self.application.cookie_secret)
+                    return self.redirect(provider.auth_url)
         except oauth.OAuthError:
             context['error'] = "OAuth provider %s is not supported." % provider_name
             status = 400
@@ -162,27 +161,23 @@ class OAuthCallback(Handler):
         Must generate users accordingly.
         """
         code = self.get_argument('code')
-        state = self.get_argument('state')
         context = {}
         if code:
             try:
                 provider = oauth.OAuthProvider(APP_HOST, APP_PORT, provider_name)
-                user = provider.get_user(code)
-                if state == 'login':
-                    # TODO: update the user info
-                    user = self.application.users.find_by_provider(user.provider,
-                                                                   user.provider_id)
-                    self.set_current_user(user)
-                    return self.redirect('/home')
-                elif state.split('=')[0] == 'signup':
-                    user_name = '='.join(state.split('=')[1:])
-                    if self.application.users.find(user_name):
+                user = provider.new_user(code)
+
+                # state is stored client-side in cookie, which must be
+                # revalidated in case of tampering
+                signup_name = self.get_cookie('signup', None, self.application.cookie_secret)
+                if signup_name:
+                    if self.application.users.find(signup_name):
                         context['error'] = 'Someone stole your name while you \
                                 OAuth\'d!, sorry.  Try again.'
                         status = 400
-                    elif self.validate_user_name(user_name):
-                        user.name = user_name
-                        user = self.application.users.save_or_create(user)
+                    elif self.validate_user_name(signup_name):
+                        user.name = signup_name
+                        self.application.users.save_or_create(user)
                         self.set_current_user(user)
                         return self.redirect('/home')
                     else:
@@ -190,14 +185,33 @@ class OAuthCallback(Handler):
                         context['error'] = 'Bad losername, cleva hacka'
                         status = 400
                 else:
-                    context['error'] = "Unknown state"
-                    status = 400
+                    existing_user = self.application.users.find(user.email)
+                    if existing_user:
+                        # TODO: update existing_user from user
+                        self.set_current_user(existing_user)
+                        return self.redirect('/home')
+                    else:
+                        context['error'] = 'You must sign up for an account.'
+                        status = 400
             except oauth.OAuthError as e:
                 context['error'] = "There was an OAuth error: %s" % e
                 status = 500
+            except database.ValidationError as e:
+                context['error'] = "Your OAuth provider supplied the value \
+                        '%s' for '%s', which is not valid." % (e.field_value,
+                                                               e.field_name)
+                status = 400
+            except database.DuplicateError as e:
+                context['error'] = "There's already an account for the \
+                        email linked to that provider."
+                status = 400
+            except database.DatabaseError as e:
+                context['error'] = "Database error: %s" % e
+                status = 500
+
         else:
-            context['error'] = "Login failed: no code in callback."
-            status = 400
+            context['error'] = "Login failed: no access code from OAuth provider."
+            status = 500
 
         return self.render_template('login', _status_code=status, **context)
 
@@ -216,7 +230,7 @@ class UserHandler(Handler):
 
     def get(self, user_name):
         """
-        Get the user's homepage.
+        Get all the instructions by this user.
         """
         context = {}
         user = self.application.users.find(user_name)
@@ -374,10 +388,8 @@ class InstructionModelHandler(Handler):
         """
         context = {}
         doc = self.application.instructions.find(user_name, name)
-        print doc.instruction.__class__
         if doc:
             context['instruction'] = doc.to_python()
-            print doc.instruction.__class__
             status = 200
         else:
             context['error'] = "Instruction does not exist"
@@ -386,10 +398,6 @@ class InstructionModelHandler(Handler):
         if self.is_json_request():
             if status == 200:
                 context = doc.instruction
-            print doc.to_python()
-            print 'doc.instruction class: %s' % doc.instruction.__class__
-            print 'predump: %s' % context
-            #print 'postdump for json: %s' % json.dumps(context.for_json())
             self.set_body(json.dumps(context))
             self.set_status(status)
             return self.render()
@@ -410,7 +418,6 @@ class InstructionModelHandler(Handler):
             status = 403
         else:
             try:
-                print 'about to save or create'
                 doc = self.application.instructions.save_or_create(
                     user, name,
                     json.loads(self.get_argument('instruction')),
@@ -480,7 +487,7 @@ config = {
 }
 
 app = Brubeck(**config)
-db = get_db(DB_HOST, DB_PORT, DB_NAME)
-app.users = Users(db)
-app.instructions = Instructions(app.users, JsonGitRepository(JSON_GIT_DIR), db)
+db = database.get_db(DB_HOST, DB_PORT, DB_NAME)
+app.users = database.Users(db)
+app.instructions = database.Instructions(app.users, JsonGitRepository(JSON_GIT_DIR), db)
 app.run()
