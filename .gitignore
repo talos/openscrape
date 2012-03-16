@@ -10,6 +10,7 @@
 start.sh
 stop.sh
 *.jsongit/
+data/mongo/*
 log/*
 todos.txt
 bin/*

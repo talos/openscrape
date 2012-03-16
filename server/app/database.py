@@ -23,7 +23,9 @@ class Users(object):
     def __init__(self, db):
         self.coll = db.users
         self.coll.ensure_index('name', unique=True)
-        self.coll.ensure_index(('provider', 1), ('provider_id', 1), unique=True)
+        self.coll.ensure_index([('provider', pymongo.ASCENDING),
+                                ('provider_id', pymongo.ASCENDING)],
+                               unique=True)
         self.deleted = db.deleted_users
 
     def save(self, user):

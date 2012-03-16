@@ -470,7 +470,7 @@ config = {
         (r'^/oauth/signup$', OAuthSignup),
         (r'^/oauth/login$', OAuthLogin),
         (r'^/oauth/logout$', OAuthLogout),
-        (r'^/oauth/callback/([%s]+$' % (V_C, V_C), OAuthCallback),
+        (r'^/oauth/callback/([%s]+)$' % V_C, OAuthCallback),
         (r'^/instructions/([%s]+)$' % V_C, UserHandler),
         (r'^/instructions/([%s]+)/$' % V_C, InstructionCollectionHandler),
         (r'^/instructions/([%s]+)/([%s]+)$' % (V_C, V_C), InstructionModelHandler),
