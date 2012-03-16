@@ -48,6 +48,8 @@ class InstructionDocument(Document):
     tags = ListField(StringField())
     instruction = InstructionField(required=True)
 
+    _private_fields = [id, creator_id]
+
 class User(Document):
     """
     A user who can clone, make push requests, and pull instructions.
@@ -56,4 +58,11 @@ class User(Document):
     name = StringField(required=True)
     deleted = BooleanField(default=False)
 
-    _private_fields = [deleted]
+    provider = StringField(required=True)
+    provider_url = StringField(required=True)
+    provider_img = StringField(required=True)
+    provider_name = StringField(required=True)
+    provider_dict = DictField(required=True)
+
+    _private_fields = [id, deleted, provider, provider_url, provider_img,
+                       provider_name, provider_dict]

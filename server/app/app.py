@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 Openscrape server.
 
@@ -10,22 +12,32 @@ try:
 except ImportError:
     import json
 
-import logging
+#import logging
 import re
+
 from jsongit import JsonGitRepository
 from dictshield.base import ShieldException
 from brubeck.request_handling import Brubeck
 from brubeck.auth import UserHandlingMixin
 
 from brubeck.templating import MustacheRendering, load_mustache_env
-from config     import DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC, \
-                       SEND_SPEC, JSON_GIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS
-from database   import Users, Instructions, get_db
+import oauth
+from config import DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC, \
+                   SEND_SPEC, JSON_GIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS, \
+                   APP_HOST, APP_PORT
+from database import Users, Instructions, get_db
+
 
 class Handler(MustacheRendering, UserHandlingMixin):
     """
     An extended handler.
     """
+
+    def validate_user_name(self, user_name):
+        """
+        Returns True if the user name is OK, False otherwise.
+        """
+        return not re.search(r'[^%s]' % VALID_URL_CHARS, user_name)
 
     def instruction_to_path(self, user_name, instruction_doc):
         """
@@ -69,14 +81,52 @@ class Handler(MustacheRendering, UserHandlingMixin):
 #
 # HANDLERS
 #
-class IndexHandler(Handler):
+
+
+class OAuthLogin(Handler):
+
     def post(self):
         """
-        Logging in and out.
+        The user wants to log in.  Check they exist, then redirect them to the
+        appropriate OAuth service for confirmation.
+
+        Does not support JSON.
         """
-        action = self.get_argument('action')
         context = {}
-        if action == 'signup':
+        if self.current_user:
+            context['error'] = 'You are already logged in as %s' % self.current_user.name
+            status = 403
+        else:
+            user = self.application.users.find(self.get_argument('user'))
+            if user:
+                try:
+                    provider = oauth.OAuthProvider(APP_HOST, APP_PORT, user.provider)
+                    self.redirect(provider.auth_url('login'))
+                except oauth.OAuthError as e:
+                    context['error'] = "Unexpected OAuth error %s" % e
+                    status = 500
+            else:
+                context['error'] = 'User does not exist'
+                status = 403
+
+        return self.render_template('login', _status_code=status, **context)
+
+
+class OAuthSignup(Handler):
+
+    def post(self):
+        """
+        The user wants to sign up.  Make sure their username isn't taken, and
+        then redirect them to their chosen provider.
+
+        Does not support JSON.
+        """
+        user_name = self.get_argument('user')
+        provider_name = self.get_argument('provider')
+        context = {}
+
+        try:
+            provider = oauth.OAuthProvider(APP_HOST, APP_PORT, provider_name)
             if self.current_user:
                 context['error'] = 'You are already logged in as %s.' % self.current_user.name
                 status = 400
@@ -86,45 +136,80 @@ class IndexHandler(Handler):
                 if not user_name:
                     context['error'] = 'You must specify user name to sign up'
                     status = 400
-                elif re.search(r'[^%s]' % VALID_URL_CHARS, user_name):
+                elif not self.validate_user_name(user_name):
                     context['error'] = 'Illegal character in requested user name'
                     status = 400
                 elif self.application.users.find(user_name):
                     context['error'] = "User name '%s' is already in use." % user_name
                     status = 400
                 else:
-                    user = self.application.users.create(user_name)
-                    self.set_current_user(user)
-                    context['user'] = user.name
-                    status = 200
-        elif action == 'login':
-            logging.warn('Login not yet implemented.')
-
-            if self.current_user:
-                context['error'] = 'You are already logged in as %s' % self.current_user.name
-                status = 403
-
-            user = self.application.users.find(self.get_argument('user'))
-            if user:
-                self.set_current_user(user)
-                status = 200
-            else:
-                context['error'] = 'User does not exist'
-                status = 403
-
-        elif action == 'logout':
-            self.logout_user()
-            status = 200
-        else:
-            context['error'] = 'Invalid action'
+                    return self.redirect(provider.auth_url("signup=%s" % user_name))
+        except oauth.OAuthError:
+            context['error'] = "OAuth provider %s is not supported." % provider_name
             status = 400
 
-        if self.is_json_request():
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
+        return self.render_template('signup', _status_code=status, **context)
+
+
+class OAuthCallback(Handler):
+
+    def get(self, provider_name):
+        """
+        The callback landing from OAuth identification.  This is where we
+        distribute cookies and send 'em on home.
+
+        The callback could come from either a standard login or a new signup.
+        Must generate users accordingly.
+        """
+        code = self.get_argument('code')
+        state = self.get_argument('state')
+        context = {}
+        if code:
+            try:
+                provider = oauth.OAuthProvider(APP_HOST, APP_PORT, provider_name)
+                user = provider.get_user(code)
+                if state == 'login':
+                    # TODO: update the user info
+                    user = self.application.users.find_by_provider(user.provider,
+                                                                   user.provider_id)
+                    self.set_current_user(user)
+                    return self.redirect('/home')
+                elif state.split('=')[0] == 'signup':
+                    user_name = '='.join(state.split('=')[1:])
+                    if self.application.users.find(user_name):
+                        context['error'] = 'Someone stole your name while you \
+                                OAuth\'d!, sorry.  Try again.'
+                        status = 400
+                    elif self.validate_user_name(user_name):
+                        user.name = user_name
+                        user = self.application.users.save_or_create(user)
+                        self.set_current_user(user)
+                        return self.redirect('/home')
+                    else:
+                        # they faked something to get here.
+                        context['error'] = 'Bad losername, cleva hacka'
+                        status = 400
+                else:
+                    context['error'] = "Unknown state"
+                    status = 400
+            except oauth.OAuthError as e:
+                context['error'] = "There was an OAuth error: %s" % e
+                status = 500
         else:
-            return self.render_template('user', _status_code=status, **context)
+            context['error'] = "Login failed: no code in callback."
+            status = 400
+
+        return self.render_template('login', _status_code=status, **context)
+
+
+class OAuthLogout(Handler):
+
+    def get(self):
+        """
+        A simple logout -- just clears their cookie.
+        """
+        self.logout_user()
+        return self.redirect('/')
 
 
 class UserHandler(Handler):
@@ -382,7 +467,10 @@ V_C = VALID_URL_CHARS
 config = {
     'mongrel2_pair': (RECV_SPEC, SEND_SPEC),
     'handler_tuples': [
-        (r'^/instructions/?$', IndexHandler),
+        (r'^/oauth/signup$', OAuthSignup),
+        (r'^/oauth/login$', OAuthLogin),
+        (r'^/oauth/logout$', OAuthLogout),
+        (r'^/oauth/callback/([%s]+$' % (V_C, V_C), OAuthCallback),
         (r'^/instructions/([%s]+)$' % V_C, UserHandler),
         (r'^/instructions/([%s]+)/$' % V_C, InstructionCollectionHandler),
         (r'^/instructions/([%s]+)/([%s]+)$' % (V_C, V_C), InstructionModelHandler),

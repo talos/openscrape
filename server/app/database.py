@@ -17,26 +17,26 @@ def get_db(server, port, name):
 
 class Users(object):
     """Collection of users.  Ensures uniqueness of non-deleted
-    names.
+    names and provider/provider_id combos.
     """
 
     def __init__(self, db):
         self.coll = db.users
         self.coll.ensure_index('name', unique=True)
+        self.coll.ensure_index(('provider', 1), ('provider_id', 1), unique=True)
         self.deleted = db.deleted_users
 
-    def create(self, name):
-        """Create a new user.
-
-        Returns the User, or None if the user has a duplicate name.
+    def save(self, user):
+        """Save a user object.  Validates and assigns it an ID.
         """
-        try:
-            id = self.coll.insert(User(name=name).to_python())
-            return self.get(id)
-        except pymongo.errors.OperationFailure:
-            return None
-        except pymongo.errors.DuplicateKeyError:
-            return None # requires server 1.3+
+        user.validate()
+        id = self.coll.insert(user.to_python())
+        user.id = id
+        #try:
+        #except pymongo.errors.OperationFailure:
+        #    return None
+        #except pymongo.errors.DuplicateKeyError:
+        #    return None # requires server 1.3+
 
     def get(self, id):
         """Get a user by id.
@@ -53,6 +53,11 @@ class Users(object):
         """
         u = self.coll.find_one({'name': name})
         return User(**u) if u else None
+
+    def find_by_provider(self, provider, provider_id):
+        """Get a user by provider id.
+
+        """
 
     def delete(self, user):
         """Delete a user.
