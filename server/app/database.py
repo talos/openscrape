@@ -5,14 +5,35 @@ caustic.database
 """
 
 import pymongo
-from jsongit import signature
+import jsongit
+import dictshield.base as dictshield
 from models import User, InstructionDocument
-from dictshield.base import ShieldException
 
 def get_db(server, port, name):
     db = pymongo.Connection(server, port)[name]
     db.safe = True
     return db
+
+
+class DatabaseError(RuntimeError):
+    """
+    This is raised when a DB operation goes wrong.
+    """
+    pass
+
+
+class DuplicateError(RuntimeError):
+    """
+    This is raised when everything is danday, but it was a dupe.
+    """
+    pass
+
+
+class ValidationError(RuntimeError):
+    """
+    This is raised when a model is no good.
+    """
+    pass
 
 
 class Users(object):
@@ -23,22 +44,25 @@ class Users(object):
     def __init__(self, db):
         self.coll = db.users
         self.coll.ensure_index('name', unique=True)
-        self.coll.ensure_index([('provider', pymongo.ASCENDING),
-                                ('provider_id', pymongo.ASCENDING)],
-                               unique=True)
+        self.coll.ensure_index('email', unique=True)
         self.deleted = db.deleted_users
 
-    def save(self, user):
-        """Save a user object.  Validates and assigns it an ID.
+    def save_or_create(self, user):
+        """Save a user object, creating it if it doesn't already exist.
+        Validates and assigns it an ID.
+
+        Raises a DatabaseError if it can't be saved.
         """
-        user.validate()
-        id = self.coll.insert(user.to_python())
-        user.id = id
-        #try:
-        #except pymongo.errors.OperationFailure:
-        #    return None
-        #except pymongo.errors.DuplicateKeyError:
-        #    return None # requires server 1.3+
+        try:
+            user.validate()
+            id = self.coll.insert(user.to_python())
+            user.id = id
+        except dictshield.ShieldException as e:
+            raise ValidationError(e)
+        except pymongo.errors.DuplicateKeyError as e:
+            raise DuplicateError()
+        except pymongo.errors.OperationFailure as e:
+            raise DatabaseError(e)
 
     def get(self, id):
         """Get a user by id.
@@ -48,18 +72,17 @@ class Users(object):
         u = self.coll.find_one(id)
         return User(**u) if u else None
 
-    def find(self, name):
-        """Get a user by name.
+    def find(self, name_or_email):
+        """Get a user by name or email.
 
         Returns the User or None.
         """
-        u = self.coll.find_one({'name': name})
+        if name_or_email.find('@') == -1: # names can't have @, quick check for email
+            u = self.coll.find_one({'name': name_or_email})
+        else:
+            u = self.coll.find_one({'email': name_or_email})
+
         return User(**u) if u else None
-
-    def find_by_provider(self, provider, provider_id):
-        """Get a user by provider id.
-
-        """
 
     def delete(self, user):
         """Delete a user.
@@ -124,66 +147,35 @@ class Instructions(object):
         else:
             return None
 
-    def create(self, creator, name, instruction, tags):
-        """Create an instruction for a creator.
-
-        Returns the InstructionDocument.
-
-        Raises a DuplicateKeyError, OperationFailure, or ShieldException
-        otherwise.
-        """
-        doc = InstructionDocument(
-            creator_id=creator.id,
-            name=name,
-            instruction=instruction,
-            tags=tags)
-        doc.validate()
-
-        id = self.coll.insert(doc.to_python())
-        doc = InstructionDocument(**self.coll.find_one(id))  # grab ID
-        self.repo.create(self._repo_key(creator, doc), doc.instruction,
-                         author=signature(creator.name, creator.name))
-        return doc
-
     def save_or_create(self, creator, name, instruction, tags):
-        """Save over the named instruction with new data if it exists,
-        or create it otherwise.
+        """Create an instruction for a creator, or update the existing one
+        with tags and instruction.
 
-        Returns the InstructionDocument.
+        Returns the updated InstructionDocument.
 
-        Raises a ShieldException if there's a problem.
+        Raises a ValidationError or DatabaseError if something else goes wrong.
         """
         doc = self.find(creator.name, name)
         if doc:
-            print 'exists'
-            print doc.instruction.__class__
             doc.instruction = instruction
-            print doc.instruction.__class__
             doc.tags = tags
-            self.save(doc)
-            return doc
         else:
-            print 'does not exist'
-            doc =  self.create(creator, name, instruction, tags)
-            print doc.instruction
-            return doc
-            #return self.create(creator, name, instruction, tags)
+            doc = InstructionDocument(creator_id=creator.id,
+                                      name=name,
+                                      instruction=instruction,
+                                      tags=tags)
 
-    def save(self, doc):
-        """Save an instruction.
-
-        Returns None if the save was successful, a message explaining why it
-        failed otherwise.
-        """
         try:
             doc.validate()
-            self.coll.save(doc.to_python())
-        except ShieldException as e:
-            return str(e)
-
-        creator = self.users.get(doc.creator_id)
-        self.repo.commit(self._repo_key(creator, doc), doc.instruction,
-                         author=signature(creator.name, creator.name))
+            creator = self.users.get(doc.creator_id)
+            self.repo.commit(self._repo_key(creator, doc), doc.instruction,
+                             author=jsongit.signature(creator.name, creator.name))
+            doc.id = self.coll.save(doc.to_python(), manipulate=True)
+            return doc
+        except dictshield.ShieldException as e:
+            raise ValidationError(e)
+        except pymongo.errors.OperationFailure as e:
+            raise DatabaseError(e)
 
     def delete(self, doc):
         """Delete an instruction.
