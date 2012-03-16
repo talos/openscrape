@@ -4,7 +4,8 @@ import schema
 
 from dictshield.document import Document
 from dictshield.base import ShieldException
-from dictshield.fields import StringField, BooleanField, DictField
+from dictshield.fields import StringField, BooleanField, DictField, EmailField, \
+                              URLField
 from dictshield.fields.compound import ListField
 from dictshield.fields.mongo import ObjectIdField
 
@@ -57,12 +58,15 @@ class User(Document):
     id = ObjectIdField(id_field=True)
     name = StringField(required=True)
     deleted = BooleanField(default=False)
+    email = EmailField(required=True)
 
     provider = StringField(required=True)
-    provider_url = StringField(required=True)
-    provider_img = StringField(required=True)
+    provider_id = StringField(required=True)
+    provider_url = URLField(required=True)
+    provider_img = URLField(required=True)
     provider_name = StringField(required=True)
-    provider_dict = DictField(required=True)
+    provider_dict = DictField()
 
-    _private_fields = [id, deleted, provider, provider_url, provider_img,
-                       provider_name, provider_dict]
+    _private_fields = [id, deleted, email, provider, provider_id,
+                       provider_url, provider_img, provider_name,
+                       provider_dict]

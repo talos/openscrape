@@ -9,23 +9,56 @@ from dictshield.base import ShieldException
 
 class TestUser(unittest.TestCase):
 
-    def test_requires_name(self):
-        """Should not validate without name.
+    @property
+    def requirements(self):
+        return {
+            'name': 'name',
+            'email': 'user@email.com',
+            'provider': 'provider',
+            'provider_id' : '1234',
+            'provider_img': 'http://foo.com/img.jpg',
+            'provider_url': 'http://foo.com/name',
+            'provider_name': 'some-other-name'
+        }
+
+    def test_required_fields(self):
+        """Should not validate without all of the requirements.
         """
-        u = User()
+        for req_name in self.requirements.viewkeys():
+            test_req = self.requirements.copy()
+            test_req.pop(req_name)
+            with self.assertRaises(ShieldException):
+                u = User(**test_req)
+                u.validate()
+
+    def test_valid_email(self):
         with self.assertRaises(ShieldException):
+            u = User(**self.requirements)
+            u.email = 'not an email address'
+            u.validate()
+
+    def test_valid_img(self):
+        with self.assertRaises(ShieldException):
+            u = User(**self.requirements)
+            u.provider_img = 'not a url'
+            u.validate()
+
+    def test_valid_url(self):
+        with self.assertRaises(ShieldException):
+            u = User(**self.requirements)
+            u.provider_url = 'not a url'
             u.validate()
 
     def test_validates(self):
-        """Should validate if it has a name.
+        """Should validate with reqs
         """
-        u = User(name="valid")
+        u = User(**self.requirements)
         u.validate()
 
     def test_not_deleted(self):
         """Should start out not deleted.
         """
-        u = User(name="exists")
+        u = User(**self.requirements)
         self.assertFalse(u.deleted)
 
 class TestInstructionDocument(unittest.TestCase):
