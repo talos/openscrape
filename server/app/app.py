@@ -14,8 +14,8 @@ except ImportError:
 
 #import logging
 import re
+import jsongit
 
-from jsongit import JsonGitRepository
 from dictshield.base import ShieldException
 from brubeck.request_handling import Brubeck
 from brubeck.auth import UserHandlingMixin
@@ -86,10 +86,10 @@ class OAuthLogin(Handler):
 
     def post(self):
         """
-        The user wants to log in.  Check they exist, then redirect them to the
-        appropriate OAuth service for confirmation.
+        The user wants to log in.  Check they exist, then tell the app to
+        redirect them to the appropriate OAuth service for confirmation.
 
-        Does not support JSON.
+        Returns JSON.
         """
         context = {}
         self.delete_cookie('signup')
@@ -101,7 +101,8 @@ class OAuthLogin(Handler):
             if user:
                 try:
                     provider = oauth.OAuthProvider(APP_HOST, APP_PORT, user.provider)
-                    return self.redirect(provider.auth_url)
+                    context['redirect'] = provider.auth_url
+                    status = 200
                 except oauth.OAuthError as e:
                     context['error'] = "Unexpected OAuth error %s" % e
                     status = 500
@@ -109,7 +110,10 @@ class OAuthLogin(Handler):
                 context['error'] = 'User does not exist'
                 status = 403
 
-        return self.render_template('login', _status_code=status, **context)
+        self.headers['Content-Type'] = 'application/json'
+        self.set_status(status)
+        self.set_body(json.dumps(context))
+        return self.render()
 
 
 class OAuthSignup(Handler):
@@ -117,12 +121,12 @@ class OAuthSignup(Handler):
     def post(self):
         """
         The user wants to sign up.  Make sure their username isn't taken, and
-        then redirect them to their chosen provider.
+        then tell the app to redirect them to their chosen provider.
 
-        Does not support JSON.
+        Returns JSON.
         """
         user_name = self.get_argument('user')
-        provider_name = self.get_argument('provider').lower()
+        provider_name = self.get_argument('provider', '').lower()
         context = { 'user': user_name }
 
         try:
@@ -142,12 +146,16 @@ class OAuthSignup(Handler):
                     status = 400
                 else:
                     self.set_cookie('signup', user_name, self.application.cookie_secret)
-                    return self.redirect(provider.auth_url)
+                    status = 200
+                    context['redirect'] = provider.auth_url
         except oauth.OAuthError:
             context['error'] = "OAuth provider %s is not supported." % provider_name
             status = 400
 
-        return self.render_template('signup', _status_code=status, **context)
+        self.headers['Content-Type'] = 'application/json'
+        self.set_status(status)
+        self.set_body(json.dumps(context))
+        return self.render()
 
 
 class OAuthCallback(Handler):
@@ -159,6 +167,8 @@ class OAuthCallback(Handler):
 
         The callback could come from either a standard login or a new signup.
         Must generate users accordingly.
+
+        returns JSON.
         """
         code = self.get_argument('code')
         context = {}
@@ -179,7 +189,8 @@ class OAuthCallback(Handler):
                         user.name = signup_name
                         self.application.users.save_or_create(user)
                         self.set_current_user(user)
-                        return self.redirect('/home')
+                        status = 200
+                        context['user'] = user.name
                     else:
                         # they faked something to get here.
                         context['error'] = 'Bad losername, cleva hacka'
@@ -189,7 +200,8 @@ class OAuthCallback(Handler):
                     if existing_user:
                         # TODO: update existing_user from user
                         self.set_current_user(existing_user)
-                        return self.redirect('/home')
+                        context['user'] = user.name
+                        status = 200
                     else:
                         context['error'] = 'You must sign up for an account.'
                         status = 400
@@ -213,7 +225,19 @@ class OAuthCallback(Handler):
             context['error'] = "Login failed: no access code from OAuth provider."
             status = 500
 
-        return self.render_template('login', _status_code=status, **context)
+        self.headers['Content-Type'] = 'application/json'
+        self.set_status(status)
+        self.set_body(json.dumps(context))
+        return self.render()
+
+
+class OAuthStatus(Handler):
+
+    def get(self):
+        """
+        Returns a JSON object with user info.
+        """
+        
 
 
 class OAuthLogout(Handler):
@@ -478,6 +502,7 @@ config = {
         (r'^/oauth/login$', OAuthLogin),
         (r'^/oauth/logout$', OAuthLogout),
         (r'^/oauth/callback/([%s]+)$' % V_C, OAuthCallback),
+        (r'^/oauth/status$', OAuthStatus),
         (r'^/instructions/([%s]+)$' % V_C, UserHandler),
         (r'^/instructions/([%s]+)/$' % V_C, InstructionCollectionHandler),
         (r'^/instructions/([%s]+)/([%s]+)$' % (V_C, V_C), InstructionModelHandler),
@@ -489,5 +514,5 @@ config = {
 app = Brubeck(**config)
 db = database.get_db(DB_HOST, DB_PORT, DB_NAME)
 app.users = database.Users(db)
-app.instructions = database.Instructions(app.users, JsonGitRepository(JSON_GIT_DIR), db)
+app.instructions = database.Instructions(app.users, jsongit.init(JSON_GIT_DIR), db)
 app.run()

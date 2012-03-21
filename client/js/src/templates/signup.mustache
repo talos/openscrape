@@ -22,8 +22,13 @@
 
         <div>
             <label for="provider">Choose an OAuth provider: </label>
-            <div><input type="submit" name="provider" value="Google" /></div>
-            <div><input type="submit" name="provider" value="Github" /></div>
+            <div><input type="button" name="provider" value="Google" /></div>
+            <div><input type="button" name="provider" value="Github" /></div>
         </div>
     </form>
 </div>
+{{#redirect}}
+<div>
+    <iframe src="{{redirect}}" />
+</div>
+{{/redirect}}

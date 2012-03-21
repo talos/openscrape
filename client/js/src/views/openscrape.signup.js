@@ -30,15 +30,47 @@ define([
 ], function (require, _, backbone, mustache, template) {
     "use strict";
 
-    //var $ = require('jquery');
+    var $ = require('jquery');
 
     return backbone.View.extend({
         tagName: 'div',
-        id: 'login',
+        id: 'signup',
 
-        render: function () {
-            this.$el.html(mustache.render(template));
+        events: {
+            'submit form': 'preventDefault',
+            'click input[type=button]': 'submit'
+        },
+
+        initialize: function () {
+        },
+
+        render: function (context) {
+            this.$el.html(mustache.render(template, context || {}));
+            this.$form = this.$el.find('form');
             return this;
+        },
+
+        preventDefault: function (evt) {
+            evt.preventDefault();
+        },
+
+        submit: function (evt) {
+            var data = this.$form.serialize(),
+                $button = $(evt.currentTarget);
+            data = data + '&' + encodeURIComponent($button.attr('name')) + '='
+                + encodeURIComponent($button.val());
+
+            $.ajax({
+                url: this.$form.attr('action'),
+                type: this.$form.attr('method'),
+                dataType: 'json',
+                data: data
+            }).done(_.bind(function (context) {
+                console.log(context);
+                this.render(context);
+            }, this)).fail(_.bind(function (jqXHR) {
+                this.render({'error': 'There was an unknown failure'});
+            }, this));
         }
     });
 });

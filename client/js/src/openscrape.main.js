@@ -35,6 +35,7 @@
         'views/openscrape.login',
         'views/openscrape.signup',
         'views/openscrape.help',
+        'views/openscrape.header',
         'lib/backbone',
         'lib/underscore',
         'lib/requirejs.mustache',
@@ -44,8 +45,8 @@
         'lib/jquery'
     ], function (require, WarningModel, MarkersCollection,
                  NodesCollection, WarningView, MapView, VisualView,
-                 LoginView, SignupView, HelpView,
-                 backbone, _, mustache, appTemplate, Address) {
+                 LoginView, SignupView, HelpView, HeaderView,
+                 backbone, _, mustache, template, Address) {
 
         var $ = require('jquery'),
 
@@ -60,6 +61,7 @@
             login = new LoginView(),
             signup = new SignupView(),
             help = new HelpView(),
+            header = new HeaderView(),
 
             slice = Array.prototype.slice,
 
@@ -70,23 +72,23 @@
             HELP = 5,
 
             AppView = backbone.View.extend({
+                tagName: 'div',
+                id: 'app',
 
                 initialize: function (options) {
-                    this.$el.html(mustache.render(appTemplate, options));
-                    this.$help = this.$('#help').hide();
+                    this.$el.html(mustache.render(template, options));
 
                     map.on('visualize', function () {
                         this.show.apply(this, [VISUAL].concat(slice.call(arguments, 0)));
                     }, this);
 
+                    header.render().$el.appendTo(this.$el);
                     visual.$el.appendTo(this.$el).hide();
                     help.$el.hide().appendTo(this.$el);
                     login.$el.hide().appendTo(this.$el);
                     signup.$el.hide().appendTo(this.$el);
                     nodes.on('error', this.warn, this);
                     markers.on('error', this.warn, this);
-
-                    //this.show(MAP);
                 },
 
                 /**

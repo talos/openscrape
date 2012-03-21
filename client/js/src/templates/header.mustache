@@ -1,0 +1,11 @@
+<a class="pushState" href="/">Openscrape</a> {{version}}
+:: scraping templates visualized
+:: <a class="help pushState" href="/help">help</a>
+{{#user}}
+:: <a class="home pushState" href="/home">{{user}}</a>
+:: <a class="logout pushState" href="/logout">Log out</a>
+{{/user}}
+{{^user}}
+:: <a class="login pushState" href="/login">Login</a>
+:: <a class="signup pushState" href="/signup">Signup</a>
+{{/user}}

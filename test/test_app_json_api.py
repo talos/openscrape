@@ -9,9 +9,9 @@ from server.app.database import get_db
 PARSER = SafeConfigParser()
 
 if len(PARSER.read('config/app.ini')):
-    HOST = PARSER.get('test', 'test_host')
-    PORT = PARSER.get('test', 'test_port')
-    ROOT = HOST + ':' + PORT
+    HOST = PARSER.get('test', 'host')
+    PORT = PARSER.get('test', 'port')
+    ROOT = "http://%s:%s" % (HOST, PORT)
 else:
     print("Test requires a config/app.ini file")
     sys.exit(1)
