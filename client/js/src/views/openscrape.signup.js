@@ -26,7 +26,8 @@ define([
     'lib/underscore',
     'lib/backbone',
     'lib/requirejs.mustache',
-    'text!templates/signup.mustache'
+    'text!templates/signup.mustache',
+    'lib/jquery'
 ], function (require, _, backbone, mustache, template) {
     "use strict";
 
@@ -42,6 +43,7 @@ define([
         },
 
         initialize: function () {
+            window.addEventListener("message", _.bind(this.receiveMessage, this), false);
         },
 
         render: function (context) {
@@ -54,9 +56,16 @@ define([
             evt.preventDefault();
         },
 
+        receiveMessage: function (evt) {
+            if (evt.origin === window.location.origin) {
+                this.render(evt.data);
+            }
+        },
+
         submit: function (evt) {
             var data = this.$form.serialize(),
                 $button = $(evt.currentTarget);
+            // Which service they're using depends on the button they click.
             data = data + '&' + encodeURIComponent($button.attr('name')) + '='
                 + encodeURIComponent($button.val());
 
@@ -66,7 +75,6 @@ define([
                 dataType: 'json',
                 data: data
             }).done(_.bind(function (context) {
-                console.log(context);
                 this.render(context);
             }, this)).fail(_.bind(function (jqXHR) {
                 this.render({'error': 'There was an unknown failure'});

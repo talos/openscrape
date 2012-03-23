@@ -26,19 +26,49 @@ define([
     'lib/underscore',
     'lib/backbone',
     'lib/requirejs.mustache',
-    'text!templates/login.mustache'
+    'text!templates/login.mustache',
+    'lib/jquery'
 ], function (require, _, backbone, mustache, template) {
     "use strict";
 
-    //var $ = require('jquery');
+    var $ = require('jquery');
 
     return backbone.View.extend({
         tagName: 'div',
         id: 'login',
 
-        render: function () {
-            this.$el.html(mustache.render(template));
+        events: {
+            'submit form': 'submit'
+        },
+
+        initialize: function () {
+            window.addEventListener("message", _.bind(this.receiveMessage, this), false);
+        },
+
+        render: function (context) {
+            this.$el.html(mustache.render(template, context || {}));
             return this;
+        },
+
+        receiveMessage: function (evt) {
+            if (evt.origin === window.location.origin) {
+                this.render(evt.data);
+            }
+        },
+
+        submit: function (evt) {
+            evt.preventDefault();
+            var $form = $(evt.currentTarget);
+            $.ajax({
+                url: $form.attr('action'),
+                type: $form.attr('method'),
+                dataType: 'json',
+                data: $form.serialize()
+            }).done(_.bind(function (context) {
+                this.render(context);
+            }, this)).fail(_.bind(function (jqXHR) {
+                this.render({'error': 'There was an unknown failure'});
+            }, this));
         }
     });
 });

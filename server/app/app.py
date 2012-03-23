@@ -93,11 +93,15 @@ class OAuthLogin(Handler):
         """
         context = {}
         self.delete_cookie('signup')
+        name_or_email = self.get_argument('name_or_email')
         if self.current_user:
             context['error'] = 'You are already logged in as %s' % self.current_user.name
             status = 403
+        elif not name_or_email:
+            context['error'] = 'You must specify a name or email'
+            status = 400
         else:
-            user = self.application.users.find(self.get_argument('name_or_email'))
+            user = self.application.users.find(name_or_email)
             if user:
                 try:
                     provider = oauth.OAuthProvider(APP_HOST, APP_PORT, user.provider)
@@ -168,7 +172,7 @@ class OAuthCallback(Handler):
         The callback could come from either a standard login or a new signup.
         Must generate users accordingly.
 
-        returns JSON.
+        Returns a posted message.
         """
         code = self.get_argument('code')
         context = {}
@@ -200,7 +204,7 @@ class OAuthCallback(Handler):
                     if existing_user:
                         # TODO: update existing_user from user
                         self.set_current_user(existing_user)
-                        context['user'] = user.name
+                        context['user'] = existing_user.name
                         status = 200
                     else:
                         context['error'] = 'You must sign up for an account.'
@@ -214,8 +218,8 @@ class OAuthCallback(Handler):
                                                                e.field_name)
                 status = 400
             except database.DuplicateError as e:
-                context['error'] = "There's already an account for the \
-                        email linked to that provider."
+                context['error'] = "You already have an openscrape account \
+                        linked to %s." % provider_name
                 status = 400
             except database.DatabaseError as e:
                 context['error'] = "Database error: %s" % e
@@ -225,10 +229,9 @@ class OAuthCallback(Handler):
             context['error'] = "Login failed: no access code from OAuth provider."
             status = 500
 
-        self.headers['Content-Type'] = 'application/json'
-        self.set_status(status)
-        self.set_body(json.dumps(context))
-        return self.render()
+        return self.render_template('post_message', _status_code=status, **{
+            'message': json.dumps(context)
+        })
 
 
 class OAuthStatus(Handler):
