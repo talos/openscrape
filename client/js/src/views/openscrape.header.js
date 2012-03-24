@@ -26,11 +26,12 @@ define([
     'lib/underscore',
     'lib/backbone',
     'lib/requirejs.mustache',
-    'text!templates/header.mustache'
+    'text!templates/header.mustache',
+    'lib/jquery'
 ], function (require, _, backbone, mustache, template) {
     "use strict";
 
-    //var $ = require('jquery');
+    var $ = require('jquery');
 
     return backbone.View.extend({
         tagName: 'div',
@@ -38,6 +39,15 @@ define([
 
         render: function () {
             this.$el.html(mustache.render(template));
+            $.ajax({
+                url: '/oauth/status',
+                contentType: 'application/json',
+                dataType: 'json'
+            }).done(_.bind(function (context) {
+                this.$el.html(mustache.render(template, context));
+            }, this)).fail(_.bind(function (jqXHR) {
+                this.trigger('error', this, jqXHR.responseText);
+            }, this));
             return this;
         }
     });

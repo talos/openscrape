@@ -52,7 +52,11 @@ define([
 
         receiveMessage: function (evt) {
             if (evt.origin === window.location.origin) {
-                this.render(evt.data);
+                if (evt.data.user) {
+                    this.trigger('login');
+                } else {
+                    this.render(evt.data);
+                }
             }
         },
 
@@ -67,7 +71,7 @@ define([
             }).done(_.bind(function (context) {
                 this.render(context);
             }, this)).fail(_.bind(function (jqXHR) {
-                this.render({'error': 'There was an unknown failure'});
+                this.trigger('error', jqXHR.responseText);
             }, this));
         }
     });

@@ -70,7 +70,7 @@ class Handler(MustacheRendering, UserHandlingMixin):
         """
         Log out the current user.  Returns None
         """
-        self.delete_cookie('session')
+        self.delete_cookie('session', path='/')
 
     def is_json_request(self):
         """

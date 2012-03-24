@@ -70,6 +70,7 @@
             LOGIN = 3,
             SIGNUP = 4,
             HELP = 5,
+            HOME = 6,
 
             AppView = backbone.View.extend({
                 tagName: 'div',
@@ -87,8 +88,11 @@
                     help.$el.hide().appendTo(this.$el);
                     login.$el.hide().appendTo(this.$el);
                     signup.$el.hide().appendTo(this.$el);
+
                     nodes.on('error', this.warn, this);
                     markers.on('error', this.warn, this);
+                    login.on('error', this.warn, this);
+                    signup.on('error', this.warn, this);
                 },
 
                 /**
@@ -189,9 +193,11 @@
                 /**
                  * Display a warning with the specified text.
                  *
+                 * @param {Backbone.Events} caller An object with the Event
+                 * mixin, which caused this event.
                  * @param {String} text What the warning says.
                  */
-                warn: function (model, text) {
+                warn: function (object, caller, text) {
                     new WarningView({
                         model: new WarningModel({ text: text})
                     }).render().$el.appendTo(this.$el);
@@ -215,12 +221,22 @@
                                       '/' + address.street +
                                       '/' + address.number);
                     }, this);
+
+                    login.on('login', function () {
+                        this.navigate('home', {'trigger': true});
+                    }, this);
+
+                    signup.on('signup', function () {
+                        this.navigate('home', {'trigger': true});
+                    }, this);
                 },
 
                 routes: {
                     '': 'index',
                     'help': 'help',
                     'login': 'login',
+                    'logout': 'logout',
+                    'home': 'home',
                     'signup': 'signup',
                     'visualize/address/:zip/:street/:number': 'visualizeAddress',
                     'map*': 'map',
@@ -238,8 +254,20 @@
                     appView.show(HELP);
                 },
 
+                home: function () {
+                    header.render();
+                    appView.show(HOME);
+                },
+
                 login: function () {
                     appView.show(LOGIN);
+                },
+
+                logout: function () {
+                    $.get('/oauth/logout').done(_.bind(function () {
+                        header.render();
+                        this.navigate('/', {'trigger': true});
+                    }, this));
                 },
 
                 signup: function () {
