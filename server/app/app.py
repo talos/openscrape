@@ -64,7 +64,7 @@ class Handler(MustacheRendering, UserHandlingMixin):
         Set the cookie that will be used for session management.
         `user` is a User.
         """
-        self.set_cookie('session', user.id, self.application.cookie_secret)
+        self.set_cookie('session', user.id, self.application.cookie_secret, path='/')
 
     def logout_user(self):
         """
@@ -240,7 +240,12 @@ class OAuthStatus(Handler):
         """
         Returns a JSON object with user info.
         """
-        
+        context = {}
+        if self.current_user:
+            context['user'] = self.current_user.name
+        self.headers['Content-Type'] = 'application/json'
+        self.set_body(json.dumps(context))
+        return self.render()
 
 
 class OAuthLogout(Handler):
