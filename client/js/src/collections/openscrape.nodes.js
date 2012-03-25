@@ -24,20 +24,16 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.store',
-    'models/openscrape.node',
-    '../openscrape.zip2borough'
-], function (_, backbone, Store, NodeModel, zip2borough) {
+    '../openscrape.localsync',
+    '../openscrape.zip2borough',
+    'models/openscrape.node'
+], function (_, backbone, LocalSync, zip2borough, NodeModel) {
     "use strict";
 
     return backbone.Collection.extend({
         model: NodeModel,
 
-        store: new Store('nodes'),
-
-        initialize: function () {
-            this.fetch();
-        },
+        sync: new LocalSync('nodes'),
 
         /**
          * Get an array of nodes from an array of IDs.

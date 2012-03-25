@@ -24,19 +24,14 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.store',
+    '../openscrape.localsync',
     'models/openscrape.marker'
-], function (_, backbone, Store, MarkerModel) {
+], function (_, backbone, LocalSync, MarkerModel) {
     "use strict";
 
     return backbone.Collection.extend({
         model: MarkerModel,
-
-        store: new Store('markers'),
-
-        initialize: function () {
-            this.fetch();
-        },
+        sync: new LocalSync('markers'),
 
         /**
          * Find a marker by lat/lng.

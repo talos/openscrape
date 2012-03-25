@@ -27,6 +27,8 @@
     require([
         'require',
         'models/openscrape.warning',
+        'models/openscrape.oauth',
+        'collections/openscrape.users',
         'collections/openscrape.markers',
         'collections/openscrape.nodes',
         'views/openscrape.warning',
@@ -36,130 +38,104 @@
         'views/openscrape.signup',
         'views/openscrape.help',
         'views/openscrape.header',
+        'views/openscrape.home',
         'lib/backbone',
         'lib/underscore',
         'lib/requirejs.mustache',
         'text!templates/app.mustache',
         './openscrape.address',
-        './openscrape.sync',
         'lib/jquery'
-    ], function (require, WarningModel, MarkersCollection,
+    ], function (require, WarningModel, OAuthModel,
+                 UsersCollection, MarkersCollection,
                  NodesCollection, WarningView, MapView, VisualView,
                  LoginView, SignupView, HelpView, HeaderView,
-                 backbone, _, mustache, template, Address) {
+                 HomeView, backbone, _, mustache, template, Address) {
 
         var $ = require('jquery'),
 
+            oauth = new OAuthModel(),
+            users = new UsersCollection(),
             markers = new MarkersCollection(),
             nodes = new NodesCollection(),
 
-            map = new MapView({
-                collection: markers
-            }),
-
-            visual = new VisualView(),
-            login = new LoginView(),
-            signup = new SignupView(),
-            help = new HelpView(),
-            header = new HeaderView(),
+            map = new MapView({ collection: markers }),
+            header = new HeaderView({model: oauth}),
 
             slice = Array.prototype.slice,
-
-            MAP = 1,
-            VISUAL = 2,
-            LOGIN = 3,
-            SIGNUP = 4,
-            HELP = 5,
-            HOME = 6,
 
             AppView = backbone.View.extend({
                 tagName: 'div',
                 id: 'app',
 
+                events: {
+                    'click a.pushState': 'navigate'
+                },
+
                 initialize: function (options) {
                     this.$el.html(mustache.render(template, options));
 
-                    map.on('visualize', function () {
-                        this.show.apply(this, [VISUAL].concat(slice.call(arguments, 0)));
+                    markers.on('visualize', function (address, x, y) {
+                        this.show(new VisualView({
+                            model: nodes.forAddress(address),
+                            x: x,
+                            y: y
+                        }));
                     }, this);
 
                     header.render().$el.appendTo(this.$el);
-                    visual.$el.appendTo(this.$el).hide();
-                    help.$el.hide().appendTo(this.$el);
-                    login.$el.hide().appendTo(this.$el);
-                    signup.$el.hide().appendTo(this.$el);
 
+                    oauth.on('error', this.warn, this);
                     nodes.on('error', this.warn, this);
                     markers.on('error', this.warn, this);
-                    login.on('error', this.warn, this);
-                    signup.on('error', this.warn, this);
+                    users.on('error', this.warn, this);
+                },
+
+                /**
+                 * Absorb link navigation to ajaxify.
+                 *
+                 * @param evt {event} the absorbed click event.
+                 */
+                navigate: function (evt) {
+                    this.trigger('navigate', $(evt.currentTarget).attr('href'));
+                    evt.preventDefault();
                 },
 
                 /**
                  * Put the app in a particular state.
                  *
-                 * @param state {String} The state to move to.
+                 * @param state {backbone.View} The view state to move to.
                  */
                 show: function (state) {
 
                     var dfd = new $.Deferred(),
-                        args = slice.call(arguments, 1),
-                        lastView;
+                        args = slice.call(arguments, 1);
 
                     // Switch out prior state if it was different.
-                    if (_(this).has('state') && this.state !== state) {
-                        switch (this.state) {
-                        case MAP:
-                            lastView = map;
-                            dfd.done(_.bind(map.remove, map));
-                            break;
-                        case HELP:
-                            lastView = help;
-                            break;
-                        case VISUAL:
-                            lastView = visual;
-                            break;
-                        case LOGIN:
-                            lastView = login;
-                            break;
-                        case SIGNUP:
-                            lastView = signup;
-                            break;
-                        default:
-                            throw "Invalid prior state: " + this.state;
-                        }
-                        lastView.$el.fadeOut(dfd.resolve);
+                    if (this.state !== state && this.state) {
+                        dfd.done(_.bind(this.state.remove, this.state));
+                        this.state.$el.fadeOut(100, dfd.resolve);
                     } else {
                         dfd.resolve();
                     }
 
                     // Switch in new state when the old one is gone.
+                    // Special code for map which receives args,
+                    // but everything else is boilerplate.
                     dfd.done(_.bind(function () {
-                        switch (state) {
-                        case MAP:
+                        // visual.resize();
+                        // visual.render();
+                        // visual.reset();
+                        if (state === map) {
                             this.showMap.apply(this, args);
-                            break;
-                        case VISUAL:
-                            this.showVisual.apply(this, args);
-                            break;
-                        case HELP:
-                            help.render().$el.fadeIn();
-                            break;
-                        case LOGIN:
-                            login.render().$el.fadeIn();
-                            break;
-                        case SIGNUP:
-                            signup.render().$el.fadeIn();
-                            break;
-                        default:
-                            return; // premature return to prevent setting
-                                    // this.state to something weird
+                        } else {
+                            state.render().$el.hide().appendTo(this.$el).fadeIn(100);
                         }
                         this.state = state;
                     }, this));
                 },
 
                 showMap: function (zoom, lat, lng) {
+                    // append map to page if it's detached
                     if (map.$el.parent().length === 0) {
                         map.$el.appendTo(this.$el).fadeIn();
                         map.render();
@@ -173,31 +149,12 @@
                 },
 
                 /**
-                 * Create a new visual view for the address, centered on x and y.
-                 */
-                showVisual: function (address, x, y) {
-                    var model = nodes.forAddress(address);
-
-                    if (model) {
-                        visual.setModel(model);
-                        visual.$el.fadeIn();
-                        if (x && y) {
-                            visual.center(x, y);
-                        }
-                        visual.resize();
-                        visual.render();
-                        visual.reset();
-                    }
-                },
-
-                /**
                  * Display a warning with the specified text.
                  *
-                 * @param {Backbone.Events} caller An object with the Event
-                 * mixin, which caused this event.
-                 * @param {String} text What the warning says.
+                 * @param caller {backbone.Events} the event caller
+                 * @param text {String} What the warning says.
                  */
-                warn: function (object, caller, text) {
+                warn: function (caller, text) {
                     new WarningView({
                         model: new WarningModel({ text: text})
                     }).render().$el.appendTo(this.$el);
@@ -210,24 +167,25 @@
 
                 initialize: function () {
                     map.on('bounds_changed', function (zoom, lat, lng) {
-                        if (map.$el.is(':visible')) {
-                            this.navigate('map/' + zoom + '/' + lat + '/' + lng,
-                                          { replace: true });
-                        }
+                        //if (map.$el.is(':visible')) {
+                        //}
+                        this.navigate('map/' + zoom + '/' + lat + '/' + lng,
+                                      { replace: true });
+
                     }, this);
 
-                    map.on('visualize', function (address) {
+                    markers.on('visualize', function (address) {
                         this.navigate('visualize/address/' + address.zip +
                                       '/' + address.street +
                                       '/' + address.number);
                     }, this);
 
-                    login.on('login', function () {
-                        this.navigate('home', {'trigger': true});
+                    oauth.on('change:user', function (user) {
+                        this.navigate(user ? 'home' : '/', {'trigger': true});
                     }, this);
 
-                    signup.on('signup', function () {
-                        this.navigate('home', {'trigger': true});
+                    appView.on('navigate', function (href) {
+                        this.navigate(href, {'trigger': true });
                     }, this);
                 },
 
@@ -236,58 +194,61 @@
                     'help': 'help',
                     'login': 'login',
                     'logout': 'logout',
-                    'home': 'home',
                     'signup': 'signup',
                     'visualize/address/:zip/:street/:number': 'visualizeAddress',
                     'map*': 'map',
-                    'map/:zoom/:lat/:lng': 'map'
+                    'map/:zoom/:lat/:lng': 'map',
+                    '.+': 'catchAll'
                 },
 
                 /**
                  * Default to map
                  */
                 index: function () {
-                    appView.show(MAP);
+                    appView.show(map);
                 },
 
                 help: function () {
-                    appView.show(HELP);
+                    appView.show(new HelpView());
                 },
 
-                home: function () {
-                    header.render();
-                    appView.show(HOME);
+                catchAll: function () {
+                    //  appView.show(new HomeView({
+                    //      'model': users.get(oauth
+                    //  }));
+                    console.log(arguments);
                 },
 
                 login: function () {
-                    appView.show(LOGIN);
+                    appView.show(new LoginView({'model': oauth}));
                 },
 
                 logout: function () {
                     $.get('/oauth/logout').done(_.bind(function () {
-                        header.render();
-                        this.navigate('/', {'trigger': true});
+                        oauth.fetch();
                     }, this));
                 },
 
                 signup: function () {
-                    appView.show(SIGNUP);
+                    appView.show(new SignupView({'model': oauth}));
                 },
 
                 map: function (zoom, lat, lng) {
-                    appView.show(MAP, Number(zoom), Number(lat), Number(lng));
+                    appView.show(map, Number(zoom), Number(lat), Number(lng));
                 },
 
                 visualizeAddress: function (zip, street, number) {
                     try {
-                        appView.show(VISUAL, new Address({
-                            zip: zip,
-                            street: street,
-                            number: number
+                        appView.show(new VisualView({
+                            model: nodes.forAddress(new Address({
+                                zip: zip,
+                                street: street,
+                                number: number
+                            }))
                         }));
                     } catch (err) {
-                        appView.warn("Cannot visualize " + [number, street, zip].join(' '));
-                        this.navigate('/');
+                        appView.warn(null, "Cannot visualize " + [number, street, zip].join(' '));
+                        this.navigate('/', {'trigger': true});
                     }
                 }
             }),
@@ -295,20 +256,14 @@
             router = new AppRouter();
 
         appView.render();
+        oauth.fetch();
+        markers.fetch();
+        nodes.fetch();
 
         // Send user to index for bad path
         if (!backbone.history.start({ pushState: true })) {
-            router.navigate('/');
+            router.navigate('/', {'trigger': true});
         }
-
-        // pushState for designated links inside the appView
-        appView.$el.on('click', 'a.pushState', function (evt) {
-            router.navigate($(evt.currentTarget).attr('href'), {
-                'trigger': true
-            });
-            evt.preventDefault();
-        });
-
     });
 }());
 

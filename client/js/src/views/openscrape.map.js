@@ -214,21 +214,12 @@ define([
                 });
         },
 
-        /**
-         * Bubble an event up.
-         */
-        // bubble: function () {
-        //     backbone.Events.trigger.apply(this, arguments);
-        // },
-
         drawMarker: function (marker) {
             var markerView = new MarkerView({
                 model: marker,
                 gMap: this.gMap,
                 projectionOverlay: this.projectionOverlay
             }).render();
-            // bubble event up
-            markerView.on('all', backbone.Events.trigger, this);
         },
 
         remove: function () {

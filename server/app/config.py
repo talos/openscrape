@@ -16,6 +16,7 @@ Look at `config/app.ini` for defined modes. Defaults are `production`,
 MODE = sys.argv[1]
 PARSER = SafeConfigParser(dict(
     mode = MODE,
+    client_landing = 'client/index.html',
     db_name = 'openscrape_%(MODE)s',
     db_port = '27017',
     db_host = 'localhost',
@@ -54,3 +55,4 @@ TEMPLATE_DIR = PARSER.get(MODE, 'template_dir')
 VALID_URL_CHARS = PARSER.get(MODE, 'valid_url_chars')
 APP_HOST = PARSER.get(MODE, 'app_host')
 APP_PORT = PARSER.get(MODE, 'app_port')
+CLIENT_LANDING = PARSER.get(MODE, 'client_landing')

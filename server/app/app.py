@@ -24,9 +24,20 @@ from brubeck.templating import MustacheRendering, load_mustache_env
 import oauth
 from config import DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC, \
                    SEND_SPEC, JSON_GIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS, \
-                   APP_HOST, APP_PORT
+                   APP_HOST, APP_PORT, CLIENT_LANDING
 import database
 
+
+# Users should not be allowed to make accounts with these names.
+RESERVED_WORDS = ['oauth', 'instructions', 'users', 'proxy']
+
+# Not optimal, but the user could conceivably need this file without a redirect
+# to nginx possible.
+try:
+    f = open(CLIENT_LANDING, 'r')
+    client_landing = f.read()
+finally:
+    f.close()
 
 class Handler(MustacheRendering, UserHandlingMixin):
     """
@@ -37,7 +48,10 @@ class Handler(MustacheRendering, UserHandlingMixin):
         """
         Returns True if the user name is OK, False otherwise.
         """
-        return not re.search(r'[^%s]' % VALID_URL_CHARS, user_name)
+        if user_name in RESERVED_WORDS:
+            return False
+        else:
+            return not re.search(r'[^%s]' % VALID_URL_CHARS, user_name)
 
     def instruction_to_path(self, user_name, instruction_doc):
         """
@@ -76,7 +90,28 @@ class Handler(MustacheRendering, UserHandlingMixin):
         """
         Returns True if this was a request for JSON, False otherwise.
         """
-        return self.message.headers.get('accept').rfind('application/json') > -1
+        accept = self.message.headers.get('accept')
+        return accept.rfind('application/json') > -1
+
+
+#
+# DECORATORS
+#
+
+def json_only(meth):
+    """Decorator that ensures method only accepts JSON requests, returns
+    406 otherwise.
+    """
+    # @functools.wraps(meth)
+    def wrapped(self, *args, **kwargs):
+        if self.is_json_request():
+            self.headers['Content-Type'] = 'application/json'
+            return meth(self, *args, **kwargs)
+        else:
+            self.set_body(client_landing)
+            return self.render()
+    return wrapped
+
 
 #
 # HANDLERS
@@ -84,6 +119,7 @@ class Handler(MustacheRendering, UserHandlingMixin):
 
 class OAuthLogin(Handler):
 
+    @json_only
     def post(self):
         """
         The user wants to log in.  Check they exist, then tell the app to
@@ -95,10 +131,10 @@ class OAuthLogin(Handler):
         self.delete_cookie('signup')
         name_or_email = self.get_argument('name_or_email')
         if self.current_user:
-            context['error'] = 'You are already logged in as %s' % self.current_user.name
+            context = 'You are already logged in as %s' % self.current_user.name
             status = 403
         elif not name_or_email:
-            context['error'] = 'You must specify a name or email'
+            context = 'You must specify a name or email'
             status = 400
         else:
             user = self.application.users.find(name_or_email)
@@ -108,20 +144,19 @@ class OAuthLogin(Handler):
                     context['redirect'] = provider.auth_url
                     status = 200
                 except oauth.OAuthError as e:
-                    context['error'] = "Unexpected OAuth error %s" % e
+                    context = "Unexpected OAuth error %s" % e
                     status = 500
             else:
-                context['error'] = 'User does not exist'
+                context = 'User does not exist'
                 status = 403
 
-        self.headers['Content-Type'] = 'application/json'
-        self.set_status(status)
         self.set_body(json.dumps(context))
-        return self.render()
+        return self.render(status_code=status)
 
 
 class OAuthSignup(Handler):
 
+    @json_only
     def post(self):
         """
         The user wants to sign up.  Make sure their username isn't taken, and
@@ -136,30 +171,28 @@ class OAuthSignup(Handler):
         try:
             provider = oauth.OAuthProvider(APP_HOST, APP_PORT, provider_name)
             if self.current_user:
-                context['error'] = 'You are already logged in as %s.' % self.current_user.name
+                context = 'You are already logged in as %s.' % self.current_user.name
                 status = 400
             else:
                 if not user_name:
-                    context['error'] = 'You must specify user name to sign up'
+                    context = 'You must specify user name to sign up.'
                     status = 400
                 elif not self.validate_user_name(user_name):
-                    context['error'] = 'Illegal character in requested user name'
+                    context = "User name '%s' is invalid." % user_name
                     status = 400
                 elif self.application.users.find(user_name):
-                    context['error'] = "User name '%s' is already in use." % user_name
+                    context = "User name '%s' is already in use." % user_name
                     status = 400
                 else:
                     self.set_cookie('signup', user_name, self.application.cookie_secret)
                     status = 200
                     context['redirect'] = provider.auth_url
         except oauth.OAuthError:
-            context['error'] = "OAuth provider %s is not supported." % provider_name
+            context = "OAuth provider '%s' is not supported." % provider_name
             status = 400
 
-        self.headers['Content-Type'] = 'application/json'
-        self.set_status(status)
         self.set_body(json.dumps(context))
-        return self.render()
+        return self.render(status_code=status)
 
 
 class OAuthCallback(Handler):
@@ -167,7 +200,7 @@ class OAuthCallback(Handler):
     def get(self, provider_name):
         """
         The callback landing from OAuth identification.  This is where we
-        distribute cookies and send 'em on home.
+        distribute cookies and post a message.
 
         The callback could come from either a standard login or a new signup.
         Must generate users accordingly.
@@ -186,7 +219,7 @@ class OAuthCallback(Handler):
                 signup_name = self.get_cookie('signup', None, self.application.cookie_secret)
                 if signup_name:
                     if self.application.users.find(signup_name):
-                        context['error'] = 'Someone stole your name while you \
+                        context = 'Someone stole your name while you \
                                 OAuth\'d!, sorry.  Try again.'
                         status = 400
                     elif self.validate_user_name(signup_name):
@@ -197,7 +230,7 @@ class OAuthCallback(Handler):
                         context['user'] = user.name
                     else:
                         # they faked something to get here.
-                        context['error'] = 'Bad losername, cleva hacka'
+                        context = 'Bad losername, cleva hacka'
                         status = 400
                 else:
                     existing_user = self.application.users.find(user.email)
@@ -207,26 +240,26 @@ class OAuthCallback(Handler):
                         context['user'] = existing_user.name
                         status = 200
                     else:
-                        context['error'] = 'You must sign up for an account.'
+                        context = 'You must sign up for an account.'
                         status = 400
             except oauth.OAuthError as e:
-                context['error'] = "There was an OAuth error: %s" % e
+                context = "There was an OAuth error: %s" % e
                 status = 500
             except database.ValidationError as e:
-                context['error'] = "Your OAuth provider supplied the value \
+                context = "Your OAuth provider supplied the value \
                         '%s' for '%s', which is not valid." % (e.field_value,
                                                                e.field_name)
                 status = 400
             except database.DuplicateError as e:
-                context['error'] = "You already have an openscrape account \
+                context = "You already have an openscrape account \
                         linked to %s." % provider_name
                 status = 400
             except database.DatabaseError as e:
-                context['error'] = "Database error: %s" % e
+                context = "Database error: %s" % e
                 status = 500
 
         else:
-            context['error'] = "Login failed: no access code from OAuth provider."
+            context = "Login failed: no access code from OAuth provider."
             status = 500
 
         return self.render_template('post_message', _status_code=status, **{
@@ -236,14 +269,14 @@ class OAuthCallback(Handler):
 
 class OAuthStatus(Handler):
 
+    @json_only
     def get(self):
         """
-        Returns a JSON object with user info.
+        Returns a JSON object with current user status.
         """
-        context = {}
-        if self.current_user:
-            context['user'] = self.current_user.name
-        self.headers['Content-Type'] = 'application/json'
+        context = {
+            'user': self.current_user.name if self.current_user else None
+        }
         self.set_body(json.dumps(context))
         return self.render()
 
@@ -252,7 +285,7 @@ class OAuthLogout(Handler):
 
     def get(self):
         """
-        A simple logout -- just clears their cookie.
+        A simple logout then redirect -- just clears their cookie.
         """
         self.logout_user()
         return self.redirect('/')
@@ -260,9 +293,10 @@ class OAuthLogout(Handler):
 
 class UserHandler(Handler):
 
+    @json_only
     def get(self, user_name):
         """
-        Get all the instructions by this user.
+        Get info about this user.
         """
         context = {}
         user = self.application.users.find(user_name)
@@ -270,18 +304,13 @@ class UserHandler(Handler):
             context['user'] = user.to_json(encode=False)
             status = 200
         else:
-            context['error'] = "No user %s" % user_name
+            context = "No user %s" % user_name
             status = 404
 
-        if self.is_json_request():
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('user', _status_code=status, **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
 
-        return self.render_template('user', user=user)
-
+    @json_only
     def delete(self, user_name):
         """
         This handler lets a user delete his/her account.  This does not delete
@@ -289,7 +318,7 @@ class UserHandler(Handler):
         """
         context = {}
         if not self.current_user:
-            context['error'] = 'You are not signed in.'
+            context = 'You are not signed in.'
             status = 401
         elif self.current_user.name == user_name:
             self.application.users.delete(self.current_user)
@@ -297,20 +326,18 @@ class UserHandler(Handler):
             status = 200
         else:
             status = 403
-            context['error'] = "You cannot destroy that user."
+            context = "You cannot destroy that user."
 
-        if self.is_json_request():
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('user', _status_code=status, **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
+
 
 class InstructionCollectionHandler(Handler):
     """
     This handler provides access to all of a user's instructions.
     """
 
+    @json_only
     def get(self, user_name):
         """
         Provide a listing of all this user's instructions.
@@ -318,23 +345,16 @@ class InstructionCollectionHandler(Handler):
         context = { 'user': user_name }
         instructions = self.application.instructions.for_creator(user_name)
         if instructions == None:
-            context['error'] = "User %s does not exist." % user_name
+            context = "User %s does not exist." % user_name
             status = 404
         else:
-            context['instructions'] = self.instruction_paths(user_name, instructions)
+            context = self.instruction_paths(user_name, instructions)
             status = 200
 
-        if self.is_json_request():
-            if status == 200:
-                context = context['instructions']
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('instruction_collection',
-                                        _status_code=status,
-                                        **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
 
+    @json_only
     def post(self, user_name):
         """
         Allow for cloning and creation.
@@ -342,7 +362,7 @@ class InstructionCollectionHandler(Handler):
         context = {}
         user = self.application.users.find(user_name)
         if user != self.current_user:
-            context['error'] = 'You cannot modify these resources.'
+            context = 'You cannot modify these resources.'
             status = 403
         else:
             action = self.get_argument('action')
@@ -350,7 +370,7 @@ class InstructionCollectionHandler(Handler):
                 name = self.get_argument('name')
                 if self.application.instructions.find(user_name, name):
                     status = 409
-                    context['error'] = "There is already an instruction with that name"
+                    context = "There is already an instruction with that name"
                 else:
                     status = 302
                     self.headers['Location'] = name  # they will be able to create it there
@@ -374,39 +394,31 @@ class InstructionCollectionHandler(Handler):
             #         status = 409
             #         context['error'] = "Could not clone the instruction."
             else:
-                context['error'] = 'Unknown action'
+                context = 'Unknown action'
                 status = 400
 
-        if self.is_json_request():
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('created', _status_code=status, **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
+
 
 class TagCollectionHandler(Handler):
     """
     This handler provides access to all of a user's instructions with a certain
     tag.
     """
+    @json_only
     def get(self, user_name, tag):
         context = {'tag': tag, 'user': user_name}
         instructions = self.application.instructions.tagged(user_name, tag)
         if instructions == None:
             status = 404
-            context['error'] = "No user %s" % user_name
+            context = "No user %s" % user_name
         else:
             status = 200
-            context['instructions'] = self.instruction_paths(user_name, instructions)
+            context = self.instruction_paths(user_name, instructions)
 
-        if self.is_json_request():
-            if status == 200:
-                context = context['instructions']
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('tagged', _status_code=status, **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
 
 
 class InstructionModelHandler(Handler):
@@ -414,6 +426,7 @@ class InstructionModelHandler(Handler):
     This handler provides clients access to a single instruction by name.
     """
 
+    @json_only
     def get(self, user_name, name):
         """
         Display a single instruction.
@@ -421,21 +434,16 @@ class InstructionModelHandler(Handler):
         context = {}
         doc = self.application.instructions.find(user_name, name)
         if doc:
-            context['instruction'] = doc.to_python()
+            context = doc.to_python()
             status = 200
         else:
-            context['error'] = "Instruction does not exist"
+            context = "Instruction does not exist"
             status = 404
 
-        if self.is_json_request():
-            if status == 200:
-                context = doc.instruction
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('instruction', _status_code=status, **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
 
+    @json_only
     def put(self, owner, name):
         """
         Update a single instruction, creating it if it doesn't exist.
@@ -443,10 +451,10 @@ class InstructionModelHandler(Handler):
         user = self.current_user
         context = {}
         if not user:
-            context['error'] = "You are not logged in."
+            context = "You are not logged in."
             status = 403
         elif owner != user.name:
-            context['error'] = 'This is not your template.'
+            context = 'This is not your template.'
             status = 403
         else:
             try:
@@ -455,26 +463,22 @@ class InstructionModelHandler(Handler):
                     json.loads(self.get_argument('instruction')),
                     json.loads(self.get_argument('tags')))
                 status = 201
-                context['instruction'] = doc.to_python()
+                context = doc.to_python()
             except ShieldException as error:
-                context['error'] = "Invalid instruction: %s." % error
+                context = "Invalid instruction: %s." % error
                 status = 400
             except TypeError as error:
-                context['error'] = 'Invalid arguments: %s.' % error
+                context = 'Invalid arguments: %s.' % error
                 status = 400
             except ValueError as error:
-                context['error'] = 'Invalid JSON: %s.' % error
+                context = 'Invalid JSON: %s.' % error
                 status = 400
 
-        if self.is_json_request():
-            if status == 201:
-                context = doc.instruction
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('instruction', _status_code=status, **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
 
+
+    @json_only
     def delete(self, owner, name):
         """
         Delete an instruction.
@@ -482,9 +486,9 @@ class InstructionModelHandler(Handler):
         user = self.current_user
         context = {}
         if not user:
-            context['error'] = 'You are not logged in'
+            context = 'You are not logged in'
         elif not owner == user.name:
-            context['error'] = "You cannot delete someone else's template"
+            context = "You cannot delete someone else's template"
             status = 403
         else:
             instruction = self.application.instructions.find(user, name)
@@ -495,12 +499,9 @@ class InstructionModelHandler(Handler):
                 status['error'] = "Instruction does not exist"
                 status = 404
 
-        if self.is_json_request():
-            self.set_body(json.dumps(context))
-            self.set_status(status)
-            return self.render()
-        else:
-            return self.render_template('delete_instruction', _status_code=status, **context)
+        self.set_body(json.dumps(context))
+        return self.render(status_code=status)
+
 
 V_C = VALID_URL_CHARS
 config = {
@@ -509,9 +510,9 @@ config = {
         (r'^/oauth/signup$', OAuthSignup),
         (r'^/oauth/login$', OAuthLogin),
         (r'^/oauth/logout$', OAuthLogout),
-        (r'^/oauth/callback/([%s]+)$' % V_C, OAuthCallback),
         (r'^/oauth/status$', OAuthStatus),
-        (r'^/instructions/([%s]+)$' % V_C, UserHandler),
+        (r'^/oauth/callback/([%s]+)$' % V_C, OAuthCallback),
+        (r'^/users/([%s]+)$' % V_C, UserHandler),
         (r'^/instructions/([%s]+)/$' % V_C, InstructionCollectionHandler),
         (r'^/instructions/([%s]+)/([%s]+)$' % (V_C, V_C), InstructionModelHandler),
         (r'^/instructions/([%s]+)/([%s]+)/$' % (V_C, V_C), TagCollectionHandler)],

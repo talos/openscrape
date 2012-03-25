@@ -42,7 +42,13 @@ define([
         },
 
         initialize: function () {
-            window.addEventListener("message", _.bind(this.receiveMessage, this), false);
+            this.listener = _.bind(this.receiveMessage, this);
+            window.addEventListener("message", this.listener, false);
+        },
+
+        remove: function () {
+            backbone.View.prototype.remove.call(this);
+            window.removeEventListener("message", this.listener);
         },
 
         render: function (context) {
@@ -52,11 +58,8 @@ define([
 
         receiveMessage: function (evt) {
             if (evt.origin === window.location.origin) {
-                if (evt.data.user) {
-                    this.trigger('login');
-                } else {
-                    this.render(evt.data);
-                }
+                this.render(evt.data);
+                this.model.fetch();
             }
         },
 
@@ -71,7 +74,7 @@ define([
             }).done(_.bind(function (context) {
                 this.render(context);
             }, this)).fail(_.bind(function (jqXHR) {
-                this.trigger('error', jqXHR.responseText);
+                this.model.trigger('error', this.model, jqXHR.responseText);
             }, this));
         }
     });

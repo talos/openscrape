@@ -86,26 +86,19 @@ define([
                         / (Math.log(translation) * Math.pow(translation, 2));
                 }, this));
 
-            if (this.model) {
-                this.setModel(this.model);
+            this.model.collection.on('change:expanded change:childIds', this.debouncedRender, this);
+
+            if (options.x && options.y) {
+                this.center(options.x, options.y);
             }
         },
 
-        /**
-         * Switch which model is observed.
-         */
-        setModel: function (model) {
-            this.model = model;
-            this.model.collection.off('change:expanded change:childIds');
-            this.model.collection.on('change:expanded change:childIds', this.debouncedRender, this);
-        },
-
-        /*remove: function () {
+        remove: function () {
             backbone.View.prototype.remove.call(this);
             this.controls.remove();
             this.model.collection.off('change:expanded change:childIds', this.debouncedRender);
             $(window).unbind('resize', this.debouncedResize);
-        },*/
+        },
 
         /**
          * Zoom in on double clicks

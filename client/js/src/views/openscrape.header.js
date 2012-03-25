@@ -37,17 +37,12 @@ define([
         tagName: 'div',
         id: 'header',
 
+        initialize: function () {
+            this.model.on('change', this.render, this);
+        },
+
         render: function () {
-            this.$el.html(mustache.render(template));
-            $.ajax({
-                url: '/oauth/status',
-                contentType: 'application/json',
-                dataType: 'json'
-            }).done(_.bind(function (context) {
-                this.$el.html(mustache.render(template, context));
-            }, this)).fail(_.bind(function (jqXHR) {
-                this.trigger('error', this, jqXHR.responseText);
-            }, this));
+            this.$el.html(mustache.render(template, this.model.toJSON()));
             return this;
         }
     });

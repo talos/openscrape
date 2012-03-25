@@ -58,7 +58,7 @@ define([
             var p = this.projectionOverlay
                     .getProjection()
                     .fromLatLngToContainerPixel(this.marker.getPosition());
-            this.trigger('visualize', this.model.address(), p.x, p.y);
+            this.model.trigger('visualize', this.model.address(), p.x, p.y);
         },
 
         /**

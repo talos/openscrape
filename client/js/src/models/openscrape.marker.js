@@ -25,26 +25,11 @@ define([
     'lib/underscore',
     'lib/backbone',
     '../openscrape.address',
-    '../openscrape.zip2borough',
-    'collections/openscrape.nodes'
-], function (_, backbone, Address, NodesCollection) {
+    '../openscrape.zip2borough'
+], function (_, backbone, Address) {
     "use strict";
 
     return backbone.Model.extend({
-
-        // validate: function (attrs) {
-        //     // console.log('validate');
-        //     // if (typeof attrs.lat !== 'number' || typeof attrs.lng !== 'number') {
-        //     //     return "invalid lat/lng: " + attrs.lat + ',' + attrs.lng;
-        //     // }
-
-        //     // console.log(attrs);
-        //     // if (attrs.address.constructor !== Address) {
-        //     //     return "invalid address: " + attrs.address;
-        //     // }
-
-        //     // return undefined;
-        // },
 
         lat: function () {
             return this.get('lat');
@@ -55,8 +40,6 @@ define([
         },
 
         address: function () {
-            //console.log(this);
-            //console.log(this.get('address').constructor);
             return new Address(this.get('address'));
         },
 
