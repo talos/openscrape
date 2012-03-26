@@ -43,7 +43,13 @@ define([
         },
 
         initialize: function () {
+            var timeout = this.model.get('timeout');
             this.model.on('destroy', this.dismiss, this);
+            if (timeout > 0) {
+                setTimeout(_.bind(function () {
+                    this.model.destroy();
+                }, this), timeout);
+            }
             this.keyEvt = 'keydown.warning' + this.model.cid;
             $(document).bind(this.keyEvt, _.bind(this.dismissOnKey, this));
         },

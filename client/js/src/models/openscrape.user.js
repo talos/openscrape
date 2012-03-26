@@ -28,5 +28,8 @@ define([
     "use strict";
 
     return backbone.Model.extend({
+        url: function () {
+            return '/users/' + this.get('name');
+        }
     });
 });

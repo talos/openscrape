@@ -18,7 +18,7 @@
    *
    ***/
 
-/*jslint browser: true, nomen: true*/
+/*jslint browser: true, nomen: true, regexp: true*/
 /*globals require*/
 
 (function () {
@@ -28,7 +28,7 @@
         'require',
         'models/openscrape.warning',
         'models/openscrape.oauth',
-        'collections/openscrape.users',
+        'models/openscrape.user',
         'collections/openscrape.markers',
         'collections/openscrape.nodes',
         'views/openscrape.warning',
@@ -38,23 +38,23 @@
         'views/openscrape.signup',
         'views/openscrape.help',
         'views/openscrape.header',
-        'views/openscrape.home',
+        'views/openscrape.user',
+        'views/openscrape.404',
         'lib/backbone',
         'lib/underscore',
         'lib/requirejs.mustache',
         'text!templates/app.mustache',
         './openscrape.address',
         'lib/jquery'
-    ], function (require, WarningModel, OAuthModel,
-                 UsersCollection, MarkersCollection,
-                 NodesCollection, WarningView, MapView, VisualView,
-                 LoginView, SignupView, HelpView, HeaderView,
-                 HomeView, backbone, _, mustache, template, Address) {
+    ], function (require, WarningModel, OAuthModel, UserModel,
+                 MarkersCollection, NodesCollection, WarningView,
+                 MapView, VisualView, LoginView, SignupView, HelpView,
+                 HeaderView, UserView, NotFoundView,
+                 backbone, _, mustache, template, Address) {
 
         var $ = require('jquery'),
 
             oauth = new OAuthModel(),
-            users = new UsersCollection(),
             markers = new MarkersCollection(),
             nodes = new NodesCollection(),
 
@@ -87,7 +87,6 @@
                     oauth.on('error', this.warn, this);
                     nodes.on('error', this.warn, this);
                     markers.on('error', this.warn, this);
-                    users.on('error', this.warn, this);
                 },
 
                 /**
@@ -122,13 +121,11 @@
                     // Special code for map which receives args,
                     // but everything else is boilerplate.
                     dfd.done(_.bind(function () {
-                        // visual.resize();
-                        // visual.render();
-                        // visual.reset();
                         if (state === map) {
                             this.showMap.apply(this, args);
                         } else {
-                            state.render().$el.hide().appendTo(this.$el).fadeIn(100);
+                            state.$el.hide().appendTo(this.$el).fadeIn(100);
+                            state.render();
                         }
                         this.state = state;
                     }, this));
@@ -166,39 +163,49 @@
             AppRouter = backbone.Router.extend({
 
                 initialize: function () {
+                    // routes are assigned manually from an array in order to
+                    // ensure their ordering and use a regular expression.
+                    var routes = [
+                        [/(.+)/, 'user'],
+                        ['', 'index'],
+                        ['visualize/address/:zip/:street/:number', 'visualizeAddress'],
+                        ['map*', 'map'],
+                        ['map/:zoom/:lat/:lng', 'map'],
+                        ['help', 'help'],
+                        ['login', 'login'],
+                        ['logout', 'logout'],
+                        ['signup', 'signup']
+                    ];
+
+                    _.each(routes, _.bind(function (route) {
+                        this.route(route[0], route[1]);
+                    }, this));
+
                     map.on('bounds_changed', function (zoom, lat, lng) {
-                        //if (map.$el.is(':visible')) {
-                        //}
-                        this.navigate('map/' + zoom + '/' + lat + '/' + lng,
-                                      { replace: true });
+                        // this has to be wrapped because we never delete the
+                        // map, but bounds_changed happens on window resize.
+                        if (map.$el.is(':visible')) {
+                            this.navigate('map/' + zoom + '/' + lat + '/' + lng,
+                                          { replace: true });
+                        }
 
                     }, this);
 
+                    // This keeps the URL up to date, but does not actually
+                    // trigger a visualization.
                     markers.on('visualize', function (address) {
                         this.navigate('visualize/address/' + address.zip +
                                       '/' + address.street +
                                       '/' + address.number);
                     }, this);
 
-                    oauth.on('change:user', function (user) {
-                        this.navigate(user ? 'home' : '/', {'trigger': true});
+                    oauth.on('change:user', function (oauth, user) {
+                        this.navigate(user || '/', {trigger: true});
                     }, this);
 
                     appView.on('navigate', function (href) {
-                        this.navigate(href, {'trigger': true });
+                        this.navigate(href, {trigger: true });
                     }, this);
-                },
-
-                routes: {
-                    '': 'index',
-                    'help': 'help',
-                    'login': 'login',
-                    'logout': 'logout',
-                    'signup': 'signup',
-                    'visualize/address/:zip/:street/:number': 'visualizeAddress',
-                    'map*': 'map',
-                    'map/:zoom/:lat/:lng': 'map',
-                    '.+': 'catchAll'
                 },
 
                 /**
@@ -208,29 +215,40 @@
                     appView.show(map);
                 },
 
+                user: function (name) {
+                    var user = new UserModel({
+                        name: name
+                    });
+                    user.fetch({
+                        success: function () {
+                            appView.show(new UserView({
+                                model: user
+                            }));
+                        },
+                        error: function () {
+                            appView.show(new NotFoundView({
+                                href: name
+                            }));
+                        }
+                    });
+                },
+
                 help: function () {
                     appView.show(new HelpView());
                 },
 
-                catchAll: function () {
-                    //  appView.show(new HomeView({
-                    //      'model': users.get(oauth
-                    //  }));
-                    console.log(arguments);
-                },
-
                 login: function () {
-                    appView.show(new LoginView({'model': oauth}));
+                    appView.show(new LoginView({model: oauth}));
                 },
 
                 logout: function () {
-                    $.get('/oauth/logout').done(_.bind(function () {
+                    $.get('/oauth/logout').always(_.bind(function () {
                         oauth.fetch();
                     }, this));
                 },
 
                 signup: function () {
-                    appView.show(new SignupView({'model': oauth}));
+                    appView.show(new SignupView({model: oauth}));
                 },
 
                 map: function (zoom, lat, lng) {
@@ -247,8 +265,9 @@
                             }))
                         }));
                     } catch (err) {
+                        console.log(err);
                         appView.warn(null, "Cannot visualize " + [number, street, zip].join(' '));
-                        this.navigate('/', {'trigger': true});
+                        this.navigate('/', {trigger: true});
                     }
                 }
             }),
@@ -260,10 +279,13 @@
         markers.fetch();
         nodes.fetch();
 
-        // Send user to index for bad path
-        if (!backbone.history.start({ pushState: true })) {
-            router.navigate('/', {'trigger': true});
-        }
+        $(document).ready(function () {
+            var validState = backbone.history.start({ pushState: true });
+            // Send user to index for bad path
+            if (!validState) {
+                router.navigate('/', {trigger: true});
+            }
+        });
     });
 }());
 

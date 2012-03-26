@@ -26,7 +26,7 @@ define([
     'lib/underscore',
     'lib/backbone',
     'lib/requirejs.mustache',
-    'text!templates/home.mustache',
+    'text!templates/user.mustache',
     'lib/jquery'
 ], function (require, _, backbone, mustache, template) {
     "use strict";
@@ -35,7 +35,7 @@ define([
 
     return backbone.View.extend({
         tagName: 'div',
-        id: 'home',
+        id: 'user',
 
         initialize: function () {
             this.model.on('change', this.render, this);

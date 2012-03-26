@@ -153,7 +153,7 @@ define([
 
         click: function (evt) {
             //this.model.edit();
-            //console.log(this.model.toJSON());
+            console.log(this.model.toJSON());
             if (this.model.type() === 'wait') {
                 this.model.save('force', true);
                 this.scrape();
@@ -224,6 +224,7 @@ define([
                 .attr('width', this.iframeWidth)
                 .attr('height', this.iframeHeight);
 
+            console.log(this.model);
             var $div = $(this.foreign.append('xhtml:body')
                          .append('div')[0])
                     .html(mustache.render(

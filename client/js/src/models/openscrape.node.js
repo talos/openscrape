@@ -61,6 +61,8 @@ define([
         },
 
         initialize: function () {
+            this.sync = this.collection.sync;
+
             this.on('change:width change:translation', function () {
                 _.each(this.descendents(), function (node) {
                     node.save('translation', node.translation());
@@ -80,6 +82,9 @@ define([
         parent: function () {
             if (!this._parent && this.has('parentId')) {
                 this._parent = this.collection.get(this.get('parentId'));
+                if (!this._parent) {
+                    throw "Corrupt localStorage, couldn't find node parent: " + this.get('parentId');
+                }
             }
             return this._parent;
         },
@@ -93,9 +98,8 @@ define([
          */
         tagsChanged: function () {
             if (this.type() === 'missing') {
-                this.save('missing',
-                          _(this.get('missing')).without(_(this.tags()).keys())
-                         );
+                var missing = _(this.get('missing')).without(_(this.tags()).keys());
+                this.save('missing', missing);
             }
         },
 

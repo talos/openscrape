@@ -18,37 +18,29 @@
    *
    ***/
 
-/*jslint nomen: true*/
+/*jslint browser: true, nomen: true*/
 /*global define*/
 
 define([
+    'require',
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.address',
-    '../openscrape.zip2borough'
-], function (_, backbone, Address) {
+    'lib/requirejs.mustache',
+    'text!templates/404.mustache',
+    'lib/jquery'
+], function (require, _, backbone, mustache, template) {
     "use strict";
 
-    return backbone.Model.extend({
+    var $ = require('jquery');
 
-        initialize: function () {
-            this.sync = this.collection.sync;
-        },
+    return backbone.View.extend({
+        tagName: 'div',
+        id: 'notFound',
 
-        lat: function () {
-            return this.get('lat');
-        },
-
-        lng: function () {
-            return this.get('lng');
-        },
-
-        address: function () {
-            return new Address(this.get('address'));
-        },
-
-        title: function () {
-            return this.address().toString();
+        render: function () {
+            this.$el.html(mustache.render(template, this.options));
+            return this;
         }
     });
 });
+

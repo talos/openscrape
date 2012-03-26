@@ -301,7 +301,7 @@ class UserHandler(Handler):
         context = {}
         user = self.application.users.find(user_name)
         if user:
-            context['user'] = user.to_json(encode=False)
+            context = user.to_json(encode=False)
             status = 200
         else:
             context = "No user %s" % user_name

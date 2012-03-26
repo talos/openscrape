@@ -63,7 +63,8 @@ define([
             this.debouncedResize = _.debounce(_.bind(this.resize, this), 100);
             this.debouncedRender = _.debounce(this.render, 500);
 
-            $(window).resize(this.debouncedResize);
+            $(window).bind('resize', this.debouncedResize);
+
             this.svg = d3.select(this.el)
                 .append('svg')
                 .attr('xmlns', 'http://www.w3.org/2000/svg');
@@ -242,6 +243,8 @@ define([
 
         render: function () {
             this.preload();
+            this.resize();
+            this.reset();
 
             var data = _.map(this.layoutTree.nodes(this.model.asTree()), function (d) {
                     // d3's tree assigns NaN x sometimes. This fixes it.
@@ -272,8 +275,12 @@ define([
                 })
                 .each(function (d) {
                     // create view for node, so that we know width/height
+                    var model = collection.get(d.id);
+                    if (!model) {
+                        throw "collection missing model " + d.id;
+                    }
                     new NodeView({
-                        model: collection.get(d.id),
+                        model: model,
                         el: this
                     }).render();
                 });

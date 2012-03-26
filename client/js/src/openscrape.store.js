@@ -25,7 +25,7 @@
  *  * https://github.com/jeromegn/Backbone.localStorage
  *  */
 
-/*jslint nomen: true*/
+/*jslint nomen: true, bitwise: true*/
 /*global define, localStorage*/
 
 define([
@@ -75,7 +75,7 @@ define([
             localStorage.setItem(this.name + "-" + model.id, json.stringify(model));
             this.records.push(model.id.toString());
             this.save();
-            return $.Deferred().resolve(model).promise();
+            return $.Deferred().resolve(model.toJSON()).promise();
         },
 
         // Update a model by replacing its copy in `this.data`.

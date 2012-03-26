@@ -241,9 +241,8 @@ define([
         },
 
         eraseMarkers: function () {
-            // why does this need to be in a loop?
-            while (this.collection.length) {
-                this.collection.invoke('destroy');
+            while (this.collection.length > 0) {
+                this.collection.pop().destroy();
             }
         }
     });

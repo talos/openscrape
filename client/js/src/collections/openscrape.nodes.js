@@ -73,6 +73,7 @@ define([
         forAddress: function (address) {
             var addressTags = address.toJSON(),
                 borough = zip2borough(address.zip);
+            console.log(address);
 
             if (borough) {
                 addressTags.apt = '';
@@ -88,7 +89,7 @@ define([
                     name: 'Property Info',
                     type: 'wait',
                     tags: addressTags
-                });
+                }, {wait: true});
             } else {
                 this.trigger('error', null, address.toString() +
                              ' is not in the five boroughs.');
