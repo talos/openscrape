@@ -151,7 +151,7 @@ class TestUsers(unittest.TestCase):
 class TestInstructions(unittest.TestCase):
 
     def setUp(self):
-        repo = jsongit.JsonGitRepository(REPO_DIR)
+        repo = jsongit.init(REPO_DIR)
         self.users = database.Users(db)
         self.creator = new_user(name='creator')
         self.users.save_or_create(self.creator)
