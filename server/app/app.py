@@ -23,7 +23,7 @@ from brubeck.auth import UserHandlingMixin
 from brubeck.templating import MustacheRendering, load_mustache_env
 import oauth
 from config import DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC, \
-                   SEND_SPEC, JSON_GIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS, \
+                   SEND_SPEC, JSONGIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS, \
                    APP_HOST, APP_PORT, CLIENT_LANDING
 import database
 
@@ -523,5 +523,5 @@ config = {
 app = Brubeck(**config)
 db = database.get_db(DB_HOST, DB_PORT, DB_NAME)
 app.users = database.Users(db)
-app.instructions = database.Instructions(app.users, jsongit.init(JSON_GIT_DIR), db)
+app.instructions = database.Instructions(app.users, jsongit.init(JSONGIT_DIR), db)
 app.run()

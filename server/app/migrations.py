@@ -6,9 +6,6 @@ When executed, this will load in a set of pre-made instructions for HOST.
 It can also be used as a package to obtain fixtures to test validation.
 '''
 
-import json
-import requests
-
 docs = [
     {
         "name" : "property",
@@ -369,6 +366,9 @@ docs = [
 # the server is responding appropriately.
 if __name__ == '__main__':
     from ConfigParser import SafeConfigParser
+    import jsongit
+    import models
+    import database
     import sys
 
     if len(sys.argv) != 2:
@@ -378,31 +378,29 @@ if __name__ == '__main__':
     MODE = sys.argv[1]
     PARSER = SafeConfigParser()
     if len(PARSER.read('config/app.ini')):
-        HOST = PARSER.get(MODE, 'test_host')
-        PORT = PARSER.get(MODE, 'test_port')
-        ROOT = HOST + ':' + PORT
+        HOST = PARSER.get(MODE, 'db_host')
+        PORT = PARSER.getint(MODE, 'db_port')
+        NAME = PARSER.get(MODE, 'db_name')
+        JSONGIT_DIR = PARSER.get(MODE, 'jsongit_dir')
     else:
         print("Migration requires a config/app.ini file")
         sys.exit(1)
 
-    USER = 'openscrape'
+    db = database.get_db(HOST, PORT, NAME)
+    users = database.Users(db)
+    instructions = database.Instructions(users, jsongit.init(JSONGIT_DIR), db)
 
-    s = requests.session(headers={'accept': 'application/json text/javascript'})
-    r = s.post('%s/instructions/' % ROOT, data={
-        'action':'signup',
-        'user':  USER
-    })
-    if r.status_code == 400:
-        r = s.post('%s/instructions/' % ROOT, data={
-            'action':'login',
-            'user': USER
-        })
+    user = users.find('openscrape')
+    if not user:
+        user = models.User(name='openscrape',
+                           email='data@openscrape.com',
+                           provider='migration')
+        users.save_or_create(user)
 
-    assert r.status_code == 200, r.content
+    assert 'id' in user
 
     for doc in docs:
-        r = s.put('%s/instructions/%s/%s' % (ROOT, USER, doc['name']), data = {
-            'instruction': json.dumps(doc['instruction']),
-            'tags': json.dumps([str(e) for e in doc.get('tags', [])])
-        })
-        assert r.status_code == 201, r.content
+        instructions.save_or_create(user,
+                                    doc['name'],
+                                    doc['instruction'],
+                                    [str(tag) for tag in doc.get('tags', [])])

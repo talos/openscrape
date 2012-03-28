@@ -9,8 +9,8 @@ import jsongit
 import dictshield
 from models import User, InstructionDocument
 
-def get_db(server, port, name):
-    db = pymongo.Connection(server, port)[name]
+def get_db(host, port, name):
+    db = pymongo.Connection(host, port)[name]
     db.safe = True
     return db
 
@@ -154,7 +154,7 @@ class Instructions(object):
         """Create an instruction for a creator, or update the existing one
         with tags and instruction.
 
-        Returns the updated InstructionDocument.
+        Returns the (possibly updated) InstructionDocument.
 
         Raises a ValidationError or DatabaseError if something else goes wrong.
         """
