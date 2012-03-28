@@ -4,14 +4,18 @@ import requests
 import json
 from ConfigParser import SafeConfigParser
 
-from server.app.database import get_db
+from ..src.database import get_db
 
 PARSER = SafeConfigParser()
 
 if len(PARSER.read('config/app.ini')):
+    MAGIC_COOKIE = PARSER.get('test', 'magic_cookie')
     HOST = PARSER.get('test', 'host')
     PORT = PARSER.get('test', 'port')
     ROOT = "http://%s:%s" % (HOST, PORT)
+    DB_HOST = PARSER.get('test', 'db_host')
+    DB_PORT = PARSER.getint('test', 'db_port')
+    DB_NAME= PARSER.get('test', 'db_name')
 else:
     print("Test requires a config/app.ini file")
     sys.exit(1)
@@ -28,49 +32,17 @@ class TestServerJSON(unittest.TestCase):
     Test the server's JSON API.
     """
 
-    def _signup(self, user):
-        """
-        Sign up `user`, while keeping track of the signup for later cleanup.
-        """
-        r = self.s.post("%s/instructions/" % ROOT, data={
-            'action': 'signup',
-            'user'  : user
-        })
-        if r.status_code == 200:
-            self.created_accounts.append(user)
-        return r
-
     def _login(self, user):
         """
         Login `user`.
         """
-        r = self.s.post("%s/instructions/" % ROOT, data={
-            'action': 'login',
-            'user'  : user
-        })
-        self.assertEqual(200, r.status_code, r.content)
-        return r
+        self.s.cookies[MAGIC_COOKIE] = user
 
     def _logout(self):
         """
         Log out.
         """
-        r = self.s.post("%s/instructions/" % ROOT, data={
-            'action': 'logout'
-        })
-        self.assertEqual(200, r.status_code, r.content)
-        return r
-
-    def _destroy(self, user):
-        """
-        Destroy `user`.  Should already be logged in.
-        """
-        r = self.s.delete("%s/instructions/%s" % (ROOT, user))
-        self.assertEqual(200, r.status_code, r.content)
-        self.assertIn('destroyed', json.loads(r.content), r.content)
-        if user in self.created_accounts:
-            self.created_accounts.remove(user)
-        return r
+        del self.s.cookies[MAGIC_COOKIE]
 
     def assertJsonEqual(self, str1, str2):
         """
@@ -83,7 +55,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Make sure db is clean before starting up.
         """
-        db = get_db('localhost', 27017, 'openscrape_test') # todo read from config
+        db = get_db(DB_HOST, DB_PORT, DB_NAME)
         db.connection.drop_database(db)
 
     def setUp(self):
@@ -96,71 +68,6 @@ class TestServerJSON(unittest.TestCase):
             "accept": "application/json text/javascript"
         })
 
-    def tearDown(self):
-        """
-        Destroy any created accounts.
-        """
-        for user in self.created_accounts:
-            self._logout()
-            self._login(user)
-            self._destroy(user)
-
-    def test_valid_user_names(self):
-        """
-        Names with dashes are allowed.
-        """
-        for valid in ['dashy-mcdash', 'simple']:
-            r = self._signup(valid)
-            self.assertEqual(200, r.status_code, r.content)
-            self.assertIn('session', self.s.cookies, r.content)
-            self._logout()
-
-    def test_invalid_user_names(self):
-        """
-        Names with non-alphanumerics or non-dashes are not allowed
-        """
-        for invalid in ['space mcspace', '*&(*EYF', 'slash/mcslash/']:
-            r = self._signup(invalid)
-            self.assertEqual(400, r.status_code, r.content)
-            self.assertNotIn('session', self.s.cookies, r.content)
-
-    def test_login(self):
-        """
-        Test logging in.
-        """
-        self._signup('mies')
-        self._logout()
-        self._login('mies')
-        self.assertIn('session', self.s.cookies)
-
-    def test_logout(self):
-        """
-        Test logging out.
-        """
-        self._signup('vitruvius')
-        self._logout()
-        self.assertIn('session', self.s.cookies)
-
-    def test_signup(self):
-        """
-        Test creating an account.
-        """
-        r = self._signup('wootage')
-        self.assertEquals(200, r.status_code, r.content)
-        self.assertTrue('session' in self.s.cookies)
-        r = self.s.get("%s/instructions/%s" % (ROOT, 'wootage'))
-        self.assertEquals(200, r.status_code, r.content)
-
-    def test_destroy(self):
-        """
-        Test destroying an account.
-        """
-        self._signup('doomed')
-        r = self._destroy('doomed')
-        self.assertEquals(200, r.status_code, r.content)
-        r = self.s.get("%s/instructions/%s" % (ROOT, 'doomed'))
-        self.assertEquals(404, r.status_code, r.content)
-
     def test_nonexistent(self):
         """
         Test getting a 404.
@@ -172,7 +79,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Create an instruction on the server using HTTP PUT.
         """
-        self._signup('fuller')
+        self._login('fuller')
         r = self.s.put("%s/instructions/fuller/manhattan-bubble" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': TAGS
@@ -183,7 +90,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Ensure the server rejects an invalid instruction.
         """
-        self._signup('chiang')
+        self._login('chiang')
         r = self.s.put("%s/instructions/chiang/politics" % ROOT, data={
             'instruction': json.dumps({ 'foo':'bar' }),
             'tags': TAGS
@@ -192,9 +99,9 @@ class TestServerJSON(unittest.TestCase):
 
     def test_put_missing_argument(self):
         """
-        Ensure the server rejects an instructio missing an argument.
+        Ensure the server rejects an instruction missing an argument.
         """
-        self._signup('chiang')
+        self._login('chiang')
         r = self.s.put("%s/instructions/chiang/missing_tags" % ROOT, data={
             'instruction': LOAD_GOOGLE
         })
@@ -209,8 +116,6 @@ class TestServerJSON(unittest.TestCase):
         Ensure the server rejects creating an instruction for a not logged
         in user.
         """
-        self._signup('lennon')
-        self._logout()
         r = self.s.put("%s/instructions/lennon/nope" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': TAGS
@@ -221,7 +126,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Get an instruction on the server using HTTP GET while logged in.
         """
-        self._signup('jacobs')
+        self._login('jacobs')
         self.s.put("%s/instructions/jacobs/life-n-death" % ROOT,
                    data=VALID_INSTRUCTION)
 
@@ -233,7 +138,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Get a instruction on the server using HTTP GET while not logged in.
         """
-        self._signup('jacobs')
+        self._login('jacobs')
         self.s.put("%s/instructions/jacobs/life-n-death" % ROOT,
                    data=VALID_INSTRUCTION)
         self._logout()
@@ -246,7 +151,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Update an instruction by replacing it with PUT.
         """
-        self._signup('moses')
+        self._login('moses')
         self.s.put("%s/instructions/moses/bqe" % ROOT, data=VALID_INSTRUCTION)
 
         load_nytimes = json.dumps({"load":"http://www.nytimes.com/"})
@@ -263,7 +168,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Get all the instructions by a particular user.
         """
-        self._signup('joe')
+        self._login('joe')
         self.s.put("%s/instructions/joe/foo" % ROOT, data=VALID_INSTRUCTION)
         self.s.put("%s/instructions/joe/bar" % ROOT, data=VALID_INSTRUCTION)
 
@@ -278,7 +183,7 @@ class TestServerJSON(unittest.TestCase):
         Get several instructions with one tag.  Returns an array of
         links to the instructions.
         """
-        self._signup('trog-dor')
+        self._login('trog-dor')
         self.s.put("%s/instructions/trog-dor/pillaging" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': '["burnination"]'
@@ -298,7 +203,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Get instructions for nonexistent tag.  Returns an empty array.
         """
-        self._signup('vicious')
+        self._login('vicious')
         self._logout()
 
         r = self.s.get("%s/instructions/vicious/erudite/" % ROOT)
@@ -309,8 +214,7 @@ class TestServerJSON(unittest.TestCase):
         """
         Delete a tag.
         """
-        self._signup('fashionista')
-        print "ROOT: %s" % ROOT
+        self._login('fashionista')
         self.s.put("%s/instructions/fashionista/ray-bans/" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags' : '["trendy"]'
@@ -330,14 +234,14 @@ class TestServerJSON(unittest.TestCase):
 
         TODO: keep tags?
         """
-        self._signup('muddy')
+        self._login('muddy')
         self.s.put("%s/instructions/muddy/delta-blues" % ROOT, data={
             'instruction': LOAD_GOOGLE,
             'tags': "['guitar']"
         })
         self._logout()
 
-        self._signup('crapton')
+        self._login('crapton')
         r = self.s.post("%s/instructions/crapton" % ROOT, data={
             'clone': '/instructions/muddy/delta-blues'
         })
@@ -358,7 +262,7 @@ class TestServerJSON(unittest.TestCase):
         Should replace the current instruction json with that of the
         pulled instruction.
         """
-        self._signup('barrett')
+        self._login('barrett')
         data = json.dumps('{"load":"http://www.saucerful.com/"}')
         self.s.put("%s/instructions/barrett/saucerful" % ROOT, data={
             'instruction': data,
@@ -366,7 +270,7 @@ class TestServerJSON(unittest.TestCase):
         })
         self._logout()
 
-        self._signup('gilmour')
+        self._login('gilmour')
         self.s.post("%s/instructions/gilmour/" % ROOT, {
             'clone': '/instructions/barret/saucerful'
         })

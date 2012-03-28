@@ -10,8 +10,8 @@ import ConfigParser
 import warnings
 import sys
 
-import server.app.database as database
-import server.app.models as models
+from ..src import database
+from ..src import models
 
 config = ConfigParser.SafeConfigParser()
 if len(config.read('config/app.ini')):

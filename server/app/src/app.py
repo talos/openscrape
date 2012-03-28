@@ -22,9 +22,9 @@ from brubeck.auth import UserHandlingMixin
 
 from brubeck.templating import MustacheRendering, load_mustache_env
 import oauth
-from config import DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC, \
-                   SEND_SPEC, JSONGIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS, \
-                   APP_HOST, APP_PORT, CLIENT_LANDING
+from config import (DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC,
+                    SEND_SPEC, JSONGIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS,
+                    APP_HOST, APP_PORT, CLIENT_LANDING, MAGIC_COOKIE )
 import database
 
 
@@ -70,6 +70,16 @@ class Handler(MustacheRendering, UserHandlingMixin):
         Return the User DictShield model from the database using
         cookie session.  Returns `None` if there is no current user.
         """
+        # magic cookie mode for testing purposes
+        import warnings
+        warnings.warn(MAGIC_COOKIE)
+        warnings.warn(self.get_cookie(MAGIC_COOKIE, 'no magic cookie'))
+        if MAGIC_COOKIE is not None:
+            mock_name = self.get_cookie(MAGIC_COOKIE, None)
+            if mock_name is not None:
+                user = oauth.mock_user(mock_name)
+                self.application.users.save_or_create(user)
+                return user
         id = self.get_cookie('session', None, self.application.cookie_secret)
         return self.application.users.get(id) if id else None
 
@@ -84,6 +94,9 @@ class Handler(MustacheRendering, UserHandlingMixin):
         """
         Log out the current user.  Returns None
         """
+        # magic cookie mode for testing purposes
+        if MAGIC_COOKIE is not None:
+            self.delete_cookie(MAGIC_COOKIE, path='/')
         self.delete_cookie('session', path='/')
 
     def is_json_request(self):

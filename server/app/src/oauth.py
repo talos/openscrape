@@ -15,7 +15,7 @@ import requests
 import warnings
 import ConfigParser
 
-from models import User
+import models
 
 config = ConfigParser.SafeConfigParser()
 if not len(config.read('config/oauth.ini')):
@@ -84,6 +84,11 @@ providers = {
         }
     }
 }
+
+
+def mock_user(name):
+    """generate a mock user"""
+    return models.User(name=name, email='mock@mock.com', provider='mock')
 
 
 class OAuthError(RuntimeError):
@@ -189,13 +194,13 @@ class OAuthProvider(object):
             try:
                 raw_dict = json.loads(api_response.content)
 
-                return User(email=raw_dict[parse_user['email']],
-                            provider=self.provider,
-                            provider_id=str(raw_dict[parse_user['id']]),
-                            provider_url=raw_dict[parse_user['url']],
-                            provider_img=raw_dict[parse_user['img']],
-                            provider_name=raw_dict[parse_user['name']],
-                            provider_dict=raw_dict)
+                return models.User(email=raw_dict[parse_user['email']],
+                                   provider=self.provider,
+                                   provider_id=str(raw_dict[parse_user['id']]),
+                                   provider_url=raw_dict[parse_user['url']],
+                                   provider_img=raw_dict[parse_user['img']],
+                                   provider_name=raw_dict[parse_user['name']],
+                                   provider_dict=raw_dict)
             except ValueError:
                 raise OAuthError("Bad API JSON: %s" % api_response.content)
             except KeyError as e:

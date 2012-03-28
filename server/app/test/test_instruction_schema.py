@@ -5,8 +5,8 @@ Test the validation schema for instructions using our migration data.
 from helpers import unittest
 import validictory
 
-import server.app.schema as schema
-from data.migrations import docs
+from ..src import schema
+from ..src.migrations import docs
 
 class TestSchema(unittest.TestCase):
 

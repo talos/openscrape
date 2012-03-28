@@ -2,10 +2,11 @@
 Test caustic/models.py .
 """
 
-from helpers import unittest
 import bson
-from server.app.models import User, InstructionDocument, InstructionField
 from dictshield.base import ShieldException
+
+from helpers import unittest
+from ..src.models import User, InstructionDocument, InstructionField
 
 class TestUser(unittest.TestCase):
 

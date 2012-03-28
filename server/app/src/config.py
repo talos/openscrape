@@ -44,6 +44,14 @@ if not len(PARSER.read('config/app.ini')):
         print("Could not write config file to `config/app.ini`, exiting...")
         exit(1)
 
+# only allow magic cookie for test mode
+if MODE == 'test':
+    MAGIC_COOKIE = PARSER.get('test', 'magic_cookie')
+    import warnings
+    warnings.warn('In test mode, magic cookie is in effect!')
+else:
+    MAGIC_COOKIE = None
+
 DB_NAME = PARSER.get(MODE, 'db_name')
 DB_PORT = int(PARSER.get(MODE, 'db_port'))
 DB_HOST = PARSER.get(MODE, 'db_host')
