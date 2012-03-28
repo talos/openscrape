@@ -6,7 +6,7 @@ from helpers import unittest
 import validictory
 
 from ..src import schema
-from ..src.migrations import docs
+from fixtures.migrations import docs
 
 class TestSchema(unittest.TestCase):
 
