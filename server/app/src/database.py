@@ -7,7 +7,8 @@ caustic.database
 import pymongo
 import jsongit
 import dictshield
-from models import User, InstructionDocument
+
+import models
 
 def get_db(host, port, name):
     db = pymongo.Connection(host, port)[name]
@@ -46,24 +47,44 @@ class Users(object):
 
     def __init__(self, db):
         self.coll = db.users
+        self.coll.safe = True
         self.coll.ensure_index('name', unique=True)
         self.coll.ensure_index('email', unique=True)
         self.deleted = db.deleted_users
 
-    def save_or_create(self, user):
-        """Save a user object, creating it if it doesn't already exist.
-        Validates and assigns it an ID.
+    def create(self, name, **kwargs):
+        """Create a new user object.  Raises a DatabaseError or DuplicateError
+        if it can't be saved, or a ShieldException if it is invalid.
 
-        Raises a DatabaseError if it can't be saved.
+        Returns the new object.
         """
         try:
-            user.validate()
-            id = self.coll.insert(user.to_python())
-            user.id = id
+            kwargs['name'] = name
+            u = models.User(**kwargs)
+            u.validate()
+            id = self.coll.insert(u.to_python(), safe=True)
+            u.id = id
+            return u
         except dictshield.base.ShieldException as e:
             raise ValidationError(e)
         except pymongo.errors.DuplicateKeyError as e:
             raise DuplicateError()
+        except pymongo.errors.OperationFailure as e:
+            raise DatabaseError(e)
+
+    def save(self, user):
+        """Save an existing user object.
+
+        Raises a DatabaseError if it can't be saved or ShieldException if it
+        is invalid, or a KeyError if it does not exist.
+        """
+        try:
+            user.validate()
+            resp = self.coll.update(user.to_python(), safe=True)
+            if resp['n'] == 0:
+                raise KeyError("No user %s" + user.to_json())
+        except dictshield.base.ShieldException as e:
+            raise ValidationError(e)
         except pymongo.errors.OperationFailure as e:
             raise DatabaseError(e)
 
@@ -73,7 +94,7 @@ class Users(object):
         Returns the User or None.
         """
         u = self.coll.find_one(id)
-        return User(**u) if u else None
+        return models.User(**u) if u else None
 
     def find(self, name_or_email):
         """Get a user by name or email.
@@ -85,7 +106,7 @@ class Users(object):
         else:
             u = self.coll.find_one({'email': name_or_email})
 
-        return User(**u) if u else None
+        return models.User(**u) if u else None
 
     def delete(self, user):
         """Delete a user.
@@ -103,6 +124,7 @@ class Instructions(object):
         self.repo = repo
         self.users = users
         self.coll = db.instructions
+        self.coll.safe = True
         self.coll.ensure_index([('creator_id', pymongo.ASCENDING),
                                 ('name', pymongo.ASCENDING)],
                                unique=True)
@@ -121,7 +143,7 @@ class Instructions(object):
         u = self.users.find(creator_name)
         if u:
             cursor = self.coll.find({'creator_id': u.id})
-            return [InstructionDocument(**i) for i in cursor]
+            return [models.InstructionDocument(**i) for i in cursor]
         else:
             return None
 
@@ -133,7 +155,7 @@ class Instructions(object):
         u = self.users.find(creator_name)
         if u:
             i = self.coll.find_one({'creator_id': u.id, 'name': name})
-            return InstructionDocument(**i) if i else None
+            return models.InstructionDocument(**i) if i else None
         else:
             return None
 
@@ -146,7 +168,7 @@ class Instructions(object):
         u = self.users.find(creator_name)
         if u:
             cursor = self.coll.find({'creator_id': u.id, 'tags': tag})
-            return [InstructionDocument(**i) for i in cursor]
+            return [models.InstructionDocument(**i) for i in cursor]
         else:
             return None
 
@@ -163,17 +185,17 @@ class Instructions(object):
             doc.instruction = instruction
             doc.tags = tags
         else:
-            doc = InstructionDocument(creator_id=creator.id,
-                                      name=name,
-                                      instruction=instruction,
-                                      tags=tags)
+            doc = models.InstructionDocument(creator_id=creator.id,
+                                             name=name,
+                                             instruction=instruction,
+                                             tags=tags)
 
         try:
             doc.validate()
             creator = self.users.get(doc.creator_id)
             self.repo.commit(self._repo_key(creator, doc), doc.instruction,
                              author=jsongit.signature(creator.name, creator.name))
-            doc.id = self.coll.save(doc.to_python(), manipulate=True)
+            doc.id = self.coll.save(doc.to_python(), manipulate=True, safe=True)
             return doc
         except dictshield.base.ShieldException as e:
             raise ValidationError(e)

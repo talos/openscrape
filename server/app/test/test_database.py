@@ -3,43 +3,39 @@ Test the database.  Mongod must be running.
 """
 
 from helpers import unittest
+import itertools
 import shutil
+import os
 import jsongit
 import pymongo
-import ConfigParser
 import warnings
 import sys
 
+from ..src import config
 from ..src import database
-from ..src import models
 
-config = ConfigParser.SafeConfigParser()
-if len(config.read('config/app.ini')):
-    try:
-        db = database.get_db(config.get('test', 'db_host'),
-                             config.getint('test', 'db_port'),
-                             config.get('test', 'db_name'))
-    except ConfigParser.NoOptionError as e:
-        warnings.warn("Missing required option for test: %s" % e)
-        sys.exit(1)
-    except pymongo.errors.AutoReconnect as e:
-        warnings.warn("Could not connect to mongo.  Is it running? %s" % e)
-        sys.exit(1)
-else:
-    warnings.warn("No config at conf/app.ini, cannot run test_database.py")
+try:
+    db = database.get_db(config.DB_HOST, config.DB_PORT, config.DB_NAME)
+except pymongo.errors.AutoReconnect as e:
+    warnings.warn("Could not connect to mongo.  Is it running? %s" % e)
     sys.exit(1)
 
 REPO_DIR = 'tmp_git'
 INSTRUCTION = {'load':'google'}  # valid instruction for convenience
 TAGS = ['useful', 'fun', 'interesting']
+VALID = ['foo', 'z'.join('' for i in xrange(41)), 'dash-mcdash']
+INVALID = ['', 'a', 'ab', 'slashy/mcslash', 'foo_bar', '@#$%^&',
+           'with spaces', 'z'.join('' for i in xrange(42)),
+           'z'.join('' for i in xrange(10000)), '"lkdjf"']
 
-def new_user(**kwargs):
+email_gen = ("%d@email.com" % i for i in itertools.count(1)) # <3 python
+
+def defaults(**kwargs):
     """
-    Generates a new (by default) valid user each time it is called.
+    Return nonduplicate default values for a user.
     """
     defaults = {
-        'name': 'name',
-        'email': 'user@email.com',
+        'email': email_gen.next(),
         'provider': 'provider',
         'provider_id' : '1234',
         'provider_img': 'http://foo.com/img.jpg',
@@ -47,88 +43,100 @@ def new_user(**kwargs):
         'provider_name': 'some-other-name'
     }
     defaults.update(kwargs)
-    return models.User(**defaults)
+    return defaults
+
+def clear():
+    """
+    Clear out the DB and jsongit
+    """
+    for name in set(db.collection_names()) - set([u'system.indexes']):
+        db[name].drop()
+    if os.path.isdir(REPO_DIR):
+        shutil.rmtree(REPO_DIR)
 
 class TestUsers(unittest.TestCase):
 
+    def _create_user(self, name, **kwargs):
+        return self.users.create(name, **defaults(**kwargs))
+
     def setUp(self):
+        clear()
         self.users = database.Users(db)
 
     def tearDown(self):
-        for name in set(db.collection_names()) - set([u'system.indexes']):
-            db[name].drop()
+        clear()
 
     def test_new_user_assigns_id(self):
         """Saving a user should assign an id.
         """
-        u = new_user()
-        self.assertNotIn('id', u)
-        self.users.save_or_create(u)
+        u = self._create_user('name')
         self.assertIn('id', u)
 
     def test_get_user_by_id(self):
         """Get a user by the assigned id.
         """
-        u = new_user()
-        self.users.save_or_create(u)
+        u = self._create_user('name')
         self.assertEquals(u.to_python(), self.users.get(u.id).to_python())
 
     def test_find_user_by_name(self):
         """Find a user by name
         """
-        u = new_user(name='joe')
-        self.users.save_or_create(u)
+        u = self._create_user('joe')
         self.assertEquals(u.to_python(), self.users.find('joe').to_python())
 
     def test_find_user_by_email(self):
         """Find user by email
         """
-        u = new_user(email='foo@bar.com')
-        self.users.save_or_create(u)
+        u = self._create_user('name', email='foo@bar.com')
         self.assertEquals(u.to_python(), self.users.find('foo@bar.com').to_python())
 
     def test_find_no_user_name(self):
         """Not finding nonexistent user name.
         """
-        u = new_user(name='exists')
-        self.users.save_or_create(u)
+        self._create_user('exists')
         self.assertIsNone(self.users.find('nonexistent'))
 
     def test_find_no_user_email(self):
         """Not finding nonexistent email.
         """
-        u = new_user(email='roses@red.com')
-        self.users.save_or_create(u)
+        self._create_user('exists', email='roses@red.com')
         self.assertIsNone(self.users.find('violets@blue.com'))
+
+    def test_valid_names(self):
+        """Allow valid names
+        """
+        for name in VALID:
+            self._create_user(name)
+
+    def test_invalid_names(self):
+        """No invalid names
+        """
+        for name in INVALID:
+            with self.assertRaises(database.ValidationError):
+                self._create_user(name)
 
     def test_no_duplicate_names(self):
         """Cannot create two users with same name but different emails.
         """
-        sally1 = new_user(name='sally', email="sally@foo.com")
-        sally2 = new_user(name='sally', email="sally@bar.com")
-        self.users.save_or_create(sally1)
+        self._create_user('sally', email="sally@foo.com")
         with self.assertRaises(database.DuplicateError):
-            self.users.save_or_create(sally2)
+            self._create_user('sally', email="sally@bar.com")
 
     def test_no_duplicate_email(self):
         """Cannot create two users with same email but different names.
         """
-        cindy1 = new_user(email='cindy@sherman.com', name="artist")
-        cindy2 = new_user(email='cindy@sherman.com', name="photographer")
-        self.users.save_or_create(cindy1)
+        self._create_user(name="photographer", email='cindy@sherman.com')
         with self.assertRaises(database.DuplicateError):
-            self.users.save_or_create(cindy2)
+            self._create_user(name="artist", email='cindy@sherman.com')
 
     def test_several_users(self):
         """Should be able to add several users.
         """
         users = [
-            new_user(name='kelly', email="from@justin.com"),
-            new_user(name='justin', email="to@kelly.com"),
-            new_user(name='abdul', email='paula@abdul.net')
+            self._create_user('kelly', email="from@justin.com"),
+            self._create_user('justin', email="to@kelly.com"),
+            self._create_user('abdul', email='paula@abdul.net')
         ]
-        for user in users:
-            self.users.save_or_create(user)
         for user in users:
             self.assertEquals(user.to_python(), self.users.get(user.id).to_python(),
                               'get %s by id' % user)
@@ -140,8 +148,7 @@ class TestUsers(unittest.TestCase):
     def test_delete_user(self):
         """Cannot find user by ID or name after being deleted.
         """
-        george = new_user(name='george', email='george@curious.com')
-        self.users.save_or_create(george)
+        george = self._create_user('george', email='george@curious.com')
         self.users.delete(george)
         self.assertIsNone(self.users.get(george.id))
         self.assertIsNone(self.users.find('george'))
@@ -151,16 +158,14 @@ class TestUsers(unittest.TestCase):
 class TestInstructions(unittest.TestCase):
 
     def setUp(self):
+        clear()
         repo = jsongit.init(REPO_DIR)
         self.users = database.Users(db)
-        self.creator = new_user(name='creator')
-        self.users.save_or_create(self.creator)
+        self.creator = self.users.create('creator', **defaults())
         self.instructions = database.Instructions(self.users, repo, db)
 
     def tearDown(self):
-        for name in set(db.collection_names()) - set([u'system.indexes']):
-            db[name].drop()
-        shutil.rmtree(REPO_DIR)
+        clear()
 
     def test_create_instruction(self):
         """Creating an instruction.
@@ -175,10 +180,8 @@ class TestInstructions(unittest.TestCase):
     def test_duplicate_names_ok(self):
         """Duplicate names are OK provided the creators are different.
         """
-        joe = new_user(name='joe', email='joe@bob.com')
-        bobo = new_user(name='bobo', email='bobo@clown.com')
-        self.users.save_or_create(joe)
-        self.users.save_or_create(bobo)
+        joe = self.users.create('joe', provider='none', email='joe@bob.com')
+        bobo = self.users.create('bobo', provider='none', email='bobo@clown.com')
 
         self.instructions.save_or_create(joe, 'name', INSTRUCTION, TAGS)
         self.instructions.save_or_create(bobo, 'name', INSTRUCTION, TAGS)
@@ -224,12 +227,38 @@ class TestInstructions(unittest.TestCase):
             self.instructions.save_or_create(self.creator, doc.name,
                                              doc.instruction, doc.tags)
 
-    def test_bad_tags(self):
-        """Don't create with bad tags.
+    def test_non_array_tags(self):
+        """Tags should be specified in an array.
         """
         for bad in [7, 'string', {}]:
             with self.assertRaises(database.ValidationError):
                 self.instructions.save_or_create(self.creator, 'foo', INSTRUCTION, bad)
+
+    def test_invalid_names(self):
+        """Tags must be valid for URLs
+        """
+        for name in INVALID:
+            with self.assertRaises(database.ValidationError):
+                self.instructions.save_or_create(self.creator, name, INSTRUCTION, [])
+
+    def test_valid_names(self):
+        """Tags must be valid for URLs
+        """
+        for name in VALID:
+            self.instructions.save_or_create(self.creator, name, INSTRUCTION, [])
+
+    def test_invalid_tags(self):
+        """Tags must be valid for URLs
+        """
+        for tag in INVALID:
+            with self.assertRaises(database.ValidationError):
+                self.instructions.save_or_create(self.creator, 'foo', INSTRUCTION, [tag])
+
+    def test_valid_tags(self):
+        """Tags must be valid for URLs
+        """
+        for tag in VALID:
+            self.instructions.save_or_create(self.creator, 'foo', INSTRUCTION, [tag])
 
     def test_tagged_instructions(self):
         """ Get instructions by their tag.

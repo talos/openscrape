@@ -15,8 +15,6 @@ import requests
 import warnings
 import ConfigParser
 
-import models
-
 config = ConfigParser.SafeConfigParser()
 if not len(config.read('config/oauth.ini')):
     warnings.warn("No oauth config at conf/oauth.ini, no providers will be available.")
@@ -86,11 +84,6 @@ providers = {
 }
 
 
-def mock_user(name):
-    """generate a mock user"""
-    return models.User(name=name, email='mock@mock.com', provider='mock')
-
-
 class OAuthError(RuntimeError):
     pass
 
@@ -133,9 +126,9 @@ class OAuthProvider(object):
         })
         return "%s?%s" % (url, urllib.urlencode(params))
 
-    def new_user(self, code):
+    def get_data(self, code):
         """
-        Create a User model from the provided access code.
+        Extract user data from OAuth code.
 
         Raises an OAuthError if something goes wrong.
         """
@@ -194,13 +187,13 @@ class OAuthProvider(object):
             try:
                 raw_dict = json.loads(api_response.content)
 
-                return models.User(email=raw_dict[parse_user['email']],
-                                   provider=self.provider,
-                                   provider_id=str(raw_dict[parse_user['id']]),
-                                   provider_url=raw_dict[parse_user['url']],
-                                   provider_img=raw_dict[parse_user['img']],
-                                   provider_name=raw_dict[parse_user['name']],
-                                   provider_dict=raw_dict)
+                return dict(email=raw_dict[parse_user['email']],
+                            provider=self.provider,
+                            provider_id=str(raw_dict[parse_user['id']]),
+                            provider_url=raw_dict[parse_user['url']],
+                            provider_img=raw_dict[parse_user['img']],
+                            provider_name=raw_dict[parse_user['name']],
+                            provider_dict=raw_dict)
             except ValueError:
                 raise OAuthError("Bad API JSON: %s" % api_response.content)
             except KeyError as e:

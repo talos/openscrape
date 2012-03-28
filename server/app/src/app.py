@@ -12,21 +12,17 @@ try:
 except ImportError:
     import json
 
-#import logging
+import logging
 import re
 import jsongit
 
-from dictshield.base import ShieldException
 from brubeck.request_handling import Brubeck
-from brubeck.auth import UserHandlingMixin
+import brubeck.auth
+import brubeck.templating
 
-from brubeck.templating import MustacheRendering, load_mustache_env
 import oauth
-from config import (DB_NAME, DB_HOST, DB_PORT, COOKIE_SECRET, RECV_SPEC,
-                    SEND_SPEC, JSONGIT_DIR, TEMPLATE_DIR, VALID_URL_CHARS,
-                    APP_HOST, APP_PORT, CLIENT_LANDING, MAGIC_COOKIE )
+import config
 import database
-
 
 # Users should not be allowed to make accounts with these names.
 RESERVED_WORDS = ['oauth', 'instructions', 'users', 'proxy']
@@ -34,24 +30,15 @@ RESERVED_WORDS = ['oauth', 'instructions', 'users', 'proxy']
 # Not optimal, but the user could conceivably need this file without a redirect
 # to nginx possible.
 try:
-    f = open(CLIENT_LANDING, 'r')
+    f = open(config.CLIENT_LANDING, 'r')
     client_landing = f.read()
 finally:
     f.close()
 
-class Handler(MustacheRendering, UserHandlingMixin):
+class Handler(brubeck.templating.MustacheRendering, brubeck.auth.UserHandlingMixin):
     """
     An extended handler.
     """
-
-    def validate_user_name(self, user_name):
-        """
-        Returns True if the user name is OK, False otherwise.
-        """
-        if user_name in RESERVED_WORDS:
-            return False
-        else:
-            return not re.search(r'[^%s]' % VALID_URL_CHARS, user_name)
 
     def instruction_to_path(self, user_name, instruction_doc):
         """
@@ -70,17 +57,7 @@ class Handler(MustacheRendering, UserHandlingMixin):
         Return the User DictShield model from the database using
         cookie session.  Returns `None` if there is no current user.
         """
-        # magic cookie mode for testing purposes
-        import warnings
-        warnings.warn(MAGIC_COOKIE)
-        warnings.warn(self.get_cookie(MAGIC_COOKIE, 'no magic cookie'))
-        if MAGIC_COOKIE is not None:
-            mock_name = self.get_cookie(MAGIC_COOKIE, None)
-            if mock_name is not None:
-                user = oauth.mock_user(mock_name)
-                self.application.users.save_or_create(user)
-                return user
-        id = self.get_cookie('session', None, self.application.cookie_secret)
+        id = self.get_cookie(config.SESSION_NAME, None, self.application.cookie_secret)
         return self.application.users.get(id) if id else None
 
     def set_current_user(self, user):
@@ -88,15 +65,12 @@ class Handler(MustacheRendering, UserHandlingMixin):
         Set the cookie that will be used for session management.
         `user` is a User.
         """
-        self.set_cookie('session', user.id, self.application.cookie_secret, path='/')
+        self.set_cookie(config.SESSION_NAME, user.id, self.application.cookie_secret, path='/')
 
     def logout_user(self):
         """
         Log out the current user.  Returns None
         """
-        # magic cookie mode for testing purposes
-        if MAGIC_COOKIE is not None:
-            self.delete_cookie(MAGIC_COOKIE, path='/')
         self.delete_cookie('session', path='/')
 
     def is_json_request(self):
@@ -153,7 +127,7 @@ class OAuthLogin(Handler):
             user = self.application.users.find(name_or_email)
             if user:
                 try:
-                    provider = oauth.OAuthProvider(APP_HOST, APP_PORT, user.provider)
+                    provider = oauth.OAuthProvider(config.HOST, config.PORT, user.provider)
                     context['redirect'] = provider.auth_url
                     status = 200
                 except oauth.OAuthError as e:
@@ -182,7 +156,7 @@ class OAuthSignup(Handler):
         context = { 'user': user_name }
 
         try:
-            provider = oauth.OAuthProvider(APP_HOST, APP_PORT, provider_name)
+            provider = oauth.OAuthProvider(config.HOST, config.PORT, provider_name)
             if self.current_user:
                 context = 'You are already logged in as %s.' % self.current_user.name
                 status = 400
@@ -190,7 +164,10 @@ class OAuthSignup(Handler):
                 if not user_name:
                     context = 'You must specify user name to sign up.'
                     status = 400
-                elif not self.validate_user_name(user_name):
+                elif user_name in RESERVED_WORDS:
+                    context = "User name '%s' is a reserved word." % user_name
+                    status = 400
+                elif not re.match(config.FULL_URL_REGEX, user_name):
                     context = "User name '%s' is invalid." % user_name
                     status = 400
                 elif self.application.users.find(user_name):
@@ -224,8 +201,8 @@ class OAuthCallback(Handler):
         context = {}
         if code:
             try:
-                provider = oauth.OAuthProvider(APP_HOST, APP_PORT, provider_name)
-                user = provider.new_user(code)
+                provider = oauth.OAuthProvider(config.HOST, config.PORT, provider_name)
+                user_data = provider.get_data(code)
 
                 # state is stored client-side in cookie, which must be
                 # revalidated in case of tampering
@@ -235,16 +212,11 @@ class OAuthCallback(Handler):
                         context = 'Someone stole your name while you \
                                 OAuth\'d!, sorry.  Try again.'
                         status = 400
-                    elif self.validate_user_name(signup_name):
-                        user.name = signup_name
-                        self.application.users.save_or_create(user)
+                    else:
+                        user = self.application.users.create(signup_name, **user_data)
                         self.set_current_user(user)
                         status = 200
                         context['user'] = user.name
-                    else:
-                        # they faked something to get here.
-                        context = 'Bad losername, cleva hacka'
-                        status = 400
                 else:
                     existing_user = self.application.users.find(user.email)
                     if existing_user:
@@ -447,7 +419,7 @@ class InstructionModelHandler(Handler):
         context = {}
         doc = self.application.instructions.find(user_name, name)
         if doc:
-            context = doc.to_python()
+            context = doc.instruction
             status = 200
         else:
             context = "Instruction does not exist"
@@ -476,15 +448,15 @@ class InstructionModelHandler(Handler):
                     json.loads(self.get_argument('instruction')),
                     json.loads(self.get_argument('tags')))
                 status = 201
-                context = doc.to_python()
-            except ShieldException as error:
-                context = "Invalid instruction: %s." % error
+                context = doc.instruction
+            except database.ValidationError as e:
+                context = "Invalid instruction: %s." % e
                 status = 400
-            except TypeError as error:
-                context = 'Invalid arguments: %s.' % error
+            except TypeError as e:
+                context = 'Invalid arguments: %s.' % e
                 status = 400
-            except ValueError as error:
-                context = 'Invalid JSON: %s.' % error
+            except ValueError as e:
+                context = 'Invalid JSON: %s.' % e
                 status = 400
 
         self.set_body(json.dumps(context))
@@ -516,25 +488,26 @@ class InstructionModelHandler(Handler):
         return self.render(status_code=status)
 
 
-V_C = VALID_URL_CHARS
-config = {
-    'mongrel2_pair': (RECV_SPEC, SEND_SPEC),
+R = config.PARTIAL_URL_REGEX
+app = Brubeck(**{
+    'mongrel2_pair': (config.RECV_SPEC, config.SEND_SPEC),
     'handler_tuples': [
         (r'^/oauth/signup$', OAuthSignup),
         (r'^/oauth/login$', OAuthLogin),
         (r'^/oauth/logout$', OAuthLogout),
         (r'^/oauth/status$', OAuthStatus),
-        (r'^/oauth/callback/([%s]+)$' % V_C, OAuthCallback),
-        (r'^/users/([%s]+)$' % V_C, UserHandler),
-        (r'^/instructions/([%s]+)/$' % V_C, InstructionCollectionHandler),
-        (r'^/instructions/([%s]+)/([%s]+)$' % (V_C, V_C), InstructionModelHandler),
-        (r'^/instructions/([%s]+)/([%s]+)/$' % (V_C, V_C), TagCollectionHandler)],
-    'template_loader': load_mustache_env(TEMPLATE_DIR),
-    'cookie_secret': COOKIE_SECRET,
-}
+        (r'^/oauth/callback/(%s)$' % R, OAuthCallback),
+        (r'^/users/(%s)$' % R, UserHandler),
+        (r'^/instructions/(%s)/$' % R, InstructionCollectionHandler),
+        (r'^/instructions/(%s)/(%s)$' % (R, R), InstructionModelHandler),
+        (r'^/instructions/(%s)/(%s)/$' % (R, R), TagCollectionHandler)],
+    'template_loader': brubeck.templating.load_mustache_env(config.TEMPLATE_DIR),
+    'cookie_secret': config.COOKIE_SECRET,
+})
 
-app = Brubeck(**config)
-db = database.get_db(DB_HOST, DB_PORT, DB_NAME)
+db = database.get_db(config.DB_HOST, config.DB_PORT, config.DB_NAME)
 app.users = database.Users(db)
-app.instructions = database.Instructions(app.users, jsongit.init(JSONGIT_DIR), db)
+app.instructions = database.Instructions(app.users, jsongit.init(config.JSONGIT_DIR), db)
+logging.info("Booting up openscrape on %s:%s, using DB %s @ %s:%s" % (
+                config.HOST, config.PORT, config.DB_NAME, config.DB_HOST, config.DB_PORT))
 app.run()

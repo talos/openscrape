@@ -2,6 +2,8 @@ import validictory
 
 import schema
 
+from config import FULL_URL_REGEX
+
 from dictshield.document import Document
 from dictshield.base import ShieldException
 from dictshield.fields import StringField, BooleanField, DictField, EmailField, \
@@ -45,8 +47,8 @@ class InstructionDocument(Document):
     """
     id = ObjectIdField(id_field=True)
     creator_id = ObjectIdField(required=True)
-    name = StringField(required=True)
-    tags = ListField(StringField())
+    name = StringField(required=True,regex=FULL_URL_REGEX,min_length=3,max_length=40)
+    tags = ListField(StringField(regex=FULL_URL_REGEX,min_length=3,max_length=40))
     instruction = InstructionField(required=True)
 
     _private_fields = [id, creator_id]
@@ -56,7 +58,7 @@ class User(Document):
     A user who can clone, make push requests, and pull instructions.
     """
     id = ObjectIdField(id_field=True)
-    name = StringField(required=True)
+    name = StringField(required=True,regex=FULL_URL_REGEX,min_length=3,max_length=40)
     deleted = BooleanField(default=False)
     email = EmailField(required=True)
 
