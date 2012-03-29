@@ -91,6 +91,7 @@ define([
         this.queue.queue(_.bind(function (next) {
             this.requester(requestStr)
                 .done(function (jsonResp) {
+                    console.log(json.stringify(json.parse(jsonResp), null, 4));
                     dfd.resolve(json.parse(jsonResp));
                 })
                 .fail(function (msg) {

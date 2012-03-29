@@ -83,6 +83,7 @@ define([
             if (!this._parent && this.has('parentId')) {
                 this._parent = this.collection.get(this.get('parentId'));
                 if (!this._parent) {
+                    console.log(this.collection.pluck('id'));
                     throw "Corrupt localStorage, couldn't find node parent: " + this.get('parentId');
                 }
             }

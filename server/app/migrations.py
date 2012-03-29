@@ -21,5 +21,6 @@ assert 'id' in user
 
 for doc in docs:
     tags = [str(tag) for tag in doc.get('tags', [])]
-    instructions.save_or_create(user, doc['name'], doc['instruction'], tags)
+    doc = instructions.save_or_create(user, doc['name'], doc['instruction'], tags)
+    print("Added instruction %s (ID=%s)" % (doc.name, doc.id))
 
