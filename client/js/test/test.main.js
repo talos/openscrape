@@ -9,6 +9,7 @@ require.config({
         'require',
         'lib/jquery',
         '../test/vendor/mocha',
+        '../test/caustic.test',
         '../test/collections/nodes.test',
         '../test/models/node.test'
     ], function (require) {

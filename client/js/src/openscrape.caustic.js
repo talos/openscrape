@@ -36,7 +36,8 @@ define([
 
     var $ = require('jquery');
 
-    function Caustic() {
+    function Caustic($el) {
+        this.$el = $el;
         this.queue = new Queue('caustic');
         this.started = false;
         this.prompt = new PromptModel({
@@ -72,17 +73,15 @@ define([
      * Scrape a request.
      *
      * @param {Object} request a JS object to request.
-     * @param {jquery.DOM} $el a jquery element to which a prompt can be
-     * attached, if necessary.
      *
      * @return {Promise} that will be resolved with the raw JS object
      * of the response when the request is done, or rejected with a
      * reason for why it failed.
      **/
-    Caustic.prototype.scrape = function (request, $el) {
+    Caustic.prototype.scrape = function (request) {
         if (!this.requester) {
             new PromptView({ model: this.prompt })
-                .render().$el.prependTo($el);
+                .render().$el.prependTo(this.$el);
         }
 
         var dfd = new $.Deferred(),
@@ -91,7 +90,6 @@ define([
         this.queue.queue(_.bind(function (next) {
             this.requester(requestStr)
                 .done(function (jsonResp) {
-                    console.log(json.stringify(json.parse(jsonResp), null, 4));
                     dfd.resolve(json.parse(jsonResp));
                 })
                 .fail(function (msg) {
@@ -105,5 +103,5 @@ define([
         return dfd.promise();
     };
 
-    return new Caustic();
+    return Caustic;
 });

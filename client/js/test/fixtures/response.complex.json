@@ -1,0 +1,300 @@
+{
+    "instruction": {
+        "posts": {
+            "FBORO": "3",
+            "FAPTNUM": ""
+        },
+        "extends": "/instructions/openscrape/property"
+    },
+    "status": "loaded",
+    "name": "Department of Finance Lookup",
+    "children": {
+        "<!doctype html public \"-//W3C//DTD HTML 3.2//EN\">\r\n<!-- FINDMP1B ON cicTESTN.mvs.DFHHTML 11/14/06 10:30am  -->\r\n<html>\r\n\r\n<SCRIPT language=JavaScript>\r\n\r\n<!--\r\n function dfhsetcursor(n)\r\n   {for (var i=0;i<document.FINDMP1B.elements.length;i++)\r\n     {if (document.FINDMP1B.elements.name == n)\r\n         {document.FINDMP1B.elements.focus();\r\n          document.FINDMP1B.DFH_CURSOR.value=n;\r\n          break}}}\r\n function dfhinqcursor(n)\r\n   {for (var i=0;i<document.FINDMP1B.elements.length;i++)\r\n     {if (document.FINDMP1B.elements.name == n)\r\n         {document.FINDMP1B.elements.focus();\r\n          document.FINDMP1B.DFH_CURSOR.value=n;\r\n          break}}}\r\n // -->\r\n</SCRIPT>\r\n\r\n<HEAD>\r\n<META HTTP-EQUIV=\"description\" CONTENT=\"Property Search\">\r\n<META HTTP-EQUIV=\"keywords\" CONTENT=\"Property Search, Block Lot\">\r\n<META NAME=\"author\" CONTENT=\"Flo Miller\">\r\n<TITLE>BBLE FOUND-jump page</TITLE>\r\n<!---<base href=\"http://&FHOST3;\">--->\r\n</HEAD>\r\n<!-- This screen flashes and then jumps to nycproperty\r\n      no href needed.. this screen when goes to nycproperty\r\n      update date: 11/14/2006 10:30am\r\n // -->\r\n\r\n<BODY onLoad=\"document.forms.FINDMP1B.submit()\">\r\n<!---     &NEWWINDOW; --->\r\n   <FORM  method=post name=FINDMP1B\r\n          action=\"HTTP://NYCPROP.NYC.GOV/nycproperty/nynav/jsp/stmtassesslst.jsp\">\r\n          <input type=\"hidden\" name=\"FFUNC\"\r\n                          value=\"A\">\r\n          <input type=\"hidden\" name=\"q49_boro\"\r\n                          value=\"3\">\r\n          <input type=\"hidden\" name=\"q49_block_id\"\r\n                          value=\"01688\">\r\n          <input type=\"hidden\" name=\"q49_lot\"\r\n                          value=\"0001\">\r\n          <input type=\"hidden\" name=\"q49_prp_ad_street_no\"\r\n                         value=\"291     \">\r\n          <input type=\"hidden\" name=\"q49_prp_nm_street\"\r\n                         value=\"PATCHEN AVENUE                   \">\r\n          <input type=\"hidden\" name=\"q49_prp_id_apt_num\"\r\n                         value=\"  896\">\r\n          <input type=\"hidden\" name=\"q49_prp_ad_city\"\r\n                         value=\"New york            \">\r\n          <input type=\"hidden\" name=\"q49_prp_cd_state\"\r\n                         value=\"NY\">\r\n          <input type=\"hidden\" name=\"q49_prp_cd_addr_zip\"\r\n                         value=\"11233\">\r\n          <input type=\"hidden\" name=\"bblAcctKeyIn1\"\r\n                          value=\"3\">\r\n          <input type=\"hidden\" name=\"bblAcctKeyIn2\"\r\n                          value=\"01688\">\r\n          <input type=\"hidden\" name=\"bblAcctKeyIn3\"\r\n                          value=\"0001\">\r\n          <input type=\"hidden\" name=\"bblAcctKeyIn4\"\r\n                          value=\" \">\r\n          <input type=\"hidden\" name=\"ownerName\"\r\n                          value=\"NEW YORK CITY HOUSING\">\r\n          <input type=\"hidden\" name=\"ownerName1\"\r\n                          value=\"NEW YORK CITY HOUSING AUTH                                            \">\r\n          <input type=\"hidden\" name=\"ownerName2\"\r\n                          value=\"                                                                      \">\r\n          <input type=\"hidden\" name=\"ownerName3\"\r\n                          value=\"                                                                      \">\r\n          <input type=\"hidden\" name=\"ownerName4\"\r\n                          value=\"                                                                      \">\r\n          <input type=\"hidden\" name=\"ownercount\"\r\n                          value=\"1\">\r\n          <input type=\"hidden\" name=\"returnMsg\"\r\n                          value=\"                                                                                                                                                      \">\r\n          <input type=\"hidden\" name=\"FMSG2\"\r\n                          value=\"02/03/06 10:30AM -       B4 5000-SEND-VARIABLES                                 \">\r\n            <center>\r\n        <p align=\"center\">\r\n<!-- &NEWWINDOW; -->\r\n   <input type=\"submit\"  value=\"Processing\"\r\n    style=\"background:blue;color:white\"\r\n    name=\"DFH_ENTER\"                     </center><p>\r\n<br>Please click processing button to continue if new page does not\r\n    automatically load in 10 seconds</br>\r\n        <table align=center border=0 height=100 width=\"514\">\r\n          <tbody>\r\n          <tr>\r\n\r\n            </tr>\r\n            </tbody>\r\n          </table>\r\n</FORM>\r\n  <table width=\"514\" border=\"0\" cellpadding=\"2\" align=\"center\">\r\n  </table>\r\n</BODY></HTML>\r\n": [
+            {
+                "instruction": {
+                    "name": "Name",
+                    "replace": "$1",
+                    "description": "The names of the owners",
+                    "find": "<input\\s+type=\"hidden\"\\s+name=\"ownerName\\d?\"\\s+value=\"\\s*(\\w[^\"]*?)\\s*\"",
+                    "then": "/instructions/openscrape/dos-corpsearch"
+                },
+                "status": "found",
+                "name": "Name",
+                "children": {
+                    "NEW YORK CITY HOUSING AUTH": [
+                        {
+                            "instruction": {
+                                "name": "Search NYS Corporate Entities Database",
+                                "description": "NYS DOS Corporate Entities Database",
+                                "posts": {
+                                    "p_name_type": "%25",
+                                    "p_entity_name": "{{Name}}",
+                                    "p_search_type": "PARTIAL"
+                                },
+                                "load": "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.SELECT_ENTITY",
+                                "then": [
+                                    {
+                                        "name": "entity",
+                                        "description": "Split by each entity on the search results page.",
+                                        "find": "<a\\s+title\\s*=\\s*\"Link to entity information.*?</a>",
+                                        "then": [
+                                            {
+                                                "match": 0,
+                                                "name": "p_nameid",
+                                                "replace": "$1",
+                                                "description": "Name ID",
+                                                "find": "p_nameid=(\\d+)"
+                                            },
+                                            {
+                                                "match": 0,
+                                                "name": "p_corpid",
+                                                "replace": "$1",
+                                                "description": "Corporate ID",
+                                                "find": "p_corpid=(\\d+)"
+                                            },
+                                            {
+                                                "description": "Corporate entity info.",
+                                                "load": "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.ENTITY_INFORMATION?p_nameid={{p_nameid}}&p_corpid={{p_corpid}}&p_entity_name={{Name}}&p_name_type=%25&p_search_type=PARTIAL",
+                                                "then": [
+                                                    {
+                                                        "name": "Current Entity Name",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Current Entity Name:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Initial DOS Filing Date",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Initial DOS Filing Date:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "County",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">County:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Jurisdiction",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Jurisdiction:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Entity Type",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Entity Type:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Current Entity Status",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Current Entity Status:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "match": 0,
+                                                        "name": "DOS Process Address",
+                                                        "replace": "$1",
+                                                        "find": "<td headers=\"c1\">(.*?)</td>"
+                                                    },
+                                                    {
+                                                        "match": 1,
+                                                        "name": "Registered Agent",
+                                                        "replace": "$1",
+                                                        "find": "<td headers=\"c1\">(.*?)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Filing Date",
+                                                        "replace": "$1",
+                                                        "find": "<td class=\"FileDt\">([^<])</th>"
+                                                    },
+                                                    {
+                                                        "name": "Name Type",
+                                                        "replace": "$1",
+                                                        "find": "<td class=\"NameType\">([^<])</th>"
+                                                    },
+                                                    {
+                                                        "name": "Entity Name",
+                                                        "replace": "$1",
+                                                        "find": "<td class=\"Entity Name\">([^<])</th>"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            "status": "wait",
+                            "name": "Search NYS Corporate Entities Database",
+                            "description": "NYS DOS Corporate Entities Database",
+                            "uri": "http://localhost:8100/instructions/openscrape/dos-corpsearch",
+                            "id": "fee4d4f4-c603-b6ea-396d-fac59e713dc2"
+                        }
+                    ],
+                    "NEW YORK CITY HOUSING": [
+                        {
+                            "instruction": {
+                                "name": "Search NYS Corporate Entities Database",
+                                "description": "NYS DOS Corporate Entities Database",
+                                "posts": {
+                                    "p_name_type": "%25",
+                                    "p_entity_name": "{{Name}}",
+                                    "p_search_type": "PARTIAL"
+                                },
+                                "load": "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.SELECT_ENTITY",
+                                "then": [
+                                    {
+                                        "name": "entity",
+                                        "description": "Split by each entity on the search results page.",
+                                        "find": "<a\\s+title\\s*=\\s*\"Link to entity information.*?</a>",
+                                        "then": [
+                                            {
+                                                "match": 0,
+                                                "name": "p_nameid",
+                                                "replace": "$1",
+                                                "description": "Name ID",
+                                                "find": "p_nameid=(\\d+)"
+                                            },
+                                            {
+                                                "match": 0,
+                                                "name": "p_corpid",
+                                                "replace": "$1",
+                                                "description": "Corporate ID",
+                                                "find": "p_corpid=(\\d+)"
+                                            },
+                                            {
+                                                "description": "Corporate entity info.",
+                                                "load": "http://appext9.dos.state.ny.us/corp_public/CORPSEARCH.ENTITY_INFORMATION?p_nameid={{p_nameid}}&p_corpid={{p_corpid}}&p_entity_name={{Name}}&p_name_type=%25&p_search_type=PARTIAL",
+                                                "then": [
+                                                    {
+                                                        "name": "Current Entity Name",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Current Entity Name:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Initial DOS Filing Date",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Initial DOS Filing Date:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "County",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">County:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Jurisdiction",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Jurisdiction:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Entity Type",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Entity Type:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Current Entity Status",
+                                                        "replace": "$1",
+                                                        "find": "<th scope=\"row\">Current Entity Status:</th>[^<]*<td>([^<]*)</td>"
+                                                    },
+                                                    {
+                                                        "match": 0,
+                                                        "name": "DOS Process Address",
+                                                        "replace": "$1",
+                                                        "find": "<td headers=\"c1\">(.*?)</td>"
+                                                    },
+                                                    {
+                                                        "match": 1,
+                                                        "name": "Registered Agent",
+                                                        "replace": "$1",
+                                                        "find": "<td headers=\"c1\">(.*?)</td>"
+                                                    },
+                                                    {
+                                                        "name": "Filing Date",
+                                                        "replace": "$1",
+                                                        "find": "<td class=\"FileDt\">([^<])</th>"
+                                                    },
+                                                    {
+                                                        "name": "Name Type",
+                                                        "replace": "$1",
+                                                        "find": "<td class=\"NameType\">([^<])</th>"
+                                                    },
+                                                    {
+                                                        "name": "Entity Name",
+                                                        "replace": "$1",
+                                                        "find": "<td class=\"Entity Name\">([^<])</th>"
+                                                    }
+                                                ]
+                                            }
+                                        ]
+                                    }
+                                ]
+                            },
+                            "status": "wait",
+                            "name": "Search NYS Corporate Entities Database",
+                            "description": "NYS DOS Corporate Entities Database",
+                            "uri": "http://localhost:8100/instructions/openscrape/dos-corpsearch",
+                            "id": "fee4d4f4-c603-b6ea-396d-fac59e713dc2"
+                        }
+                    ]
+                },
+                "description": "The names of the owners",
+                "uri": "http://localhost:8100/instructions/openscrape/brooklyn",
+                "id": "fee4d4f4-c603-b6ea-396d-fac59e713dc2"
+            },
+            {
+                "instruction": {
+                    "match": 0,
+                    "name": "Block",
+                    "replace": "$1",
+                    "description": "Block number",
+                    "find": "<input\\s+type=\"hidden\"\\s+name=\"q49_block_id\"\\s+value=\"(\\d+)\""
+                },
+                "status": "found",
+                "name": "Block",
+                "children": {
+                    "01688": []
+                },
+                "description": "Block number",
+                "uri": "http://localhost:8100/instructions/openscrape/brooklyn",
+                "id": "fee4d4f4-c603-b6ea-396d-fac59e713dc2"
+            },
+            {
+                "instruction": {
+                    "match": 0,
+                    "name": "Lot",
+                    "replace": "$1",
+                    "description": "Lot number",
+                    "find": "<input\\s+type=\"hidden\"\\s+name=\"q49_lot\"\\s+value=\"(\\d+)\""
+                },
+                "status": "found",
+                "name": "Lot",
+                "children": {
+                    "0001": []
+                },
+                "description": "Lot number",
+                "uri": "http://localhost:8100/instructions/openscrape/brooklyn",
+                "id": "fee4d4f4-c603-b6ea-396d-fac59e713dc2"
+            },
+            {
+                "instruction": {
+                    "posts": {
+                        "hid_max_rows": "12",
+                        "hid_datetom": "",
+                        "hid_datefromm": "",
+                        "hid_doctype": "",
+                        "hid_datetod": "",
+                        "hid_datefromd": "",
+                        "hid_datetoy": "",
+                        "hid_datefromy": "",
+                        "hid_selectdate": "To Current Date"
+                    },
+                    "extends": "/instructions/openscrape/acris-index"
+                },
+                "status": "wait",
+                "name": "Search ACRIS property transactions",
+                "description": "ACRIS property transactions",
+                "uri": "http://localhost:8100/instructions/openscrape/acris-index-recent-docs",
+                "id": "fee4d4f4-c603-b6ea-396d-fac59e713dc2"
+            }
+        ]
+    },
+    "cookies": {},
+    "description": "",
+    "uri": "http://localhost:8100/instructions/openscrape/brooklyn",
+    "id": "fee4d4f4-c603-b6ea-396d-fac59e713dc2"
+}

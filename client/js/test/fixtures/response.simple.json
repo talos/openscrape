@@ -1,0 +1,8 @@
+{
+    "uri": "http://localhost/",
+    "instruction": {
+        "load": "http://www.google.com/search?q={{foo}}"
+    },
+    "force": true,
+    "type": "loaded"
+}

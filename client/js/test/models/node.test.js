@@ -38,7 +38,7 @@ define([
 ], function (NodesCollection, NodeModel, chai) {
     "use strict";
     var collection;
-    describe('Node', function () {
+    describe('Node Model', function () {
 
         beforeEach(function () {
             collection = new NodesCollection();
