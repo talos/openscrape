@@ -30,8 +30,11 @@ define([
     './openscrape.queue',
     'models/openscrape.prompt',
     'views/openscrape.prompt',
+    'models/openscrape.warning',
+    'views/openscrape.warning',
     'lib/jquery'
-], function (require, _, json, proxy, applet, Queue, PromptModel, PromptView) {
+], function (require, _, json, proxy, applet, Queue,
+             PromptModel, PromptView, WarningModel, WarningView) {
     "use strict";
 
     var $ = require('jquery');
@@ -54,6 +57,11 @@ define([
             applet.enable().done(_.bind(function () {
                 this.requester = applet.request;
             }, this)).fail(_.bind(function () {
+                new WarningView({
+                    model: new WarningModel({
+                        text: "Applet error, using proxy."
+                    })
+                }).render().$el.appendTo(this.$el);
                 this.requester = proxy.request;
             }, this)).always(_.bind(function () {
 

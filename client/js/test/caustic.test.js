@@ -17,7 +17,7 @@
    * along with Openscrape.  If not, see <http://www.gnu.org/licenses/>.
    *
    ***/
-
+/*jslint nomen: true*/
 /*globals define, sinon, beforeEach, afterEach, describe, it, expect*/
 
 define([
@@ -29,33 +29,30 @@ define([
     'json!../test/fixtures/request.simple.json',
     'json!../test/fixtures/response.simple.json',
     'lib/json2',
+    'lib/underscore',
     '../test/helpers',
     'lib/jquery'
 ], function (require, NodesCollection, Caustic, proxy, applet,
-             simpleRequest, simpleResponse, json) {
+             simpleRequest, simpleResponse, json, _) {
     "use strict";
 
-    var $ = require('jquery');
+    var $ = require('jquery'),
+        resolved = new $.Deferred().resolve(),
+        rejected = new $.Deferred().reject(),
+        resp = $.Deferred().resolve(json.stringify(simpleResponse));
 
     describe("Caustic", function () {
 
+        var choose = function (button) {
+            this.$dom.find('input[value="' + button + '"]').click();
+        };
+
         beforeEach(function () {
-            var resp = $.Deferred().resolve(json.stringify(simpleResponse));
-
-            this.proxyRequest = sinon.stub(proxy, 'request');
-            this.proxyRequest.returns(resp);
-
-            this.appletEnable = sinon.stub(applet, 'enable');
-            this.appletRequest = sinon.stub(applet, 'request');
-            this.appletRequest.returns(resp);
-
             this.caustic = new Caustic(this.$dom);
+            this.choose = _.bind(choose, this);
         });
 
         afterEach(function () {
-            this.proxyRequest.restore();
-            this.appletEnable.restore();
-            this.appletRequest.restore();
         });
 
         it('should prompt the user whether to use the proxy or applet', function () {
@@ -65,38 +62,78 @@ define([
             this.expect($prompt.text()).to.match(/applet/i);
         });
 
-        it('should dismiss the prompt if they choose the proxy', function () {
-            this.caustic.scrape(simpleRequest);
-            this.$dom.find('input[value="Proxy"]').click();
+        describe('if they choose the proxy', function () {
 
-            this.clock.tick(500);
-            this.expect(this.$dom.html()).to.be.empty;
+            beforeEach(function () {
+                sinon.stub(proxy, 'request').returns(resp);
+            });
+
+            afterEach(function () {
+                proxy.request.restore();
+            });
+
+            it('should dismiss the prompt', function () {
+                this.caustic.scrape(simpleRequest);
+                this.choose('Proxy');
+                this.clock.tick(500);
+                this.expect(this.$dom.html()).to.be.empty;
+            });
+
+            it('should request from the proxy', function () {
+                this.caustic.scrape(simpleRequest);
+                this.choose('Proxy');
+
+                proxy.request.should.have.been.calledWith(json.stringify(simpleRequest));
+                proxy.request.should.have.been.calledOnce;
+            });
         });
 
-        it('should request from the proxy if the user chooses the proxy', function () {
-            this.caustic.scrape(simpleRequest);
-            this.$dom.find('input[value="Proxy"]').click();
+        describe('if they choose the applet', function () {
 
-            this.proxyRequest.should.have.been.calledWith(json.stringify(simpleRequest));
-            this.proxyRequest.should.have.been.calledOnce;
-        });
+            beforeEach(function () {
+                sinon.stub(applet, 'request').returns(resp);
+                sinon.stub(applet, 'enable').returns(resolved);
+            });
 
-        it('should enable the applet if the user chooses the applet', function () {
+            afterEach(function () {
+                applet.request.restore();
+                applet.enable.restore();
+            });
 
-            this.caustic.scrape(simpleRequest);
-            this.appletEnable.returns($.Deferred().resolve());
-            this.$dom.find('input[value="Applet"]').click();
+            it('should dismiss the prompt', function () {
+                this.caustic.scrape(simpleRequest);
+                this.choose('Applet');
+                this.clock.tick(500);
+                this.expect(this.$dom.html()).to.be.empty;
+            });
 
-            this.appletEnable.should.have.been.calledOnce;
-        });
+            it('should enable the applet', function () {
+                this.caustic.scrape(simpleRequest);
+                this.choose('Applet');
+                applet.enable.should.have.been.called.once;
+            });
 
-        it('should request from the applet if the user chooses the applet', function () {
-            this.caustic.scrape(simpleRequest);
-            this.appletEnable.returns($.Deferred().resolve());
-            this.$dom.find('input[value="Applet"]').click();
+            it('should request from the applet', function () {
+                this.caustic.scrape(simpleRequest);
+                this.choose('Applet');
+                applet.request.should.have.been.calledWith(json.stringify(simpleRequest));
+            });
 
-            this.appletRequest.should.have.been.calledWith(json.stringify(simpleRequest));
-            this.appletRequest.should.have.been.calledOnce;
+            it('should warn the user and use the proxy if the applet won\'t enable', function () {
+                applet.enable.returns(rejected);
+                sinon.stub(proxy, 'request').returns(resp);
+
+                this.caustic.scrape(simpleRequest);
+                this.choose('Applet');
+
+                var $warning = this.$dom.find('.warning');
+                this.expect($warning.text()).to.match(/applet error/i);
+                this.expect($warning.text()).to.match(/using proxy/i);
+
+                applet.request.should.not.have.been.called;
+                proxy.request.should.have.been.calledOnce;
+                proxy.request.restore();
+            });
         });
     });
 });
