@@ -38,7 +38,7 @@
 /*jslint white: true, sub: true, onevar: true, undef: true, eqeqeq: true, newcap: true, immed: true, indent: 4 */
 /*globals define*/
 
-define(['./uri/uri', './environments'], function () {
+define(['./uri/uri'], function (URI) {
 
 // var exports = exports || this,
 // 	require = require || function () {
@@ -48,8 +48,8 @@ define(['./uri/uri', './environments'], function () {
 
 //(function () {
 	
-	var URI = require("./uri/uri").URI,
-		O = {},
+	//var URI = require("./uri/uri").URI,
+	var O = {},
 		I2H = "0123456789abcdef".split(""),
 		mapArray, filterArray, searchArray,
 		
@@ -1496,7 +1496,7 @@ define(['./uri/uri', './environments'], function () {
 	this.JSV = JSV;  //set global object
 	exports.JSV = JSV;  //export to CommonJS
 	
-	require("./environments");  //load default environments
+	//require("./environments");  //load default environments
 	
 //}());
 

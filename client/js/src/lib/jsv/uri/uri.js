@@ -39,6 +39,8 @@
 /*jslint white: true, sub: true, onevar: true, undef: true, eqeqeq: true, newcap: true, immed: true, indent: 4 */
 /*global exports:true, require:true */
 
+define(function () {
+
 if (typeof exports === "undefined") {
 	exports = {}; 
 }
@@ -47,7 +49,7 @@ if (typeof require !== "function") {
 		return exports;
 	};
 }
-(function () {
+//(function () {
 	var	
 		/**
 		 * @param {...string} sets
@@ -707,4 +709,6 @@ if (typeof require !== "function") {
 		"unescapeComponent" : URI.unescapeComponent
 	};
 	
-}());
+//}());
+        return exports;
+});
