@@ -36,13 +36,17 @@
  */
 
 /*jslint white: true, sub: true, onevar: true, undef: true, eqeqeq: true, newcap: true, immed: true, indent: 4 */
+/*globals define*/
 
-var exports = exports || this,
-	require = require || function () {
-		return exports;
-	};
+define(['./uri/uri', './environments'], function () {
 
-(function () {
+// var exports = exports || this,
+// 	require = require || function () {
+// 		return exports;
+// 	};
+    var exports = {};
+
+//(function () {
 	
 	var URI = require("./uri/uri").URI,
 		O = {},
@@ -1494,4 +1498,7 @@ var exports = exports || this,
 	
 	require("./environments");  //load default environments
 	
-}());
+//}());
+
+    return JSV;
+});
