@@ -18,11 +18,10 @@
    *
    ***/
 /*jslint nomen: true*/
-/*globals define, sinon, beforeEach, afterEach, describe, it, expect*/
+/*globals define, sinon, before, beforeEach, afterEach, describe, it, expect*/
 
 define([
     'require',
-    'collections/openscrape.nodes',
     'openscrape.caustic',
     'openscrape.caustic.proxy',
     'openscrape.caustic.applet',
@@ -32,7 +31,7 @@ define([
     'lib/underscore',
     '../test/helpers',
     'lib/jquery'
-], function (require, NodesCollection, Caustic, proxy, applet,
+], function (require, Caustic, proxy, applet,
              simpleRequest, simpleResponse, json, _) {
     "use strict";
 
@@ -47,9 +46,12 @@ define([
             this.$dom.find('input[value="' + button + '"]').click();
         };
 
+        before(function () {
+            this.choose = _.bind(choose, this);
+        });
+
         beforeEach(function () {
             this.caustic = new Caustic(this.$dom);
-            this.choose = _.bind(choose, this);
         });
 
         afterEach(function () {

@@ -38,18 +38,17 @@
 /*jslint white: true, sub: true, onevar: true, undef: true, eqeqeq: true, newcap: true, immed: true, indent: 4 */
 /*globals define*/
 
-define(['./uri/uri'], function (URI) {
+define(['require', 'exports', './uri/uri'], function (require, exports) {
 
-// var exports = exports || this,
-// 	require = require || function () {
-// 		return exports;
-// 	};
-    var exports = {};
+ var exports = exports || this,
+ 	require = require || function () {
+ 		return exports;
+ 	};
 
-//(function () {
+(function () {
 	
-	//var URI = require("./uri/uri").URI,
-	var O = {},
+	var URI = require("./uri/uri").URI,
+	        O = {},
 		I2H = "0123456789abcdef".split(""),
 		mapArray, filterArray, searchArray,
 		
@@ -1498,7 +1497,5 @@ define(['./uri/uri'], function (URI) {
 	
 	//require("./environments");  //load default environments
 	
-//}());
-
-    return JSV;
+}());
 });

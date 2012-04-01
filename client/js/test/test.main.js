@@ -10,8 +10,7 @@ require.config({
         'lib/jquery',
         '../test/vendor/mocha',
         '../test/caustic.test',
-        '../test/collections/nodes.test',
-        '../test/models/node.test'
+        '../test/models/instruction.test'
     ], function (require) {
         var $ = require('jquery');
         $(document).ready(function () {

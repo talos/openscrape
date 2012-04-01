@@ -21,10 +21,6 @@
 /*jslint nomen: true*/
 /*global define*/
 
-/**
- * A node represents is a single piece of information displayed on a
- * visualization.
- */
 define([
     'lib/underscore',
     'lib/backbone'

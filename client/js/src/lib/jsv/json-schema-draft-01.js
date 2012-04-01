@@ -38,6 +38,7 @@
 /*jslint white: true, sub: true, onevar: true, undef: true, eqeqeq: true, newcap: true, immed: true, indent: 4 */
 /*global require */
 
+define(['require', 'exports', './jsv'], function (require, exports) {
 (function () {
 	var O = {},
 		JSV = require('./jsv').JSV,
@@ -957,3 +958,4 @@
 	}
 	
 }());
+});
