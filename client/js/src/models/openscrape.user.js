@@ -28,8 +28,19 @@ define([
     "use strict";
 
     return backbone.Model.extend({
-        url: function () {
-            return '/users/' + this.get('name');
+
+        idAttribute: 'name',
+
+        urlRoot: '/users',
+
+        validate: function () {
+            if (!this.has('name')) {
+                return ['Must specify a name.'];
+            }
+        },
+
+        name: function () {
+            return this.get('name');
         }
     });
 });

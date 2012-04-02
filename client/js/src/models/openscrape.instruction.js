@@ -26,43 +26,71 @@ define([
     'lib/underscore',
     'lib/backbone',
     'json!schema/instruction.json',
-    //'lib/jsv/jsv',
     'lib/jsv/json-schema-draft-03'
 ], function (require, _, backbone, schemaObject) {
     "use strict";
 
-    var JSV = require('lib/jsv/jsv').JSV,
+    var JSV = require('lib/jsv/jsv').JSV, // required by json-schema-draft-03
         env = JSV.createEnvironment(),
-//         schema = env.createSchema(schemaObject);
-//         testSchema = env.createSchema({'type': 'string'});
-//         test = testSchema.validate({'foo': 'bar'});
-// 
-//     console.log(test);
-//     console.log(schema.getSchema());
-//     console.log(env.getDefaultSchema());
-// 
+        tagSchema = env.createSchema({
+            "type": "array",
+            "items": {"type": "string"}
+        }),
+        valueSchema = env.createSchema(schemaObject);
+
     return backbone.Model.extend({
 
-        initialize: function () {
-            //this.sync = this.collection.sync;
+        defaults: function () {
+            return {
+                'tags': []
+            };
         },
+
+        urlRoot: function () {
+            return '/instructions/' + this.user().name();
+            //return this.user().url();
+        },
+
+        idAttribute: 'name',
 
         /**
          * Validate the instruction model's value against the instruction
          * schema.
          */
         validate: function () {
-            if (!this.has('value')) {
-                return ['No value has been defined'];
+            var errors = [];
+            if (!this.has('user')) {
+                errors.push('No user for this instruction');
             }
-            var errors = schema.validate(this.value()).errors;
+            if (!this.has('name')) {
+                errors.push('No name for this instruction');
+            }
+            if (!this.has('value')) {
+                errors.push('No value has been defined');
+            }
+            if (this.has('tags')) {
+                errors = errors.concat(tagSchema.validate(this.tags()).errors);
+            }
+            errors = errors.concat(valueSchema.validate(this.value()).errors);
             if (errors.length > 0) {
                 return errors;
             }
         },
 
+        user: function () {
+            return this.get('user');
+        },
+
+        name: function () {
+            return this.get('name');
+        },
+
         value: function () {
             return this.get('value');
+        },
+
+        tags: function () {
+            return this.get('tags');
         }
     });
 });
