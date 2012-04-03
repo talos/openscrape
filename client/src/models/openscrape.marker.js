@@ -24,8 +24,7 @@
 define([
     'lib/underscore',
     'lib/backbone',
-    '../openscrape.address',
-    '../openscrape.zip2borough'
+    '../openscrape.address'
 ], function (_, backbone, Address) {
     "use strict";
 

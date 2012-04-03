@@ -14,8 +14,6 @@ data/mongo/*
 log/*
 todos.txt
 bin/*
-config/*
-client/index.dev.html
-client/js/build/*
+client/static/js/*
 !client/js/build/openscrape.main.js
 !client/js/build/require.js

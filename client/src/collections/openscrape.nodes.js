@@ -25,9 +25,8 @@ define([
     'lib/underscore',
     'lib/backbone',
     '../openscrape.localsync',
-    '../openscrape.zip2borough',
     'models/openscrape.node'
-], function (_, backbone, LocalSync, zip2borough, NodeModel) {
+], function (_, backbone, LocalSync, NodeModel) {
     "use strict";
 
     return backbone.Collection.extend({
@@ -71,30 +70,21 @@ define([
          * In that case, an error will be triggered on the collection.
          */
         forAddress: function (address) {
-            var addressTags = address.toJSON(),
-                borough = zip2borough(address.zip);
-            console.log(address);
+            var addressTags = address.toJSON();
 
-            if (borough) {
-                addressTags.apt = '';
-                addressTags.Borough = addressTags.borough = borough;
-                return _.find(this.roots(), function (node) {
-                    var tags = node.tags();
-                    return _.all(addressTags, function (value, key) {
-                        return tags[key] === value;
-                    });
-                }) || this.create({
-                    instruction: '/instructions/openscrape/' + address.zip + '/',
-                    uri: window.location.href.split('/').slice(0, 3).join('/') + '/instructions/',
-                    name: 'Property Info',
-                    type: 'wait',
-                    tags: addressTags
-                }, {wait: true});
-            } else {
-                this.trigger('error', null, address.toString() +
-                             ' is not in the five boroughs.');
-                return undefined;
-            }
+            addressTags.apt = '';
+            return _.find(this.roots(), function (node) {
+                var tags = node.tags();
+                return _.all(addressTags, function (value, key) {
+                    return tags[key] === value;
+                });
+            }) || this.create({
+                instruction: '/instructions/openscrape/' + address.zip + '/',
+                uri: window.location.href.split('/').slice(0, 3).join('/') + '/instructions/',
+                name: 'Property Info',
+                type: 'wait',
+                tags: addressTags
+            }, {wait: true});
         }
     });
 });
