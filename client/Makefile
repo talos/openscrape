@@ -1,5 +1,5 @@
 all:
-	node src/r.js -o src/app.build.js
+	node r.js -o app.build.js
 
 clean:
-	rm -r build/*
+	rm -r static/js/*
