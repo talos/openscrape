@@ -18,7 +18,8 @@
    *
    ***/
 
-/*globals define, mocha, sinon, before, after,
+/*globals define, mocha, sinon, before, after, beforeEach,
+afterEach:true,
  beforeEach, afterEach, describe, it, expect*/
 
 define([
@@ -31,13 +32,17 @@ define([
     "use strict";
     var $ = require('jquery');
 
-    mocha.setup('bdd');
+    mocha.setup({
+        ui: 'bdd',
+        globals: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval',
+                    'XMLHttpRequest']
+    });
 
     before(function () {
+        this.clock = sinon.useFakeTimers();
         this.expect = chai.expect;
         chai.should();
         chai.use(sinonChai);
-        this.clock = sinon.useFakeTimers();
     });
 
     beforeEach(function () {

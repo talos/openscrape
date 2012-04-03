@@ -19,7 +19,7 @@
    ***/
 
 /*jslint browser:true*/
-/*globals mocha*/
+/*globals mocha, before:true, beforeEach:true, after:true, afterEach:true*/
 require.config({
     baseUrl: '../src'
 });
@@ -29,8 +29,8 @@ require.config({
         'require',
         'lib/jquery',
         '../test/vendor/mocha',
-        '../test/test.main',
         '../test/caustic.test',
+        '../test/routers/app.test',
         '../test/models/instruction.test',
         '../test/views/instruction.test'
     ], function (require) {

@@ -43,11 +43,6 @@ define([
     describe("InstructionView", function () {
 
         before(function () {
-            this.xhr = sinon.useFakeXMLHttpRequest();
-            this.xhr.onCreate = function (xhr) {
-                xhr.async = false; // spare us having to call respond manually
-            };
-            this.clock = sinon.useFakeTimers();
             this.server = sinon.fakeServer.create();
         });
 
@@ -62,6 +57,7 @@ define([
                 model: this.model
             }).render();
             this.view.$el.appendTo(this.$dom);
+            this.server.respond();
         });
 
         afterEach(function () {
@@ -69,8 +65,6 @@ define([
 
         after(function () {
             this.server.restore();
-            this.xhr.restore();
-            this.clock.restore();
         });
 
         it("shows the name of the instruction", function () {
