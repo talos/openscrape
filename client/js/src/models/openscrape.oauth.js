@@ -22,12 +22,50 @@
 /*global define*/
 
 define([
+    'require',
     'lib/underscore',
-    'lib/backbone'
-], function (_, backbone) {
+    'lib/backbone',
+    'lib/jquery'
+], function (require, _, backbone) {
     "use strict";
 
+    var $ = require('jquery');
+
     return backbone.Model.extend({
-        url: '/oauth/status'
+        url: '/oauth/status',
+
+        initialize: function () {
+            this.on('change:user', _.bind(function (model, user) {
+                if (user) {
+                    this.trigger('login', user);
+                } else {
+                    this.trigger('logout', this.previous('user'));
+                }
+            }, this));
+        },
+
+        /**
+         * Retrieve the currently logged in user, or undefined if there is
+         * none.
+         */
+        userName: function () {
+            return this.get('user');
+        },
+
+        /**
+         * Determine whether a user is currently logged in.
+         */
+        loggedIn: function () {
+            return this.has('user');
+        },
+
+        /**
+         * Logout the current user.
+         */
+        logout: function () {
+            $.get('/oauth/logout').always(_.bind(function () {
+                this.view.oauth.fetch();
+            }, this));
+        }
     });
 });
