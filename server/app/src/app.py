@@ -44,7 +44,7 @@ class Handler(brubeck.templating.MustacheRendering, brubeck.auth.UserHandlingMix
         """
         Convert an instruction to its path.
         """
-        return "/instructions/%s/%s" % (user_name, instruction_doc.name)
+        return "/%s/instruction/%s" % (user_name, instruction_doc.name)
 
     def instruction_paths(self, user_name, instruction_docs):
         """
@@ -80,6 +80,12 @@ class Handler(brubeck.templating.MustacheRendering, brubeck.auth.UserHandlingMix
         accept = self.message.headers.get('accept')
         return accept.rfind('application/json') > -1
 
+    def show_landing(self):
+        """
+        Set the body to standard landing page.
+        """
+        self.set_body(client_landing)
+
 
 #
 # DECORATORS
@@ -87,7 +93,7 @@ class Handler(brubeck.templating.MustacheRendering, brubeck.auth.UserHandlingMix
 
 def json_only(meth):
     """Decorator that ensures method only accepts JSON requests, returns
-    406 otherwise.
+    standard landing page otherwise for JS to figure out.
     """
     # @functools.wraps(meth)
     def wrapped(self, *args, **kwargs):
@@ -95,9 +101,25 @@ def json_only(meth):
             self.headers['Content-Type'] = 'application/json'
             return meth(self, *args, **kwargs)
         else:
-            self.set_body(client_landing)
+            self.show_landing()
             return self.render()
     return wrapped
+
+
+class RootHandler(Handler):
+    """Push back a 200 of the landing page for root.
+    """
+    def get(self):
+        self.show_landing()
+        return self.render()
+
+
+class NotFoundHandler(Handler):
+    """Push back a 404 of the landing page for not found.
+    """
+    def get(self):
+        self.show_landing()
+        return self.render(status_code=404)
 
 
 #
@@ -492,17 +514,19 @@ R = config.PARTIAL_URL_REGEX
 app = Brubeck(**{
     'mongrel2_pair': (config.RECV_SPEC, config.SEND_SPEC),
     'handler_tuples': [
+        (r'^/$', RootHandler),
         (r'^/oauth/signup$', OAuthSignup),
         (r'^/oauth/login$', OAuthLogin),
         (r'^/oauth/logout$', OAuthLogout),
         (r'^/oauth/status$', OAuthStatus),
         (r'^/oauth/callback/(%s)$' % R, OAuthCallback),
-        (r'^/users/(%s)$' % R, UserHandler),
-        (r'^/instructions/(%s)/$' % R, InstructionCollectionHandler),
-        (r'^/instructions/(%s)/(%s)$' % (R, R), InstructionModelHandler),
-        (r'^/instructions/(%s)/(%s)/$' % (R, R), TagCollectionHandler)],
+        (r'^/(%s)/?$' % R, UserHandler),
+        (r'^/(%s)/instructions/?$' % R, InstructionCollectionHandler),
+        (r'^/(%s)/instruction/(%s)/?$' % (R, R), InstructionModelHandler),
+        (r'^/(%s)/tagged/(%s)/?$' % (R, R), TagCollectionHandler)],
     'template_loader': brubeck.templating.load_mustache_env(config.TEMPLATE_DIR),
     'cookie_secret': config.COOKIE_SECRET,
+    'base_handler': NotFoundHandler
 })
 
 db = database.get_db(config.DB_HOST, config.DB_PORT, config.DB_NAME)

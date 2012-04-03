@@ -24,7 +24,7 @@ else:
 
 PARSER = SafeConfigParser(dict(
     mode = MODE,
-    client_landing = './client/index.html',
+    client_landing = './client/static/index.html',
     session_name = 'session',
     db_name = 'openscrape_%(MODE)s', # format for sub is %(VAR)s .  Really.
     db_port = '27017',
