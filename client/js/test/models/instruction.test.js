@@ -45,7 +45,8 @@ define([
             [[]],
             { foo: 'bar' },
             { load: 'http://google.com', find: 'foobar'}
-        ];
+        ],
+        respHeaders = { 'Content-Type': 'application/json' };
 
     describe('InstructionModel', function () {
 
@@ -64,24 +65,24 @@ define([
             this.expect(new InstructionModel({
                 name: 'name',
                 value: valid[0]
-            }).validate()).to.not.be.empty;
+            }).isValid()).to.be.false;
         });
 
         it('should reject if no name', function () {
             this.expect(new InstructionModel({
                 user: this.user,
                 value: valid[0]
-            }).validate()).to.not.be.empty;
+            }).isValid()).to.be.false;
         });
 
         it('should reject if no value', function () {
             this.expect(new InstructionModel({
                 user: this.user,
                 name: 'name'
-            }).validate()).to.not.be.empty;
+            }).isValid()).to.be.false;
         });
 
-        it('should pass valid models', function () {
+        it('should pass valid values', function () {
             var i = 0, len = valid.length, model;
             while (i < len) {
                 model = new InstructionModel({
@@ -89,14 +90,14 @@ define([
                     name: 'name',
                     value: valid[i]
                 });
-                this.expect(model.validate(),
+                this.expect(model.isValid(),
                             json.stringify(valid[i])
-                    ).to.be.a('undefined');
+                    ).to.be.true;
                 i += 1;
             }
         });
 
-        it('should reject invalid models', function () {
+        it('should reject invalid values', function () {
             var i = 0, len = invalid.length, model;
             while (i < len) {
                 model = new InstructionModel({
@@ -104,26 +105,63 @@ define([
                     name: 'name',
                     value: invalid[i]
                 });
-                this.expect(model.validate(),
+                this.expect(model.isValid(),
                             json.stringify(invalid[i])
-                    ).to.not.be.empty;
+                    ).to.be.false;
                 i += 1;
             }
         });
 
         it('should persist via PUT to /instructions/{username}/{name}', function () {
-            this.server.respondWith('PUT', '/instructions/stubby/foo', [200, {}, ""]);
+            this.server.respondWith('PUT', '/instructions/stubby/foo',
+                                    [200, respHeaders, ""]);
             var model = new InstructionModel({
-                id: 'tsk',
                 user: this.user,
                 name: 'foo',
                 value: valid[0]
             }),
-
-                resp = model.save();
-            resp.isResolved().should.be.false;
+                success = sinon.spy(),
+                error = sinon.spy();
+            model.save({}, {success: success, error: error});
+            success.should.not.have.been.called;
             this.server.respond();
-            resp.isResolved().should.be.true;
+            error.should.not.have.been.called;
+            success.should.have.been.called;
+        });
+
+        it('should retrieve via GET from /instructions/{username}/{name}', function () {
+            var model = new InstructionModel({
+                user: this.user,
+                name: 'bar'
+            }),
+                value = {"load": "http://www.google.com"},
+                success = sinon.spy(),
+                error = sinon.spy();
+            this.server.respondWith('GET', '/instructions/stubby/bar',
+                                    [200, respHeaders, json.stringify(value)]);
+            model.fetch({success: success, error: error});
+            success.should.not.have.been.called;
+            this.server.respond();
+            error.should.not.have.been.called;
+            success.should.have.been.called;
+            model.value().should.eql(value);
+        });
+
+        it('should delete via DELETE to /instructions/{username}/{name}', function () {
+            this.server.respondWith('DELETE', '/instructions/stubby/baz',
+                                    [200, respHeaders, ""]);
+            var model = new InstructionModel({
+                user: this.user,
+                name: 'baz',
+                value: valid[0]
+            }),
+                success = sinon.spy(),
+                error = sinon.spy();
+            model.destroy({success: success, error: error});
+            success.should.not.have.been.called;
+            this.server.respond();
+            error.should.not.have.been.called;
+            success.should.have.been.called;
         });
     });
 });

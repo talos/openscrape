@@ -1,0 +1,36 @@
+<div>
+    {{user.name}} {{name}}
+</div>
+<div>
+    <select multiple data-placeholder="Tags" class="chzn-select chzn-done" id="tags">
+        {{#tags}}
+            <option value="{{.}}">{{.}}</option>
+        {{/tags}}
+    </select>
+</div>
+<div id="value">
+    <textarea>
+        {{value}}
+    </textarea>
+</div>
+<ul id="errors">
+    {{#errors}}
+        <li>{{.}}</li>
+    {{/errors}}
+</ul>
+<div>
+    {{#editable}}
+        <button id="save">Save</button>
+        {{#forked}}
+            <button id="pull">Pull</button>
+        {{/forked}}
+    {{/editable}}
+    {{#oauth}}
+        {{#loggedIn}}
+            {{^editable}}
+                <button id="fork">Fork</button>
+            {{/editable}}
+        {{/loggedIn}}
+    {{/oauth}}
+    <button id="history">History</button>
+</div>

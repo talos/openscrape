@@ -48,30 +48,42 @@ define([
 
         urlRoot: function () {
             return '/instructions/' + this.user().name();
-            //return this.user().url();
         },
 
         idAttribute: 'name',
 
         /**
+         * The server returns only the value.
+         */
+        parse: function (response, xhr) {
+            if (response !== null && typeof response !== 'undefined') {
+                return { value: response };
+            } else {
+                return {};
+            }
+        },
+
+        /**
          * Validate the instruction model's value against the instruction
          * schema.
          */
-        validate: function () {
+        validate: function (attributes) {
             var errors = [];
-            if (!this.has('user')) {
-                errors.push('No user for this instruction');
+            if (!this.has('user') && !_.has(attributes, 'user')) {
+                errors.push('Must define user');
             }
-            if (!this.has('name')) {
-                errors.push('No name for this instruction');
+            if (!this.has('name') && !_.has(attributes, 'name')) {
+                errors.push('Must specify name');
             }
-            if (!this.has('value')) {
+            if (!this.has('value') && !_.has(attributes, 'value')) {
                 errors.push('No value has been defined');
             }
-            if (this.has('tags')) {
-                errors = errors.concat(tagSchema.validate(this.tags()).errors);
+            if (_.has(attributes, 'tags')) {
+                errors = errors.concat(tagSchema.validate(attributes.tags).errors);
             }
-            errors = errors.concat(valueSchema.validate(this.value()).errors);
+            if (_.has(attributes, 'value')) {
+                errors = errors.concat(valueSchema.validate(attributes.value).errors);
+            }
             if (errors.length > 0) {
                 return errors;
             }
