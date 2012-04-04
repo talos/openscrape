@@ -48,9 +48,9 @@ define([
             // routes are assigned manually from an array in order to
             // ensure their ordering and use a regular expression.
             var routes = [
-                [/([\w])+/, 'user'],
-                [/([\w])+\/instruction\/([\w])+/, 'instruction'],
-                [/([\w])+\/tagged\/([\w])+/, 'tagged'],
+                [/([\w]+)/, 'user'],
+                [/([\w]+)\/instruction\/([\w]+)/, 'instruction'],
+                [/([\w]+)\/tagged\/([\w]+)/, 'tagged'],
                 ['', 'index'],
                 ['visualize/address/:zip/:street/:number', 'visualizeAddress'],
                 ['map*', 'map'],
@@ -147,18 +147,14 @@ define([
         },
 
         instruction: function (userName, name) {
-            var instructionModel = new InstructionModel({
+            var model = new InstructionModel({
                 user: new UserModel({name: userName}),
                 name: name
             });
-            instructionModel.fetch({
-                success: _.bind(function () {
-                    this.view.show(new InstructionView({
-                        model: instructionModel
-                    }));
-                }, this),
-                error: _.bind(this.notFound, this)
-            });
+            model.fetch().done(_.bind(function () {
+                var iView = new InstructionView({ model: model });
+                this.view.show(iView);
+            }, this)).fail(_.bind(this.notFound, this));
         },
 
         visualizeAddress: function (zip, street, number) {
