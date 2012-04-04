@@ -29,3 +29,5 @@ python server/proxy/src/proxy.py ${MODE} ${SOCKET} >>log/proxy.log 2>&1 &
 
 mongod -f config/mongodb.conf >>log/mongodb.log 2>&1 &
 python server/app/src/app.py ${MODE} >>log/app.log 2>&1 &
+
+python server/app/migrations.py
