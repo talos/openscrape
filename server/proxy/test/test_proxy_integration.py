@@ -4,7 +4,8 @@ import json
 
 from ..src import config
 
-URL = "%s://%s:%s/proxy" % (config.SCHEME, config.HOST, config.PORT)
+ORIGIN = "%s://%s:%s/" % (config.SCHEME, config.HOST, config.PORT)
+URL = "%sproxy" % ORIGIN
 
 class TestProxyIntegration(unittest.TestCase):
     """
@@ -29,21 +30,20 @@ class TestProxyIntegration(unittest.TestCase):
         self.assertRegexpMatches(r.content, '(?i)too big')
 
     def test_bad_json(self):
-        """Should return 400 if the request is simply formatted wrong.
+        """Should return 415 if the request entity is simply not JSON.
         """
         not_json = ["bare string", '{"foo","bar"}', '["foo", "bar"']
         for bad in not_json:
-            r = requests.post(URL, data=json.dumps(bad))
-            self.assertEquals(400, r.status_code)
-            self.assertRegexpMatches(r.content, '(?i)caustic proxy error',
+            r = requests.post(URL, data=bad)
+            self.assertEquals(415, r.status_code)
+            self.assertRegexpMatches(r.content, '(?i)not json',
                                      msg=r.content)
 
-    def test_remote_to_local(self):
-        """Should not be able to access arbitrary files on server.
+    def test_local(self):
+        """Should not be able to cross from remote to local.
         """
         violations = [
             { 'id': 'baz', 'uri': './', 'instruction': 'start.sh' },
-            { 'id': 'foo', 'instruction': {"extends": "file://foo/bar/baz" }},
             { 'id': 'bar', 'uri': '/dev/null', 'instruction': {"extends": "file://foo/bar/baz" }} ]
 
         for v in violations:
@@ -53,10 +53,39 @@ class TestProxyIntegration(unittest.TestCase):
             self.assertEqual('failed', response['status'])
             self.assertRegexpMatches(response['failed'], '(?i)scheme .* not supported')
 
-    def test_invalid_instruction(self):
-        """Should return 400 if the instruction is invalid
+
+    def test_remote_to_local(self):
+        """Should not be able to access arbitrary files on server.
         """
-        #bad_instructions
+        violations = [
+            { 'id': 'foo', 'instruction': {"extends": "file://foo/bar/baz" }}]
+
+        for v in violations:
+            r = requests.post(URL, data=json.dumps(v))
+            self.assertEquals(200, r.status_code)
+            response = json.loads(r.content)
+            self.assertEqual('failed', response['status'])
+            self.assertRegexpMatches(response['failed'], '(?i)would cross from remote to local')
+
+    def test_requires_id(self):
+        """Rejects request without an id.
+        """
+        r = requests.post(URL, data=json.dumps({'instruction': 'foo'}))
+        self.assertEquals(400, r.status_code)
+        self.assertRegexpMatches(r.content, '(?i)id.* not found')
+
+    def test_default_uri(self):
+        """Should default the request URI to the same as the proxy.
+        """
+        r = requests.post(URL, data=json.dumps({'id': 0, 'instruction':'foo'}))
+        self.assertEquals(200, r.status_code)
+        resp = json.loads(r.content)
+        self.assertIn('uri', resp)
+        self.assertEquals(ORIGIN, resp['uri'])
+
+    def test_invalid_instruction(self):
+        """Should return a failed if the instruction is invalid
+        """
         pass
 
     def test_request_simple_google(self):

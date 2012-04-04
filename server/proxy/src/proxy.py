@@ -18,6 +18,7 @@ import config
 
 
 CONTEXT = zmq.Context.instance()
+ORIGIN = "%s://%s:%s/" % (config.SCHEME, config.HOST, config.PORT)
 
 class RequestHandler(WebMessageHandler):
     # def is_limited(cookie):
@@ -34,6 +35,16 @@ class RequestHandler(WebMessageHandler):
     #         self.delete_cookie()
     #         return False
 
+    def set_body_errors(self, errors):
+        """
+        Set the body of the response to proper format for JSON errors.
+        """
+        self.set_body(json.dumps([{
+            'name': 'Caustic Proxy Error',
+            'description': e }
+            for e in errors
+        ]))
+
     def post(self):
         """
         Takes a single POSTed request as JSON, passes it on
@@ -42,42 +53,59 @@ class RequestHandler(WebMessageHandler):
         """
 
         json_request = self.message.body
+        self.headers['Content-Type'] = 'application/json'
+
         if len(json_request) > config.MAX_REQUEST_LENGTH:
             self.set_body('Request is too big')
             self.set_status(413, status_msg='Request is too big')
+            return self.render()
+
+        try:
+            request = json.loads(json_request)
+        except ValueError as e:
+            self.set_body_errors(['Not JSON'])
+            self.set_status(415, status_msg='Not JSON')
+            return self.render()
         else:
+            if not isinstance(request, dict):
+                self.set_body_errors(['Request must be a JSON object'])
+                self.set_status(415, status_msg='Not JSON Object')
+                return self.render()
+
+            # if URI is unspecified, set it to the same as the proxy
+            if 'uri' not in request:
+                request['uri'] = ORIGIN
+                json_request = json.dumps(request)
+
+            # limited = self.is_limited()
+            limited = False  # TODO
+            if limited:
+                self.set_status( 400, status_msg="Too many requests")
+                self.set_body_errors(['Too many requests'])
+                return self.render()
+
+            # connect to backend
             try:
-                # limited = self.is_limited()
-                limited = False  # TODO
-                if limited:
-                    self.set_status(
-                        400,
-                        status_msg="You have made too many requests, switch to the applet or wait a bit.")
-                else:
-                    # connect to backend
-                    sock = CONTEXT.socket(zmq.REQ)
-                    sock.connect(config.BACKEND_URI)
-                    sock.send(json_request)
+                sock = CONTEXT.socket(zmq.REQ)
+                sock.connect(config.BACKEND_URI)
+                sock.send(json_request)
 
-                    resp = sock.recv()
-                    self.headers['Content-Type'] = 'application/json'
-
-                    # if the response is a JS object, send it along as a 200
-                    if resp[0] == '{':
-                        self.set_body(resp)
-                    # otherwise, it's an error
-                    else:
-                        errors = [{
-                            'name': 'Caustic proxy error',
-                            'description': resp
-                        }]
-                        self.set_body(json.dumps(errors))
-                        self.set_status(400, status_msg='Caustic proxy error')
+                resp = sock.recv()
             except Exception as e:
                 logging.error(str(e))
                 self.set_status(500, status_msg='Error handling request')
+                self.set_body_errors(['Error handling request'])
+            else:
 
-        return self.render()
+                # if the response is a JS object, send it along as a 200
+                if resp[0] == '{':
+                    self.set_body(resp)
+                # otherwise, it's an error
+                else:
+                    self.set_body_errors([resp])
+                    self.set_status(400, status_msg='Caustic proxy error')
+
+            return self.render()
 
 openscrape = Brubeck(**{
     'mongrel2_pair': (config.RECV_SPEC, config.SEND_SPEC),
