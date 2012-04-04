@@ -89,7 +89,8 @@ class OAuthError(RuntimeError):
 
 
 class OAuthProvider(object):
-    def __init__(self, host, port, provider):
+    def __init__(self, scheme, host, port, provider):
+        self.scheme = scheme
         self.host = host
         self.port = port
         self.provider = provider
@@ -111,7 +112,7 @@ class OAuthProvider(object):
         """
         The full URI that should be used for callback.
         """
-        return "%s:%s/oauth/callback/%s" % (self.host, self.port, self.provider)
+        return "%s://%s:%s/oauth/callback/%s" % (self.scheme, self.host, self.port, self.provider)
 
     @property
     def auth_url(self):

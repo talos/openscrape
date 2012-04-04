@@ -149,7 +149,8 @@ class OAuthLogin(Handler):
             user = self.application.users.find(name_or_email)
             if user:
                 try:
-                    provider = oauth.OAuthProvider(config.HOST, config.PORT, user.provider)
+                    provider = oauth.OAuthProvider(config.SCHEME, config.HOST,
+                                                   config.PORT, user.provider)
                     context['redirect'] = provider.auth_url
                     status = 200
                 except oauth.OAuthError as e:
@@ -178,7 +179,8 @@ class OAuthSignup(Handler):
         context = { 'user': user_name }
 
         try:
-            provider = oauth.OAuthProvider(config.HOST, config.PORT, provider_name)
+            provider = oauth.OAuthProvider(config.SCHEME, config.HOST,
+                                           config.PORT, provider_name)
             if self.current_user:
                 context = 'You are already logged in as %s.' % self.current_user.name
                 status = 400
@@ -223,7 +225,8 @@ class OAuthCallback(Handler):
         context = {}
         if code:
             try:
-                provider = oauth.OAuthProvider(config.HOST, config.PORT, provider_name)
+                provider = oauth.OAuthProvider(config.SCHEME, config.HOST,
+                                               config.PORT, provider_name)
                 user_data = provider.get_data(code)
 
                 # state is stored client-side in cookie, which must be

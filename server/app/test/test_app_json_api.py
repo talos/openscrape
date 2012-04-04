@@ -6,7 +6,7 @@ import brubeck.request_handling
 from ..src import database
 from ..src import config
 
-ORIGIN = "http://%s:%s" % (config.HOST, config.PORT)
+ORIGIN = "%s://%s:%s" % (config.SCHEME, config.HOST, config.PORT)
 
 LOAD_GOOGLE = '{"load":"http://www.google.com/"}' # valid scraping instruction
 TAGS = '["fun", "interesting", "enlightening"]'
