@@ -35,6 +35,9 @@ define([
             { load: 'http://www.google.com' },
             { find: 'foobar' },
             { extends: 'foobar' },
+            { extends: 'foobar', posts: {foo: 'bar'} },
+            { extends: 'foobar', dot_matches_all: false },
+            { extends: 'foobar', name: 'boo' },
             { extends: ['foo', 'bar'] },
             { load: 'http://www.google.com', then: { find: 'foobar' } }
         ],
@@ -52,13 +55,11 @@ define([
 
         beforeEach(function () {
             this.server = sinon.fakeServer.create();
-            this.user = new UserModel();
-            sinon.stub(this.user, 'name').returns('stubby');
+            this.user = new UserModel({name: 'stubby'});
         });
 
         afterEach(function () {
             this.server.restore();
-            this.user.name.restore();
         });
 
         it('should reject if no user', function () {
@@ -112,8 +113,8 @@ define([
             }
         });
 
-        it('should persist via PUT to /instructions/{username}/{name}', function () {
-            this.server.respondWith('PUT', '/instructions/stubby/foo',
+        it('should persist via PUT to /{username}/instruction/{name}', function () {
+            this.server.respondWith('PUT', '/stubby/instruction/foo',
                                     [200, respHeaders, ""]);
             var model = new InstructionModel({
                 user: this.user,
@@ -129,7 +130,7 @@ define([
             success.should.have.been.called;
         });
 
-        it('should retrieve via GET from /instructions/{username}/{name}', function () {
+        it('should retrieve via GET from /{username}/instruction/{name}', function () {
             var model = new InstructionModel({
                 user: this.user,
                 name: 'bar'
@@ -137,7 +138,7 @@ define([
                 value = {"load": "http://www.google.com"},
                 success = sinon.spy(),
                 error = sinon.spy();
-            this.server.respondWith('GET', '/instructions/stubby/bar',
+            this.server.respondWith('GET', '/stubby/instruction/bar',
                                     [200, respHeaders, json.stringify(value)]);
             model.fetch({success: success, error: error});
             success.should.not.have.been.called;
@@ -147,8 +148,8 @@ define([
             model.value().should.eql(value);
         });
 
-        it('should delete via DELETE to /instructions/{username}/{name}', function () {
-            this.server.respondWith('DELETE', '/instructions/stubby/baz',
+        it('should delete via DELETE to /{username}/instruction/{name}', function () {
+            this.server.respondWith('DELETE', '/stubby/instruction/baz',
                                     [200, respHeaders, ""]);
             var model = new InstructionModel({
                 user: this.user,

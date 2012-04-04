@@ -50,7 +50,7 @@
                 "load": {
                     "description" : "The URL this instruction will load its result from.  Mustache substitutions are performed on this.",
                     "type" : "string",
-                    "required" : true
+                    "required" : false
                 },
                 "method" : {
                     "description" : "The HTTP method that should be used by this load.",
@@ -83,7 +83,7 @@
                 "find": {
                     "description" : "The regular expression this instruction will use to find result(s) from its source.  Mustache substitutions are performed on this.",
                     "type" : "string",
-                    "required" : true
+                    "required" : false
                 },
                 "case_insensitive" : {
                     "description" : "Whether this pattern is case-sensitive.",
