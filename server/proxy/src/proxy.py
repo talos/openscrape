@@ -17,31 +17,32 @@ from brubeck.request_handling import Brubeck, WebMessageHandler
 # CONFIG
 #
 ###
-if len(sys.argv) != 2:
+if len(sys.argv) != 3:
     print """
-Openscrape proxy must be invoked with a single argument, telling it
-which mode from `config/proxy.ini` to use:
+Openscrape proxy must be invoked with a two arguments:
 
-python server/proxy/proxy.py <MODE>
+python server/proxy/proxy.py <MODE> <URI>
 
-Look at `config/proxy.ini` for defined modes. Defaults are `production`,
-`staging`, and `test`."""
+    MODE which mode from `config/proxy.ini` to use: Look at `config/proxy.ini`
+         for defined modes. Defaults are `production`, `staging`, and `test`.
+    URI  the URI of the socket used to communicate with the jar via IPC.
+"""
     exit(1)
 
 MODE = sys.argv[1]
-PARSER = SafeConfigParser()
+BACKEND_URI = sys.argv[2]
+PARSER = SafeConfigParser(dict(
+    mode = MODE,
+    recv_spec = 'ipc://openscrape_proxy:1',
+    send_spec = 'ipc://openscrape_proxy:0',
+    reqs_per_hour = '60'
+))
 
 if not len(PARSER.read('config/proxy.ini')):
     print "No config/proxy.ini file found in this directory.  Writing a config..."
 
-    modes = ['production', 'staging', 'test']
-    for i in range(0, len(modes)):
-        mode = modes[i]
+    for mode in ['production', 'staging', 'test']:
         PARSER.add_section(mode)
-        PARSER.set(mode, 'recv_spec', 'ipc://openscrape_proxy:1')
-        PARSER.set(mode, 'send_spec', 'ipc://openscrape_proxy:0')
-        PARSER.set(mode, 'backend_uri', 'ipc://openscrape_proxy_backend.ipc')
-        PARSER.set(mode, 'reqs_per_hour', '60')
         PARSER.set(mode, 'cookie_secret', str(uuid.uuid4()))
 
     try:
@@ -54,8 +55,7 @@ if not len(PARSER.read('config/proxy.ini')):
 
 RECV_SPEC = PARSER.get(MODE, 'recv_spec')
 SEND_SPEC = PARSER.get(MODE, 'send_spec')
-BACKEND_URI = PARSER.get(MODE, 'backend_uri')
-REQS_PER_HOUR = PARSER.get(MODE, 'reqs_per_hour')
+REQS_PER_HOUR = PARSER.getint(MODE, 'reqs_per_hour')
 COOKIE_SECRET = PARSER.get(MODE, 'cookie_secret')
 
 CONTEXT = zmq.Context.instance()
