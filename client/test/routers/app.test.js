@@ -28,9 +28,12 @@ define([
     'lib/json2',
     '../../src/views/openscrape.app',
     '../../src/routers/openscrape.app',
-    '../helpers'
+    '../helpers',
+    'lib/jquery'
 ], function (require, _, backbone, json, AppView, AppRouter) {
     "use strict";
+
+    var $ = require('jquery');
 
     describe("AppRouter", function () {
         before(function () {
@@ -40,19 +43,24 @@ define([
         beforeEach(function () {
             this.view = new AppView();
             this.router = new AppRouter({view: this.view});
-            //this.view.render().$el.appendTo(this.$dom);
-            if (!backbone.history) {
-                backbone.history.start({pushState: true});
-            }
+            //this.$dom.show();
+            this.view.render().$el.appendTo(this.$dom);
+
+            // hashChange: false is used to prevent global leak on window event
+            backbone.history.start({ pushState: true });
+
+            this.origFrag = backbone.history.fragment;
 
             this.go = _.bind(function (path) {
                 this.router.navigate(path, {trigger: true});
             }, this);
-            this.server.respond();
         });
 
         afterEach(function () {
             this.view.remove();
+            //this.$dom.hide();
+            this.router.navigate(this.origFrag, {trigger: false});
+            backbone.history.stop();
         });
 
         after(function () {
@@ -60,17 +68,22 @@ define([
         });
 
         it("Shows a map by default", function () {
+            this.go('/');
+            this.clock.tick(500);
             this.$dom.find('#map').is(':visible').should.be.true;
         });
 
         it("Displays user's instructions if they exist", function () {
-            var instruction = {'load': 'http://www.google.com'};
-            this.server.respondWith('foo/instruction/bar',
-                                        [200, {}, json.stringify(instruction)]);
-            this.go('foo/instruction/bar');
+            var instruction = {'load': 'http://www.dailykos.com'};
+            this.server.respondWith('GET', '/foo/instruction/bar',
+                                    [200, {}, json.stringify(instruction)]);
+            this.go('/foo/instruction/bar');
             this.server.respond();
 
-            this.view.$el.text().should.match(/www\.google\.com/);
+            this.clock.tick(500);
+
+            console.log(this.view.$el.text());
+            this.view.$el.text().should.match(/www\.dailykos\.com/);
         });
     });
 });
