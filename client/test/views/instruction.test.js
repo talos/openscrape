@@ -83,14 +83,14 @@ define([
 
         it("doesn't immediately display an error after pressing a key", function () {
             var input = this.view.valueInput();
-            input.val('o').keypress();
+            input.val('o').keydown();
             input.hasClass('invalid').should.be.false;
             this.view.$el.find('#errors').children().length.should.equal(0);
         });
 
         it("displays an error after a little bit after pressing a key", function () {
             var input = this.view.valueInput();
-            input.val('o').keypress();
+            input.val('o').keydown();
             this.clock.tick(510);
             input.hasClass('invalid').should.be.true;
             this.view.$el.find('#errors').children().should.not.be.empty;
@@ -115,9 +115,9 @@ define([
             this.view.model.hasChanged().should.be.false;
         });
 
-        it("sets the model's value to match the display after a keypress and wait", function () {
+        it("sets the model's value to match the display after a keydown and wait", function () {
             var newValue = {'load': 'http://nytimes.com/'};
-            this.view.valueInput().val(json.stringify(newValue)).keypress();
+            this.view.valueInput().val(json.stringify(newValue)).keydown();
             this.clock.tick(510);
             this.view.model.value().should.eql(newValue);
         });
