@@ -47,6 +47,7 @@ define([
             //{ then: 'foobar' },
             [[]],
             { foo: 'bar' },
+            { extends: "foobar", posts: {foo: 'bar'}, dot_matches_all: false },
             { load: 'http://google.com', find: 'foobar'}
         ],
         respHeaders = { 'Content-Type': 'application/json' };
