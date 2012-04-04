@@ -3,7 +3,7 @@ import sys
 import os
 import uuid
 
-# if launched from app.py, look for the mode explicitly
+# if launched from app.py (rather than a test), look for the mode explicitly
 if sys.argv[0].split(os.path.sep)[-1] == 'app.py':
     if len(sys.argv) != 2:
         print("""
@@ -13,10 +13,8 @@ if sys.argv[0].split(os.path.sep)[-1] == 'app.py':
     python server/app/app.py <MODE>
 
     Look at `config/app.ini` for defined modes. Defaults are `production`,
-    `staging`, and `test`.
-
-    Since no mode was specified, default to test.""")
-        MODE = 'test'
+    `staging`, and `test`.""")
+        sys.exit(1)
     else:
         MODE = sys.argv[1]
 else:
