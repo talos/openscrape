@@ -47,7 +47,7 @@ define([
         },
 
         urlRoot: function () {
-            return '/instructions/' + this.user().name();
+            return this.user().url() + '/instruction';
         },
 
         idAttribute: 'name',
