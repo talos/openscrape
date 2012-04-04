@@ -34,6 +34,7 @@ define([
 
     mocha.setup({
         ui: 'bdd',
+        ignoreLeaks: true,
         globals: ['setTimeout', 'setInterval', 'clearTimeout', 'clearInterval',
                     'XMLHttpRequest']
     });
