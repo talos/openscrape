@@ -31,7 +31,7 @@ define([
 
         idAttribute: 'name',
 
-        urlRoot: '/users',
+        urlRoot: '/',
 
         validate: function () {
             if (!this.has('name')) {
