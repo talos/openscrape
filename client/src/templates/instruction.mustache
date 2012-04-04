@@ -9,15 +9,11 @@
     </select>
 </div>
 <div id="value">
-    <textarea>
-        {{value}}
-    </textarea>
+    <textarea>{{value}}</textarea>
 </div>
-<ul id="errors">
-    {{#errors}}
-        <li>{{.}}</li>
-    {{/errors}}
-</ul>
+<div id="errors">
+    {{> errors.mustache}}
+</div>
 <div>
     {{#editable}}
         <button id="save">Save</button>

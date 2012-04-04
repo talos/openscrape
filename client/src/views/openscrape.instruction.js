@@ -26,12 +26,15 @@ define([
     'lib/underscore',
     'lib/backbone',
     'lib/json_parse',
+    'lib/json2',
     'lib/requirejs.mustache',
     'text!templates/instruction.mustache',
+    'text!templates/errors.mustache',
     'models/openscrape.oauth',
     'lib/jquery',
     'lib/chosen.jquery'
-], function (require, _, backbone, json_parse, mustache, template, OAuthModel) {
+], function (require, _, backbone, json_parse, json, mustache,
+             instructionTemplate, errorsTemplate, OAuthModel) {
     "use strict";
 
     var $ = require('jquery');
@@ -43,7 +46,7 @@ define([
         className: 'instruction',
 
         events: {
-            'keypress #value textarea': _.debounce(function (evt) {
+            'keydown #value textarea': _.debounce(function (evt) {
                 $(evt.target).trigger('change');
             }, 500),
             'change #value textarea': 'editValue'
@@ -53,13 +56,26 @@ define([
             this.oauth = new OAuthModel();
         },
 
-        render: function (defaults) {
+        render: function () {
             this.oauth.fetch();
-            var context = _.extend(defaults || {}, this.model.toJSON());
+            var context = this.model.toJSON();
             context.oauth = this.oauth.toJSON();
             context.editable = context.oauth.user === this.model.user().name;
-            this.$el.html(mustache.render(template, context))
+
+            // Recursively transform the associative array of the
+            // instruction into component objects
+            // context.value = _.map(context.value, function (value, key) {
+            //     return {
+            //         key: key,
+            //         value: value
+            //     };
+            // });
+
+            // for now, just dump json as stringify
+            context.value = json.stringify(context.value, undefined, 2);
+            this.$el.html(mustache.render(instructionTemplate, context))
                 .find('.chzn-select').chosen();
+            this.$errors = this.$el.find('#errors');
             return this;
         },
 
@@ -68,21 +84,41 @@ define([
         },
 
         showErrors: function (errors) {
+            console.log(errors);
             this.valueInput().addClass('invalid');
-            this.render({errors: errors});
+            this.$errors.html(mustache.render(errorsTemplate, {errors: errors}));
+        },
+
+        clearErrors: function () {
+            this.$errors.empty();
         },
 
         editValue: function () {
-            var input = this.valueInput();
+            var input = this.valueInput(),
+                parsed,
+                modified;
             try {
-                this.model.set('value', json_parse(input.val()), {
-                    error: _.bind(this.showErrors, this)
+                parsed = json_parse(input.val());
+                modified = this.model.set('value', parsed, {
+                    error: _.bind(function (model, errors) {
+                        this.showErrors(_.map(errors, function (error) {
+                            return {
+                                name: 'Invalid Instruction',
+                                desscription: error.message
+                            };
+                        }));
+                    }, this)
                 });
+                if (modified) {
+                    this.clearErrors();
+                }
             } catch (e) {
                 if (e.name === 'SyntaxError') {
-                    this.showErrors(["Bad JSON @ character " + e.at + ": " + e.message]);
+                    this.showErrors([{
+                        name: "Bad JSON",
+                        description: "Bad JSON @ character " + e.at + ": " + e.message
+                    }]);
                 } else {
-                    console.log('uncaught');
                     throw e;
                 }
             }
