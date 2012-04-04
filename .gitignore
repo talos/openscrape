@@ -7,10 +7,8 @@
 *.ini
 *.swp
 *.conf
-start.sh
-stop.sh
 *.jsongit/
-data/mongo/*
+data/mongodb/*
 log/*
 todos.txt
 bin/*
