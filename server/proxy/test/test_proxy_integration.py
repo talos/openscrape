@@ -74,6 +74,12 @@ class TestProxyIntegration(unittest.TestCase):
         self.assertEquals(400, r.status_code)
         self.assertRegexpMatches(r.content, '(?i)id.* not found')
 
+    def test_echoes_id(self):
+        """Returns same ID as sent.
+        """
+        r = requests.post(URL, data=json.dumps({'id': 'foo', 'instruction': 'bar'}))
+        self.assertEquals(json.loads(r.content)['id'], 'foo')
+
     def test_default_uri(self):
         """Should default the request URI to the same as the proxy.
         """
@@ -86,9 +92,35 @@ class TestProxyIntegration(unittest.TestCase):
     def test_invalid_instruction(self):
         """Should return a failed if the instruction is invalid
         """
-        pass
+        invalid = {
+            'id': 'foo',
+            'instruction': {
+                'load': 'http://www.google.com',
+                'find': 'foo'
+            }
+        }
+        r = requests.post(URL, data=json.dumps(invalid))
+        self.assertEqual(200, r.status_code)
+        response = json.loads(r.content)
+        self.assertEqual('failed', response['status'])
+        self.assertRegexpMatches(response['failed'], '(?i)cannot define both')
 
     def test_request_simple_google(self):
         """Standard google request.
         """
-        pass
+        request = {
+            'id': 'foo',
+            'force': True,
+            'instruction': {
+                'load': 'http://www.google.com/search?q=foo',
+                'then': {
+                    'name': 'after foo',
+                    'find': 'foo(.*)',
+                    'replace': '$1'
+                }
+            }
+        }
+        r = requests.post(URL, data=json.dumps(request))
+        self.assertEquals(200, r.status_code)
+        response = json.loads(r.content)
+        #print(response)
