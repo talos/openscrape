@@ -115,7 +115,7 @@ class TestProxyIntegration(unittest.TestCase):
                 'load': 'http://www.google.com/search?q=foo',
                 'then': {
                     'name': 'after foo',
-                    'find': 'foo(.*)',
+                    'find': 'foo(\w*)',
                     'replace': '$1'
                 }
             }
@@ -123,4 +123,6 @@ class TestProxyIntegration(unittest.TestCase):
         r = requests.post(URL, data=json.dumps(request))
         self.assertEquals(200, r.status_code)
         response = json.loads(r.content)
-        #print(response)
+        self.assertEqual('loaded', response['status'])
+        values = response['children'].values()[0][0]['children']
+        self.assertIn('bar', values)
