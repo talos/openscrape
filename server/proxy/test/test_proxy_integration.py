@@ -1,5 +1,6 @@
 from helpers import unittest
 import requests
+from requests import async
 import json
 
 from ..src import config
@@ -126,3 +127,31 @@ class TestProxyIntegration(unittest.TestCase):
         self.assertEqual('loaded', response['status'])
         values = response['children'].values()[0][0]['children']
         self.assertIn('bar', values)
+
+    def test_simultaneous_requests(self):
+        """Should return the correct request.
+        """
+        requests = [{
+            'id': term,
+            'force': True,
+            'instruction': {
+                'load': 'http://www.google.com/search?q=%s' % term,
+                'then': {
+                    'name': 'after %s' % term,
+                    'find': '%s(\w*)' % term,
+                    'replace': '$1'
+                }
+            }
+        } for term in ['foo', 'bar', 'baz']]
+
+        rs = [async.post(URL, data=json.dumps(request)) for request in requests]
+        responses = async.map(rs)
+
+        for r in responses:
+            self.assertEquals(200, r.status_code)
+            response = json.loads(r.content)
+            self.assertEqual('loaded', response['status'])
+            name = response['children'].values()[0][0]['name']
+            # the id should be the same as the 'after'
+            self.assertEquals('after %s' % response['id'], name)
+
