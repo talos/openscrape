@@ -41,22 +41,20 @@ define([
         // response, or rejected.
         return function (method, model, options) {
 
-            var promise;
+            var resp;
 
             switch (method) {
-            case "read":    promise = model.id ? store.find(model) : store.findAll(); break;
-            case "create":  promise = store.create(model);                            break;
-            case "update":  promise = store.update(model);                            break;
-            case "delete":  promise = store.destroy(model);                           break;
+            case "read":    resp = model.id ? store.find(model) : store.findAll(); break;
+            case "create":  resp = store.create(model);                            break;
+            case "update":  resp = store.update(model);                            break;
+            case "delete":  resp = store.destroy(model);                           break;
             }
 
-            return promise
-                .done(function (resp) {
-                    options.success(resp);
-                })
-                .fail(function (msg) {
-                    options.error(msg);
-                });
+            if (resp) {
+                options.success(resp);
+            } else {
+                options.error("Record not found");
+            }
         };
     };
 });

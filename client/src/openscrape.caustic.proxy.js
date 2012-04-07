@@ -23,39 +23,18 @@
 define(['require', 'lib/jquery'], function (require) {
     "use strict";
 
-    // PRIVATE
-    var request_path = "/proxy", //Path to hit caustic backend.
-        $ = require('jquery');
+    var $ = require('jquery');
 
-    $.ajaxSetup({ timeout: 10000 });
-
-    // PUBLIC
     return {
-        /**
-         * Request <code>jsonRequest</code>.
-         *
-         * @param {String} jsonRequest A request serialized as JSON.
-         *
-         * @return {Promise} that will be resolved with the raw JSON response
-         * when the request is done, or rejected with a reason for why it
-         * failed.
-         **/
-        request: function (jsonRequest) {
-            var dfd = $.Deferred();
-
-            $.ajax({
-                url: request_path,
+        request: function (request) {
+            return $.ajax({
+                url: '/proxy',
                 type: 'POST',
                 contentType: 'application/json',
                 dataType: 'json',
-                data: jsonRequest
-            }).done(function (resp, status, doc) {
-                dfd.resolve(doc.responseText);
-            }).fail(function (resp) {
-                dfd.reject(resp.statusText);
+                data: request,
+                timeout: 10000
             });
-
-            return dfd.promise();
         }
     };
 });

@@ -82,7 +82,6 @@ define([
 
             this.clock.tick(500);
 
-            console.log(this.view.$el.text());
             this.view.$el.text().should.match(/www\.dailykos\.com/);
         });
     });

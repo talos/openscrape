@@ -24,8 +24,10 @@ define([
     'require',
     'models/openscrape.warning',
     'models/openscrape.oauth',
+    'collections/openscrape.caustic',
     'collections/openscrape.markers',
     'collections/openscrape.nodes',
+    'views/openscrape.caustic.prompt',
     'views/openscrape.warning',
     'views/openscrape.map',
     'views/openscrape.visual',
@@ -36,7 +38,8 @@ define([
     'text!templates/app.mustache',
     'lib/jquery'
 ], function (require, WarningModel, OAuthModel,
-             MarkersCollection, NodesCollection, WarningView,
+             CausticCollection,
+             MarkersCollection, NodesCollection, CausticPromptView, WarningView,
              MapView, VisualView, HeaderView,
              backbone, _, mustache, template) {
     "use strict";
@@ -54,6 +57,7 @@ define([
 
         initialize: function (options) {
             this.oauth = new OAuthModel();
+            this.caustic = new CausticCollection();
             this.markers = new MarkersCollection();
             this.nodes = new NodesCollection();
 
@@ -61,6 +65,7 @@ define([
             this.markers.fetch();
             this.nodes.fetch();
 
+            this.causticPrompt = new CausticPromptView({ collection: this.caustic });
             this.map = new MapView({ collection: this.markers });
             this.header = new HeaderView({model: this.oauth});
 

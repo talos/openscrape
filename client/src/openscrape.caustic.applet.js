@@ -31,7 +31,7 @@ define([
     var $ = require('jquery'),
         applet,
 
-        pollFrequency = 200, // how often to poll the applet when requesting
+        pollFrequency = 100, // how often to poll the applet when requesting
         javaClass = 'com.openscrape.applet.OpenScrapeApplet.class',
         dir = '/jar/',
         //jar = 'openscrape.jar?' + Date.now(),
@@ -56,6 +56,7 @@ define([
             }
             return errors;
         };
+
 
     return {
 

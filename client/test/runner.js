@@ -29,10 +29,11 @@ require.config({
         'require',
         'lib/jquery',
         '../test/vendor/mocha',
-        '../test/caustic.test',
         '../test/routers/app.test',
         '../test/models/instruction.test',
-        '../test/views/instruction.test'
+        '../test/views/caustic.prompt.test',
+        //'../test/collections/caustic.test',
+        //'../test/views/instruction.test'
     ], function (require) {
         var $ = require('jquery');
         $(document).ready(function () {

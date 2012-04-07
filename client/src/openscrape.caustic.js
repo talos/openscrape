@@ -39,10 +39,10 @@ define([
 
     var $ = require('jquery');
 
-    function Caustic($el) {
+    function Caustic(requester) {
+        this.requester = requester;
         this.$el = $el;
         this.queue = new Queue('caustic');
-        this.started = false;
         this.prompt = new PromptModel({
             text: 'Scraping hits external servers. You can'
                 + ' either proxy through my server (which is slower'
@@ -78,35 +78,46 @@ define([
     }
 
     /**
-     * Scrape a request.
+     * Scrape a request, hooking into backbone.js's sync interface.
      *
-     * @param {Object} request a JS object to request.
+     * @param {String} method CRUD method.  Delete is not supported, and the
+     * other three all map to a request.
+     * @param {CausticModel} model the Caustic model to sync
+     * @param {Object} options
      *
      * @return {Promise} that will be resolved with the raw JS object
      * of the response when the request is done, or rejected with a
      * reason for why it failed.
      **/
-    Caustic.prototype.scrape = function (request) {
+    Caustic.prototype.sync = function (method, model, options) {
         if (!this.requester) {
             new PromptView({ model: this.prompt })
                 .render().$el.prependTo(this.$el);
         }
 
-        var dfd = new $.Deferred(),
-            requestStr = json.stringify(request);
+        switch (method) {
+        case 'create':
+        case 'read':
+        case 'update':
+            var dfd = new $.Deferred(),
+                requestStr = json.stringify(model.toJSON());
 
-        this.queue.queue(_.bind(function (next) {
-            this.requester(requestStr)
-                .done(function (jsonResp) {
-                    dfd.resolve(json.parse(jsonResp));
-                })
-                .fail(function (msg) {
-                    dfd.reject(msg);
-                })
-                .always(function () {
-                    next(); // next on the line
-                });
-        }, this));
+            this.queue.queue(_.bind(function (next) {
+                this.requester(requestStr)
+                    .done(function (jsonResp) {
+                        dfd.resolve(json.parse(jsonResp));
+                    })
+                    .fail(function (msg) {
+                        dfd.reject(msg);
+                    })
+                    .always(function () {
+                        next(); // next on the line
+                    });
+            }, this));
+            break;
+        case 'delete':
+            throw new Error('Cannot delete CausticModel, it is not persisted');
+        }
 
         return dfd.promise();
     };

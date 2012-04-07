@@ -29,11 +29,9 @@
 /*global define, localStorage*/
 
 define([
-    'require',
     'lib/json2',
-    'lib/underscore',
-    'lib/jquery'
-], function (require, json, _) {
+    'lib/underscore'
+], function (json, _) {
     "use strict";
 
     // A simple module to persist to localstorage.
@@ -52,8 +50,7 @@ define([
 
     // Our Store is represented by a single JS object in *localStorage*. Create it
     // with a meaningful name, like the name you'd give a table.
-    var $ = require('jquery'),
-        Store = function (name) {
+    var Store = function (name) {
             this.name = name;
             var store = localStorage.getItem(this.name);
             this.records = (store && store.split(",")) || [];
@@ -75,30 +72,29 @@ define([
             localStorage.setItem(this.name + "-" + model.id, json.stringify(model));
             this.records.push(model.id.toString());
             this.save();
-            return $.Deferred().resolve(model.toJSON()).promise();
+            return model;
         },
 
         // Update a model by replacing its copy in `this.data`.
         update: function (model) {
             localStorage.setItem(this.name + "-" + model.id, json.stringify(model));
             if (!_.include(this.records, model.id.toString())) {
-                this.records.push(model.id.toString()); this.save();
+                this.records.push(model.id.toString());
+                this.save();
             }
-            return $.Deferred().resolve(model).promise();
+            return model;
         },
 
         // Retrieve a model from `this.data` by id.
         find: function (model) {
-            return $.Deferred().resolve(
-                json.parse(localStorage.getItem(this.name + "-" + model.id))
-            ).promise();
+            return json.parse(localStorage.getItem(this.name + "-" + model.id));
         },
 
         // Return the array of all models currently in storage.
         findAll: function () {
-            return $.Deferred().resolve(_.map(this.records, function (id) {
+            return _.map(this.records, function (id) {
                 return json.parse(localStorage.getItem(this.name + "-" + id));
-            }, this)).promise();
+            }, this);
         },
 
         // Delete a model from `this.data`, returning it.
@@ -108,7 +104,7 @@ define([
                 return record_id === model.id.toString();
             });
             this.save();
-            return $.Deferred().resolve(model).promise();
+            return model;
         }
     });
     return Store;
