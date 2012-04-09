@@ -60,7 +60,13 @@ define([
                 this.trigger('request');
             }
 
-            var dfd = new $.Deferred();
+            var dfd = new $.Deferred(),
+                wrappedSuccess = _.bind(function () {
+                    //console.log(model.toJSON());
+                    options.success.apply(this, arguments);
+                    //console.log(model.toJSON());
+                    //this.localSync(method, model, options);
+                }, this);
 
             if (method === 'create' || method === 'update') {
                 this.queue.queue(_.bind(function (next) {
@@ -73,7 +79,7 @@ define([
                 dfd.resolve(model);
             }
 
-            return dfd.done(options.success)
+            return dfd.done(wrappedSuccess)
                 .fail(options.error)
                 .promise();
             //return dfd.promise();

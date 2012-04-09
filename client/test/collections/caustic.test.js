@@ -35,6 +35,7 @@ define([
 
     var $ = require('jquery');
 
+
     describe("CausticCollection", function () {
 
         before(function () {
@@ -43,46 +44,71 @@ define([
         });
 
         beforeEach(function () {
+            localStorage.clear();
             this.server = sinon.fakeServer.create();
         });
 
         afterEach(function () {
             this.server.restore();
+            this.collection.reset();
         });
 
-        it("constructs a single model for a childless response", function () {
-            var request = {
-                    'id': 'foobar',
-                    'force': true,
-                    'instruction': { 'load': 'http://www.google.com' }
-                },
-                response = {
-                    'id': 'foobar',
-                    'name': 'google',
-                    'description': '',
-                    'uri': 'uri',
-                    'status': 'loaded',
-                    'instruction': request.instruction,
-                    'results': [{
-                        'value': 'contents of google'
-                    }]
-                },
-                model;
-            this.server.respondWith('POST', '/proxy',
-                                    [200, {}, json.stringify(response)]);
+        describe("a response without children", function () {
+            var response = {
+                'id': 'foobar',
+                'name': 'google',
+                'description': '',
+                'uri': 'uri',
+                'status': 'loaded',
+                'instruction': { 'load': 'http://www.google.com' },
+                'results': [{
+                    'value': 'contents of google'
+                }]
+            };
 
-            model = this.collection.create(request);
-            this.server.respond();
-            model.id.should.equal('foobar');
-            this.expect(model.get('parent')).to.not.be.ok;
-            this.expect(model.get('name')).to.equal('google');
-            this.expect(model.get('uri')).to.equal('uri');
-            this.expect(model.get('status')).to.equal('loaded');
-            this.expect(model.get('instruction')).to.eql(response.instruction);
-            this.expect(model.get('results')).to.eql(response.results);
+            beforeEach(function () {
+                this.model = this.collection.create({});
+                this.server.respond(json.stringify(response));
+            });
+
+            it("constructs a single model", function () {
+                this.collection.length.should.equal(1);
+            });
+
+            it("fills the model with response data", function () {
+                var model = this.model;
+                model.id.should.equal('foobar');
+                this.expect(model.get('parent')).to.not.be.ok;
+                this.expect(model.get('name')).to.equal('google');
+                this.expect(model.get('uri')).to.equal('uri');
+                this.expect(model.get('status')).to.equal('loaded');
+                this.expect(model.get('instruction')).to.eql(response.instruction);
+                this.expect(model.get('results')).to.eql(response.results);
+            });
+
+            it("can retrieve the model", function () {
+                var model = this.collection.get('foobar');
+                model.get('name').should.equal('google');
+            });
+
+            it("persists the model across collection instances", function () {
+                var collection = new CausticCollection(),
+                    model;
+                collection.fetch();
+                collection.length.should.equal(1);
+                model = collection.get('foobar');
+                model.get('name').should.equal('google');
+            });
+
+            it("re-scrapes when there is a saved change", function () {
+                this.model.save({'instruction': {'load': 'http://foo.bar.com/'}});
+                this.server.respond(json.stringify(_.extend(response, { 'status': 'failed' })));
+                this.model.get('status').should.equal('failed');
+            });
+
         });
 
-        it("constructs a nested model for a response with children", function () {
+        describe("a response with children", function () {
             var response = {
                 'id': 'outer',
                 'name': 'google',
@@ -102,25 +128,37 @@ define([
                         }]
                     }]
                 }]
-            }, inner, outer;
-            this.server.respondWith('POST', '/proxy',
-                                    [200, {}, json.stringify(response)]);
+            };
 
-            outer = this.collection.create({});
-            this.server.respond();
-            outer.id.should.equal('outer');
-            inner = outer.get('results')[0].children[0];
-            this.expect(inner.get('id')).to.equal('inner');
-            this.expect(inner.get('name')).to.equal('foo');
-            this.expect(inner.get('uri')).to.equal('http://proxy/');
-            this.expect(inner.get('status')).to.equal('found');
-            this.expect(inner.get('instruction')).to.eql(
-                response.results[0].children[0].instruction
-            );
-            this.expect(inner.get('results')).to.eql(
-                response.results[0].children[0].results
-            );
+            beforeEach(function () {
+                this.model = this.collection.create({});
+                this.server.respond(json.stringify(response));
+            });
 
+            it("fills the inner model with data", function () {
+                this.model.id.should.equal('outer');
+                var inner = this.model.get('results')[0].children[0];
+                this.expect(inner.get('id')).to.equal('inner');
+                this.expect(inner.get('name')).to.equal('foo');
+                this.expect(inner.get('uri')).to.equal('http://proxy/');
+                this.expect(inner.get('status')).to.equal('found');
+                this.expect(inner.get('instruction')).to.eql(
+                    response.results[0].children[0].instruction
+                );
+                this.expect(inner.get('results')).to.eql(
+                    response.results[0].children[0].results
+                );
+
+            });
+
+            it("constructs two models", function () {
+                this.collection.length.should.equal(2);
+            });
+
+            it("can retrieve the inner model", function () {
+                var inner = this.collection.get('inner');
+                inner.get('name').should.equal('foo');
+            });
         });
     });
 });
