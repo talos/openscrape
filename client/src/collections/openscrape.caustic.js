@@ -65,28 +65,26 @@ define([
             if (method === 'create' || method === 'update') {
                 this.queue.queue(_.bind(function (next) {
                     this._requestFunc(json.stringify(model))
-                        .done(function (jsonResp) {
-                            dfd.resolve(json.parse(jsonResp));
-                        })
-                        .fail(function (msg) {
-                            dfd.reject(msg);
-                        })
-                        .always(function () {
-                            next(); // next on the line
-                        });
+                        .done(function (resp) { dfd.resolve(resp); })
+                        .fail(function (msg) { dfd.reject(msg); })
+                        .always(next); // next on the line
                 }, this));
             } else {
                 dfd.resolve(model);
             }
 
+            return dfd.done(options.success)
+                .fail(options.error)
+                .promise();
+            //return dfd.promise();
             // pipe successful persistence to localsync
             // this takes care of callbacks, too
-            return dfd.pipe(_.bind(function (model) {
-                return this.localSync(method, model, options);
-            }, this), function (errorMsg) {
-                // unsuccessful persistence needs to hit callback manually
-                options.error(errorMsg);
-            }).promise();
+            // return dfd.pipe(_.bind(function (_model) {
+            //     return this.localSync(method, model, options);
+            // }, this), function (errorMsg) {
+            //     // unsuccessful persistence needs to hit callback manually
+            //     options.error(errorMsg);
+            // }).promise();
         }
     });
 });

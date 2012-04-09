@@ -32,7 +32,7 @@ require.config({
         '../test/routers/app.test',
         '../test/models/instruction.test',
         '../test/views/caustic.prompt.test',
-        //'../test/collections/caustic.test',
+        '../test/collections/caustic.test',
         //'../test/views/instruction.test'
     ], function (require) {
         var $ = require('jquery');

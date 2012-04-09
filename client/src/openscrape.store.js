@@ -67,7 +67,7 @@ define([
         // have an id of it's own.
         create: function (model) {
             if (!model.id) {
-                model.id = model.attributes.id = guid();
+                model.id = model.attributes[model.idAttribute] = guid();
             }
             localStorage.setItem(this.name + "-" + model.id, json.stringify(model));
             this.records.push(model.id.toString());

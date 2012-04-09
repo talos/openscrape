@@ -28,7 +28,7 @@ define([
     'openscrape.caustic.proxy',
     'lib/underscore',
     'lib/json2',
-    '../../helpers',
+    '../helpers',
     'lib/jquery'
 ], function (require, CausticCollection, CausticModel, proxy, _, json) {
     "use strict";
@@ -39,23 +39,25 @@ define([
 
         before(function () {
             this.collection = new CausticCollection();
-            this.collection.enable(proxy);
+            this.collection.enable(proxy.request);
         });
 
         beforeEach(function () {
+            this.server = sinon.fakeServer.create();
         });
 
         afterEach(function () {
+            this.server.restore();
         });
 
         it("constructs a single model for a childless response", function () {
             var request = {
-                    'id': 'foo',
+                    'id': 'foobar',
                     'force': true,
                     'instruction': { 'load': 'http://www.google.com' }
                 },
                 response = {
-                    'id': 'foo',
+                    'id': 'foobar',
                     'name': 'google',
                     'description': '',
                     'uri': 'uri',
@@ -64,20 +66,20 @@ define([
                     'results': [{
                         'value': 'contents of google'
                     }]
-                };
-            this.server.respondWith('POST', '/proxy', function (xhr) {
-                xhr.respond(200, {}, json.stringify(response));
-            });
+                },
+                model;
+            this.server.respondWith('POST', '/proxy',
+                                    [200, {}, json.stringify(response)]);
 
-            this.model = this.collection.create(request);
-            this.model.id.should.equal('foo');
-            this.model.fetch();
-            this.model.parent().should.not.be.ok;
-            this.model.name().should.equal('google');
-            this.model.uri().should.equal('uri');
-            this.model.status().should.equal('loaded');
-            this.model.instruction().value.should.eql(response.instruction);
-            this.model.results().should.eql(response.results);
+            model = this.collection.create(request);
+            this.server.respond();
+            model.id.should.equal('foobar');
+            this.expect(model.get('parent')).to.not.be.ok;
+            this.expect(model.get('name')).to.equal('google');
+            this.expect(model.get('uri')).to.equal('uri');
+            this.expect(model.get('status')).to.equal('loaded');
+            this.expect(model.get('instruction')).to.eql(response.instruction);
+            this.expect(model.get('results')).to.eql(response.results);
         });
 
         it("constructs a nested model for a response with children", function () {
@@ -100,7 +102,24 @@ define([
                         }]
                     }]
                 }]
-            };
+            }, inner, outer;
+            this.server.respondWith('POST', '/proxy',
+                                    [200, {}, json.stringify(response)]);
+
+            outer = this.collection.create({});
+            this.server.respond();
+            outer.id.should.equal('outer');
+            inner = outer.get('results')[0].children[0];
+            this.expect(inner.get('id')).to.equal('inner');
+            this.expect(inner.get('name')).to.equal('foo');
+            this.expect(inner.get('uri')).to.equal('http://proxy/');
+            this.expect(inner.get('status')).to.equal('found');
+            this.expect(inner.get('instruction')).to.eql(
+                response.results[0].children[0].instruction
+            );
+            this.expect(inner.get('results')).to.eql(
+                response.results[0].children[0].results
+            );
 
         });
     });
