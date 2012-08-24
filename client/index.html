@@ -12,6 +12,16 @@
     <title>openscrape</title>
 
     <script type="text/javascript">
+        // redirect bare domain to www.
+        (function () {
+            var url = window.location.href;
+            if (url.indexOf('http://openscrape') !== -1) {
+                window.location.href = url.replace('http://openscrape', 'http://www.openscrape');
+            }
+        })();
+    </script>
+
+    <script type="text/javascript">
 
     var _gaq = _gaq || [];
     _gaq.push(['_setAccount', 'UA-29144102-1']);
